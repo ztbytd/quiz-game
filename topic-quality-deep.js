@@ -177,6 +177,12 @@
         ],
         answer: 2,
         explain: '控制响应顺序才能稳定制造竞态，还要检查当前查询的加载态和错误提示未被旧请求修改。',
+        detail: {
+          example:
+            '在输入前注册请求拦截，按查询参数存下处理入口。先输入 A 并等它真的发出，再输入 B，两个请求都被捕获后，先释放 B 断言显示的是 B，再释放 A，看旧响应会不会把列表覆盖掉。这样不靠机器速度，也不会被防抖合并成一次请求。只看最终列表还不够：B 等待期间 A 的 finally 把 loading 置为 false 这种问题，得单独安排一轮才看得见。',
+          pitfalls:
+            '等待固定五秒再截图，换台机器就可能不复现。把两个请求设成相同延迟，等于让它们同时到达，制造不出“旧的覆盖新的”。不断重跑等它偶尔失败，回归价值几乎为零。只断言最终列表正确，会漏掉加载态和错误提示被旧请求改掉的情况。用了 AbortController 也不代表可以不测迟到响应，已开始的解析和缓存回调仍可能回写。',
+        },
       },
       {
         type: 'choice',
@@ -185,6 +191,14 @@
         options: ['始终返回空数组', '始终返回降序的不同值', '让两个相邻不同值逆序', '将最大值放到最前'],
         answer: 0,
         explain: '空数组满足相邻元素有序的条件。还需验证长度、元素多重集和契约要求的输入不变性。',
+        detail: {
+          example:
+            '排序函数跑了 20 个固定用例都通过，但你只断言了“每个相邻元素前者不大于后者”。一个始终返回空数组的实现完全满足这个条件——它没有相邻元素。要补的是独立性质：长度不变、元素多重集不变（用 Map 计数而不是 Set，否则 [1,1,2] 变成 [1,2,2] 也能漏过），以及契约要求的输入不被修改。',
+          code:
+            '// 只检查有序：空数组实现也能通过\nconst ok = list.every((v, i) => i === 0 || list[i - 1] <= v);\n\n// 补上长度与多重集\nassert.equal(result.length, input.length);\nconst count = (a) => a.reduce((m, x) => m.set(x, (m.get(x) || 0) + 1), new Map());\nassert.deepEqual([...count(result)], [...count(input)]);',
+          pitfalls:
+            '把“有序”当成唯一性质，是这里最典型的漏洞。用 Set 做多重集比较会吞掉重复元素的变化。拿同一套排序代码当对照真值，等于用被测实现验证自己。生成式测试失败后不保存种子和收缩结果，第二天就跑不出来。一万组通过也只能说明采样范围内没发现问题。',
+        },
       },
       {
         type: 'choice',
@@ -198,6 +212,12 @@
         ],
         answer: 1,
         explain: '提供方验证应覆盖具体业务状态与消费者依赖的空值语义；仅测试自建替身不能证明真实接口兼容。',
+        detail: {
+          example:
+            '前端 mock 一直返回 items: []，后端在无数据时改成了 items: null，两边单测都绿，联调才炸。缺的是把“消费者实际依赖的字段和空值语义”固化成契约，再让提供方在空列表状态下跑一遍真实接口验证。增加前端快照数量只加固你自己的替身，和真实接口能不能对上没关系。',
+          pitfalls:
+            '只测自建替身，证明不了真实接口兼容，这是契约测试存在的理由。测试数据里永远有一条记录，就永远碰不到空列表这个边界。把所有匹配规则改成“允许任意值”，会把当前故障一起吞掉。契约都通过了也不能删掉端到端测试，鉴权配置、网关路由、跨服务状态和浏览器交互它覆盖不到。',
+        },
       },
       {
         type: 'truefalse',
@@ -206,6 +226,14 @@
         answer: false,
         explain:
           '错误。例如纽约 2026-03-08 的本地零点是 UTC 05:00，下一日本地零点是 UTC 04:00，只相隔 23 小时；固定加 24 小时会多跨一小时。按业务时区先计算日历上的下一日，再转换为时间点，用开始包含、结束不包含的区间查询。',
+        detail: {
+          example:
+            '纽约 2026-03-08 的本地零点是 UTC 05:00，3 月 9 日的本地零点是 UTC 04:00，两者只差 23 小时——这天夏令时往前拨了一小时。所以“零点 + 24 小时 = 次日零点”在换季那天就不成立，固定加 86400000 毫秒会落到次日 01:00。正确做法是按业务时区先在日历上算出“下一日”，再转成时间点，查询用 created_at >= start AND created_at < nextStart。',
+          code:
+            '// 错误：跨夏令时会真的跨过 24 小时\nconst next = new Date(dayZero.getTime() + 86400000);\n\n// 正确：按业务时区算日历上的下一日\nconst start = zonedStartOfDay(\'2026-03-08\', \'America/New_York\');\nconst nextStart = zonedStartOfDay(\'2026-03-09\', \'America/New_York\');',
+          pitfalls:
+            '用“当天最后一毫秒”表示区间终点，在 25 小时的那天会漏数据。秋季切换可能生出 25 小时的一天，固定时长同样错。以为 Intl.DateTimeFormat 能把任意本地日期字符串解析成指定时区的时间点，它只负责格式化已知值。开发机都在上海，时区问题就一直测不出来，要固定业务时区并跨环境断言。',
+        },
       },
       {
         type: 'choice',
@@ -220,6 +248,14 @@
         answer: 3,
         explain:
           '家庭 emoji 👨‍👩‍👧‍👦 在 JavaScript 中占 11 个 UTF-16 码元、7 个码点，却可作为 1 个字素簇展示。Intl.Segmenter 使用 grapheme 粒度后按段截断，才能保留这个组合。展示字符限制还应与服务端 UTF-8 字节上限分开校验。',
+        detail: {
+          example:
+            '昵称限制 10 个字，用 value.slice(0, 10) 截断后，家庭 emoji 👨‍👩‍👧‍👦 被切成半个，渲染成残缺图像。它在 JavaScript 里占 11 个 UTF-16 码元、7 个码点，但用户感知上是 1 个字符。用 Intl.Segmenter 按 grapheme 分段后再取前 N 段，组合结构才能保住。',
+          code:
+            'function truncateNickname(value, max = 10) {\n  const seg = new Intl.Segmenter(\'zh\', { granularity: \'grapheme\' });\n  return Array.from(seg.segment(value), (i) => i.segment)\n    .slice(0, max)\n    .join(\'\');\n}',
+          pitfalls:
+            'slice 和 length 按 UTF-16 码元切，会把代理对劈开。Array.from 按码点切，仍可能拆散 ZWJ 组合和肤色修饰。前端算 10 个字素簇，不等于数据库 40 字节够用，字节限制要服务端单独校验。把所有文本统一 NFKC 再保存会折叠兼容字符，用户 ID 和密码原文不能这么改。',
+        },
       },
       {
         type: 'truefalse',
@@ -228,6 +264,14 @@
         answer: false,
         explain:
           '直接 submit() 跳过约束验证与 submit 事件。requestSubmit() 走提交按钮语义，验证仍受 novalidate 等配置影响。',
+        detail: {
+          example:
+            '同一张表单，点击发布按钮能用，程序里调 form.submit() 却既不校验 required 字段、也不触发 submit 监听器，请求根本没发出去。因为 submit() 是底层提交，绕过约束验证和 submit 事件；requestSubmit() 才走提交按钮的路径，会先做约束验证再进 submit 事件。把提交逻辑统一放进 form 的 submit 处理器，两条入口才会一致。',
+          code:
+            '// 跳过验证与 submit 事件\nform.submit();\n\n// 走按钮语义：先约束验证，再触发 submit\nform.requestSubmit();\nform.requestSubmit(publishButton);   // 指定 submitter',
+          pitfalls:
+            '把 submit() 当成 requestSubmit() 的别名，是最常见的一处混淆。业务逻辑只绑在按钮的 click 上，键盘隐式提交和程序提交就是另一套逻辑。草稿和发布两个按钮没设 name/value，submit 处理器分不清要做什么。原生约束验证不能替代服务端校验。',
+        },
       },
     ],
   });
