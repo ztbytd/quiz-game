@@ -420,6 +420,7 @@
         type: 'text',
         chain: 'platform-sourcemap',
         q: '错误平台已经收到 source map，但还原的文件行号明显错误。请给出两项具体核对。',
+        answer: '映射',
         explain:
           '第一，核对错误事件的资源 URL、release/build ID、行列号与上传的 JavaScript 及 map 是否属于同一次构建，排除客户端旧缓存与同名覆盖。第二，核对 map 生成后是否又经过压缩、拼接或 CDN 改写，产物一旦变化旧映射就不匹配。用最终线上产物触发已知源码位置的受控异常，验证还原的文件、行列与版本都正确。',
         detail: {

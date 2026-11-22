@@ -425,6 +425,7 @@
         type: 'text',
         chain: 'lang-generator-close',
         q: '分页生成器在第三页读取前，消费者已经 break。你会用哪三项断言验证资源收尾？',
+        answer: '收尾',
         explain:
           '注入 fetchPage 和 close 的计数桩：①前两页取完并 break 后，close 次数应为 1；②fetchPage 的调用记录只能含第 1、2 页，不能再请求第 3 页；③随后主动调用 iterator.return()，close 仍为 1且不再拉取。前提是生成器已进入 try/finally、没有预取。再测正常耗尽与消费方抛错；若有后台预取，契约应改为取消并等待在途请求收尾。',
         detail: {

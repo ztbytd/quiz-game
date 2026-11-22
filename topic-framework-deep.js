@@ -406,6 +406,7 @@
         type: 'text',
         chain: 'frame-route',
         q: '详情组件从 A 复用到 B，A 的慢请求随后才返回。请描述结果、错误和 loading 如何避免串到 B。',
+        answer: '代际',
         explain:
           '监听 route.params.id 并 immediate 加载；每次请求记录递增代际与资源 ID，监听清理时 abort 旧请求。成功时仅当前代际写 data，catch 仅当前代际写 error，finally 也仅当前代际置 loading=false。只比 ID 不够覆盖 A→B→A；卸载时使当前任务失效。新页面明确显示加载态，草稿按资源 ID 独立存储。',
         detail: {
