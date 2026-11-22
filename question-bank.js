@@ -868,6 +868,43 @@ const LEVELS = [
           ],
         },
       },
+      {
+        type: 'choice',
+        chain: 'pool',
+        q: '手写一个最多 k 个并发、按输入顺序返回结果的请求池。同时有多个请求在跑，第 3 项比第 1 项先完成，为什么结果还能保序？',
+        options: [
+          '靠 Promise.all 内部会自动排序',
+          '领任务时记下输入下标 i，完成时写 out[i]，而不是 push',
+          '先把所有请求串行执行一遍',
+          '按完成时间给结果排序',
+        ],
+        answer: 1,
+        explain:
+          '保序的关键不在完成顺序，而在写入位置。共享游标让每个 worker 在第一次 await 之前同步领到一个下标 i，请求完成后把结果写进 out[i]。即使第 3 项先完成，它写的也是第 3 格，数组顺序天然就是输入顺序。',
+        detail: {
+          code: 'async function pool(urls, k, request) {\n  if (!Number.isInteger(k) || k < 1) throw RangeError(\'k\');\n  let next = 0, stopped = false;\n  const out = new Array(urls.length);\n  async function worker() {\n    while (!stopped && next < urls.length) {\n      const i = next++;                    // 同步领取，不会交叉\n      try { out[i] = await request(urls[i]); }   // 按下标写入\n      catch (e) { stopped = true; throw e; }\n    }\n  }\n  await Promise.all(Array.from({length: Math.min(k, urls.length)}, worker));\n  return out;\n}',
+          example:
+            '并发数 k=3，第 3 个请求先返回。用 push 会得到完成顺序，结果和输入对不上；用 out[i] 写入，第 3 个结果就稳稳待在第 3 格。领取下标这一步务必在 await 之前完成，同一 JS 线程里这段同步代码不会被打断，所以两个 worker 不会领到同一个 i。',
+          pitfalls:
+            '用 push 收集结果，是最常见的错误，得到的是完成顺序。把 next++ 放在 await 之后，两个 worker 可能领到同一个下标。一个请求失败时其他在途请求不会自动取消，stopped 只阻止后续领取；要真正终止需要共享 AbortController。验证并发上限不要用 sleep，用手动释放的 Promise 记录 active 的峰值。',
+        },
+      },
+      {
+        type: 'choice',
+        chain: 'lru',
+        q: '用 Map 实现容量为 2 的 LRU，依次写入 A、B，读取 A，再写入 C，最终应该淘汰谁？',
+        options: ['A', 'B', 'C', '同时淘汰 A 和 B'],
+        answer: 1,
+        explain:
+          'Map 保持插入顺序。写入 A、B 后顺序是 A、B；读取 A 时先删再插，顺序变成 B、A，A 成为最近使用；再写入 C 超出容量，淘汰最久未用的第一个键 B，最终保留 A、C。',
+        detail: {
+          code: 'function lru(cap) {\n  if (!Number.isInteger(cap) || cap < 1) throw RangeError(\'cap\');\n  const m = new Map();\n  return {\n    get(k) {\n      if (!m.has(k)) return;              // 用 has，避免把 0/false 当成未命中\n      const v = m.get(k);\n      m.delete(k); m.set(k, v);           // 删再插 = 刷新为最近使用\n      return v;\n    },\n    set(k, v) {\n      m.delete(k); m.set(k, v);\n      if (m.size > cap) m.delete(m.keys().next().value);  // 淘汰最旧的\n    },\n  };\n}',
+          example:
+            '容量 2：set A、set B（顺序 A,B）→ get A（顺序变 B,A）→ set C 触发淘汰，第一个键 B 被删掉，剩下 A,C。注意覆盖已有键时也要先 delete 再 set，否则那个键的位置不会更新为最近使用。',
+          pitfalls:
+            '用 get(k) 是否为 undefined 判断未命中，会把合法的 0、false、空字符串误判成没有。覆盖已有键时忘了先 delete，它的顺序不会刷新，淘汰逻辑就错了。只用键数限制容量，对大小差异很大的产物（比如预览文件）远远不够，还要按字节权重设上限。',
+        },
+      },
     ],
   },
   {
@@ -1721,6 +1758,48 @@ const LEVELS = [
           sources: [
             ['MDN', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map'],
           ],
+        },
+      },
+      {
+        type: 'choice',
+        chain: 'window',
+        q: '求字符串 abba 的最长无重复子串长度，扫描时写成 left = last.get(ch) + 1 会算出什么错误结果？',
+        options: [
+          '结果偏小，因为漏掉了窗口扩展',
+          '左边界会被拉回去，把 bba 错算成合法窗口',
+          '左边界永远不会移动',
+          '结果正确，只是慢一些',
+        ],
+        answer: 1,
+        explain:
+          '正确答案是 2。遍历到最后一个 a 时，它上次出现的位置 0 已经在当前窗口左侧之外；若直接赋值 left = 0 + 1 = 1，左边界从 2 被拉回到 1，把 bba 当成无重复窗口。左边界必须单调向右，所以要用 Math.max(left, last.get(ch) + 1)。',
+        detail: {
+          code: 'function longestUnique(text) {\n  const last = new Map();\n  let left = 0, right = 0, best = 0;\n  for (const ch of text) {            // 按码点迭代\n    if (last.has(ch)) left = Math.max(left, last.get(ch) + 1);\n    last.set(ch, right);\n    best = Math.max(best, right - left + 1);\n    right++;\n  }\n  return best;\n}',
+          example:
+            '以 abba 为例：扫到第二个 a 之前窗口是 "b"（left=2, right=2）。这个 a 上次出现在 0，直接赋值会把 left 拉回 1，窗口变成 "bb a" 里不合法的三段；用 Math.max(2, 0+1)=2，左边界留在原地，正确得到长度 2。',
+          pitfalls:
+            '左边界回退是这里最典型的错误，根源是只在当前字符重复时无条件移动。另一个容易被忽略的是 JS 字符串的长度口径：for...of 按码点迭代，组合字符仍可能由多个码点组成，产品要说的是“用户看到的字符”就得先按字素簇切分。',
+        },
+      },
+      {
+        type: 'choice',
+        chain: 'interval',
+        q: '合并闭区间 [1,3]、[2,6]、[8,10] 得到什么？为什么必须先排序？',
+        options: [
+          '[1,6]、[8,10]；排序后每个区间只需和最后一个结果比较',
+          '[1,10]；所有区间连成一段',
+          '[1,3]、[2,6]、[8,10]；闭区间不相交就不合并',
+          '[1,6]、[8,10]；排序只是为了输出好看',
+        ],
+        answer: 0,
+        explain:
+          '按起点排序后，[1,3] 与 [2,6] 相交合并成 [1,6]，与 [8,10] 不相交就另起一段。排序的作用是保证不遗漏：只要处理到某一段时，后面所有区间起点都更大，就不会再回头和已经结束的区间相交，因此每段只需和结果数组最后一个比较。',
+        detail: {
+          code: 'function mergeIntervals(input) {\n  const sorted = [...input].sort((a, b) => a[0] - b[0]);  // 不改原数组\n  const out = [];\n  for (const [start, end] of sorted) {\n    const last = out[out.length - 1];\n    if (last && start <= last[1]) last[1] = Math.max(last[1], end);\n    else out.push([start, end]);\n  }\n  return out;\n}',
+          example:
+            '输入 [1,10] 和 [2,3] 时，如果用 last[1] = end 直接覆盖终点，10 就被截成 3 了。必须取 Math.max(last[1], end)。另外要事先和调用方确认两件事：端点是否包含、相接的区间（比如 [1,3] 和 [4,6]）要不要合并。',
+          pitfalls:
+            '不排序就顺序合并，被包含的区间会漏掉。直接赋值 end 而不取最大值，会截断更长的区间。原地 sort 修改了调用方传进来的数组。流式输入若已按起点有序，只需保留当前未关闭的一段，额外空间可以做到 O(1)，不必存下全部区间。',
         },
       },
     ],
@@ -3811,6 +3890,26 @@ const LEVELS = [
               '给出真实时间点与触发条件，并说明这一条件如何影响求职安排。个人隐私可以保留到必要程度，但不应编造工作经历。',
             ],
           ],
+        },
+      },
+      {
+        type: 'choice',
+        chain: 'conflict',
+        q: '产品要求周五发布，但高风险流程还有两个异常分支没验证。作为前端负责人，推动决定的第一步是什么？',
+        options: [
+          '直接拒绝上线，等全部验证完再说',
+          '把未验证分支的影响、可检测性和可撤回性说清，提出可选范围与停止条件',
+          '先上线，出了问题再回滚',
+          '让产品单方面决定，自己不留下书面判断',
+        ],
+        answer: 1,
+        explain:
+          '有效的推动不是二选一式的表态，而是把决策所需的信息摊开：这两个分支影响哪些用户、出了问题能否被观测到、能否快速撤回。在此基础上给出可选范围，比如先开放已验证的查询、延后写入入口，同时写明负责人、验收条件和下一次决策时间。',
+        detail: {
+          example:
+            '产品要周五发，高风险流程还有两个异常分支没测。直接说“不行”会被当成不配合，直接发又是在赌。可用的做法是把信息摆出来：“分支 A 影响退款金额，出错用户能看到，但日志里有专门埋点；分支 B 一旦出错会写脏数据且无法回滚。”然后给选项：只放查询、把写入入口延到下周、或者带上回退人和停止条件一起发。',
+          pitfalls:
+            '把“质量”当成一句口号而不给具体后果，对方无法据此决策。只讲风险不讲可选方案，等于把决定权推回去。“以前都没出问题”不是证据，需要在隔离数据上做一次最小复现。即使最终决定按时上线，也要留下约定的范围、观察指标、停止条件和回退负责人。',
         },
       },
     ],
