@@ -1,6 +1,11 @@
 'use strict';
 
 const byId = (id) => document.getElementById(id);
+LEVELS.splice(
+  LEVELS.findIndex((level) => level.id === 9),
+  0,
+  ...TOPIC_LEVELS,
+);
 const levelsById = new Map(LEVELS.map((level) => [level.id, level]));
 const questionCount = LEVELS.reduce((n, level) => n + level.questions.length, 0);
 const storeKey = 'quiz-game.progress.v1';
@@ -23,6 +28,9 @@ const topics = {
   15: 'window',
   16: 'split',
   17: 'play',
+  18: 'track-ai',
+  19: 'track-network',
+  20: 'track-security',
 };
 let state = {hearts: 5, xp: 0, streak: 0, stars: {}, mistakes: {}, badges: [], run: null, returnTo: 'home'};
 try {
@@ -132,7 +140,7 @@ function renderRoute(restoring = false) {
   byId('quizOverlay').classList.toggle('active', !!inQuiz);
   byId('victoryOverlay').classList.toggle('active', route === 'victory' && !!state.victory);
   updateStats();
-  if (inPractice) Practice.open(route.split('/')[1], restoring);
+  if (inPractice) Practice.open(route.slice('practice/'.length), restoring);
   else if (inQuiz) renderQuestion();
   else if (route === 'review') renderReview();
   else if (onMap) {

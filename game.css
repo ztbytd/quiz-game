@@ -157,3 +157,28 @@
     transition: none !important;
   }
 }
+.subject-links {
+  margin: 28px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.subject-links h2 {
+  width: 100%;
+  font-size: 16px;
+}
+.subject-links a {
+  color: #275e39;
+  border: 1px solid #c5d8c8;
+  background: #fff;
+  border-radius: 20px;
+  padding: 6px 12px;
+  text-decoration: none;
+  font-size: 14px;
+}
+.subject-links a:hover,
+.subject-links a:focus-visible {
+  border-color: #26834c;
+  text-decoration: underline;
+}

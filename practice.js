@@ -15,6 +15,16 @@ const Practice = (() => {
     groups = bank.groups,
     app = root.querySelector('#app');
   const groupNames = Object.fromEntries(groups.map((g) => [g.id, g.name]));
+  const inGroup = (id) => groups.find((g) => g.id === id).cards;
+  const tracks = {
+    ai: {name: 'AI 应用', ids: inGroup('ai')},
+    network: {name: '计算机网络', ids: [...inGroup('netcases'), 'network', 'origin', 'socket', 'range']},
+    security: {name: 'Web 安全', ids: [...inGroup('security'), 'revoke', 'preview']},
+    scenes: {
+      name: '综合场景题',
+      ids: [...inGroup('field'), 'control', 'merge', 'parity', 'play', 'coverage', 'incident'],
+    },
+  };
   const storeKey = 'frontend-deep-review-2026-v1';
   const refs = {
     vue: ['Vue · 响应式基础', 'https://vuejs.org/guide/essentials/reactivity-fundamentals.html'],
@@ -48,7 +58,12 @@ const Practice = (() => {
     if (previous && previous.grades && previous.notes) saved = previous;
   } catch {}
   function persist() {
-    if (saved.session?.mode === 'mock') saved.mock = saved.session;
+    if (saved.session?.mode === 'mock') {
+      if (saved.session.track) {
+        saved.trackMocks ||= {};
+        saved.trackMocks[saved.session.track] = saved.session;
+      } else saved.mock = saved.session;
+    }
     try {
       localStorage.setItem(storeKey, JSON.stringify(saved));
     } catch {
@@ -85,14 +100,15 @@ const Practice = (() => {
     weakHeader();
     window.scrollTo(0, 0);
   }
-  function cardSession(c) {
+  function cardSession(c, track) {
     begin(
       c.title,
       c.steps.map((_, i) => c.id + ':' + i),
+      track,
     );
   }
-  function begin(title, queue) {
-    saved.session = {title, queue, index: 0, reveal: false, round: {}};
+  function begin(title, queue, track) {
+    saved.session = {title, queue, index: 0, reveal: false, round: {}, track};
     persist();
     question();
   }
@@ -144,6 +160,12 @@ const Practice = (() => {
     side.append(btn('现场手写 · 运行用例 →', () => cardSession(cards.window), 'jump'));
     hero.append(lead, side);
     app.append(hero);
+    const shortcuts = el('nav', 'actions');
+    shortcuts.setAttribute('aria-label', '按方向复习');
+    for (const [key, track] of Object.entries(tracks)) {
+      shortcuts.append(btn(track.name, () => openPractice('track-' + key)));
+    }
+    app.append(shortcuts);
     const section = el('section'),
       head = el('div', 'sectionhead');
     head.append(
@@ -195,6 +217,38 @@ const Practice = (() => {
       search.focus({preventScroll: true});
     }
   }
+  function showTrack(key) {
+    const track = tracks[key];
+    topView();
+    const wrap = el('section', 'practice'),
+      panel = el('article', 'recap');
+    const count = track.ids.reduce((sum, id) => sum + cards[id].steps.length, 0);
+    panel.append(
+      el('h1', '', track.name),
+      el('p', 'meta', track.ids.length + ' 组场景 · ' + count + ' 问，可任选一组连续练习。'),
+    );
+    panel.append(btn('本方向盲答 · 6 问', () => openPractice('mock-' + key), 'btn green'));
+    for (const id of track.ids) {
+      const c = cards[id],
+        row = btn(c.title, () => openPractice('track-' + key + '/' + id), 'row');
+      row.append(el('small', '', c.steps.length + ' 问 →'));
+      panel.append(row);
+    }
+    wrap.append(
+      btn('← 全部专题', () => openPractice(), 'jump back'),
+      panel,
+    );
+    app.append(wrap);
+  }
+  function appendSource(parent, card) {
+    const ref = card.source || refs[card.id];
+    if (!ref) return;
+    const a = el('a', '', ref[0] + ' ↗');
+    a.href = ref[1];
+    a.target = '_blank';
+    a.rel = 'noreferrer';
+    parent.append(a);
+  }
   function question() {
     const s = saved.session;
     if (!s) return home();
@@ -207,7 +261,11 @@ const Practice = (() => {
     const wrap = el('section', 'practice'),
       panel = el('article', 'panel');
     wrap.append(
-      btn('← 返回目录', () => home(), 'jump back'),
+      btn(
+        s.track ? '← 返回本方向' : '← 返回目录',
+        () => (s.track ? openPractice('track-' + s.track) : home()),
+        'jump back',
+      ),
       panel,
     );
     const situation = el('div', 'meta', groupNames[c.group] + ' / ' + c.title),
@@ -288,14 +346,7 @@ const Practice = (() => {
       const [explanation, ...code] = answer.split('↵');
       box.append(el('p', '', explanation));
       if (code.length) box.append(el('pre', '', code.join('\n')));
-      if (refs[c.id]) {
-        const [label, url] = refs[c.id],
-          a = el('a', '', label + ' ↗');
-        a.href = url;
-        a.target = '_blank';
-        a.rel = 'noreferrer';
-        box.append(a);
-      }
+      appendSource(box, c);
       panel.append(box);
       if (i === c.steps.length - 1) panel.append(el('p', 'meta', '整组验收：' + c.check));
       panel.append(el('p', 'grade', '按刚才独立作答的情况自评，然后进入下一问。'));
@@ -384,16 +435,30 @@ const Practice = (() => {
     return list[Math.floor(Math.random() * list.length)];
   }
 
-  function startMock() {
-    const interview = [
-      draw(['intro', 'star', 'conflict']),
-      draw(['loop', 'react', 'vue', 'requests']),
-      draw(['pool', 'debounce', 'window', 'binary', 'lru']),
-      draw(['split', 'merge', 'parity', 'rate', 'control']),
-    ];
+  function startMock(track) {
+    let interview;
+    if (track) {
+      const first = draw(tracks[track].ids);
+      interview = [first, draw(tracks[track].ids.filter((id) => id !== first))];
+    } else
+      interview = [
+        draw(['intro', 'star', 'conflict']),
+        draw([
+          'loop',
+          'react',
+          'vue',
+          'requests',
+          ...inGroup('netcases'),
+          ...inGroup('security'),
+          ...inGroup('ai'),
+        ]),
+        draw(['pool', 'debounce', 'window', 'binary', 'lru']),
+        draw(['split', 'merge', 'parity', 'rate', 'control', ...inGroup('field')]),
+      ];
     const queue = interview.flatMap((id) => [0, 1, 2].map((i) => id + ':' + i));
     saved.session = {
-      title: '模拟面试',
+      title: track ? tracks[track].name + '盲答' : '模拟面试',
+      track,
       mode: 'mock',
       queue,
       index: 0,
@@ -412,7 +477,7 @@ const Practice = (() => {
     const wrap = el('section', 'practice'),
       panel = el('article', 'panel');
     panel.append(
-      el('div', 'meta', '模拟面试 · 第 ' + (s.index + 1) + ' / ' + s.queue.length + ' 问'),
+      el('div', 'meta', s.title + ' · 第 ' + (s.index + 1) + ' / ' + s.queue.length + ' 问'),
       el('p', 'meta', groupNames[card.group] + ' / ' + card.title),
       el('h1', '', card.steps[index][0]),
     );
@@ -466,6 +531,7 @@ const Practice = (() => {
       const [prose, ...code] = answer.split('↵');
       detail.append(el('p', '', prose));
       if (code.length) detail.append(el('pre', '', code.join('\n')));
+      appendSource(detail, card);
       const controls = el('div', 'actions');
       for (const [label, grade] of [
         ['能独立讲清', 'ok'],
@@ -486,7 +552,10 @@ const Practice = (() => {
       panel.append(item);
     }
     const next = el('div', 'actions');
-    next.append(btn('重练薄弱题', listWeak, 'btn green'), btn('再练一场', startMock));
+    next.append(
+      btn('重练薄弱题', listWeak, 'btn green'),
+      btn('再练一场', () => startMock(s.track)),
+    );
     panel.append(next);
     wrap.append(panel);
     app.append(wrap);
@@ -496,12 +565,27 @@ const Practice = (() => {
   return {
     open(route, restoring = false) {
       if (route === 'weak') return listWeak();
-      if (route === 'mock') {
-        if (saved.mock && (restoring || saved.mock.index < saved.mock.queue.length)) {
-          saved.session = saved.mock;
+      if (route?.startsWith('track-')) {
+        const [track, id] = route.slice(6).split('/');
+        if (tracks[track]) {
+          if (!tracks[track].ids.includes(id)) return showTrack(track);
+          if (
+            saved.session?.track === track &&
+            saved.session?.title === cards[id].title &&
+            (restoring || saved.session.index < saved.session.queue.length)
+          )
+            return question();
+          return cardSession(cards[id], track);
+        }
+      }
+      if (route === 'mock' || (route?.startsWith('mock-') && tracks[route.slice(5)])) {
+        const track = route === 'mock' ? undefined : route.slice(5);
+        const previous = track ? saved.trackMocks?.[track] : saved.mock;
+        if (previous && (restoring || previous.index < previous.queue.length)) {
+          saved.session = previous;
           return question();
         }
-        return startMock();
+        return startMock(track);
       }
       if (cards[route]) {
         if (
