@@ -12,10 +12,10 @@ const LEVELS = [
         type: 'choice',
         q: '说说 JavaScript 中的事件循环（Event Loop）机制？',
         options: [
-          'A) 就是先执行同步代码再执行异步代码',
-          'B) 同步代码在调用栈执行，异步任务完成后回调放入任务队列，事件循环不断检查栈是否清空，清空后从队列取回调执行；微任务（Promise.then）优先于宏任务（setTimeout）',
-          'C) 事件循环就是 setInterval',
-          'D) 所有代码都是同步执行的没有事件循环',
+          '就是先执行同步代码再执行异步代码',
+          '同步代码在调用栈执行，异步任务完成后回调放入任务队列，事件循环不断检查栈是否清空，清空后从队列取回调执行；微任务（Promise.then）优先于宏任务（setTimeout）',
+          '事件循环就是 setInterval',
+          '所有代码都是同步执行的没有事件循环',
         ],
         answer: 1,
         explain:
@@ -42,10 +42,10 @@ const LEVELS = [
         type: 'choice',
         q: '说说闭包是什么？有什么实际应用？',
         options: [
-          'A) 闭包就是函数套函数没有特殊用途',
-          'B) 函数可以访问其外层作用域的变量即使外层函数已执行完毕；用于数据私有化、模块化、防抖节流、柯里化',
-          'C) 闭包会导致内存泄漏不应该使用',
-          'D) 闭包是 ES6 新增的',
+          '闭包就是函数套函数没有特殊用途',
+          '函数可以访问其外层作用域的变量即使外层函数已执行完毕；用于数据私有化、模块化、防抖节流、柯里化',
+          '闭包会导致内存泄漏不应该使用',
+          '闭包是 ES6 新增的',
         ],
         answer: 1,
         explain:
@@ -87,10 +87,10 @@ const LEVELS = [
         type: 'choice',
         q: '说说原型链是什么？如何实现继承？',
         options: [
-          'A) 原型链就是 prototype 属性的链条',
-          'B) 属性查找沿对象的内部原型关系向上进行，直到 null；可用 Object.getPrototypeOf 观察原型，class extends 可建立继承关系',
-          'C) 原型链是 ES6 才有的',
-          'D) 原型链和继承没有关系',
+          '原型链就是 prototype 属性的链条',
+          '属性查找沿对象的内部原型关系向上进行，直到 null；可用 Object.getPrototypeOf 观察原型，class extends 可建立继承关系',
+          '原型链是 ES6 才有的',
+          '原型链和继承没有关系',
         ],
         answer: 1,
         explain:
@@ -112,10 +112,10 @@ const LEVELS = [
         type: 'choice',
         q: 'this 的指向规则？箭头函数的 this 有什么不同？',
         options: [
-          'A) this 永远指向 window',
+          'this 永远指向 window',
           '普通函数 this 由调用形式决定：独立调用时严格模式为 undefined，非严格模式通常为全局对象；箭头函数捕获外层 this',
-          'C) 箭头函数的 this 指向 window',
-          'D) this 在函数定义时就确定了',
+          '箭头函数的 this 指向 window',
+          'this 在函数定义时就确定了',
         ],
         answer: 1,
         explain:
@@ -164,10 +164,10 @@ const LEVELS = [
         type: 'choice',
         q: 'async/await 的原理？和 Promise 是什么关系？',
         options: [
-          'A) async/await 是 Promise 的替代品完全独立',
-          'B) async 函数返回 Promise；await 暂停当前异步函数的后续执行，处理普通值、Promise 或 thenable，拒绝可用 try/catch 捕获',
-          'C) await 只能等待 Promise',
-          'D) async 函数不返回 Promise',
+          'async/await 是 Promise 的替代品完全独立',
+          'async 函数返回 Promise；await 暂停当前异步函数的后续执行，处理普通值、Promise 或 thenable，拒绝可用 try/catch 捕获',
+          'await 只能等待 Promise',
+          'async 函数不返回 Promise',
         ],
         answer: 1,
         explain:
@@ -210,10 +210,10 @@ const LEVELS = [
         type: 'choice',
         q: '深拷贝和浅拷贝的区别？怎么实现深拷贝？',
         options: [
-          'A) 没区别都是复制',
-          'B) 浅拷贝只复制第一层嵌套对象共享引用(Object.assign/展开运算符)；深拷贝递归复制所有层级(JSON.parse(JSON.stringify())有局限 structuredClone()推荐 或递归处理循环引用)',
-          'C) JSON.parse(JSON.stringify()) 能正确处理函数和 Date',
-          'D) 展开运算符是深拷贝',
+          '没区别都是复制',
+          '浅拷贝只复制第一层嵌套对象共享引用(Object.assign/展开运算符)；深拷贝递归复制所有层级(JSON.parse(JSON.stringify())有局限 structuredClone()推荐 或递归处理循环引用)',
+          'JSON.parse(JSON.stringify()) 能正确处理函数和 Date',
+          '展开运算符是深拷贝',
         ],
         answer: 1,
         explain:
@@ -235,10 +235,10 @@ const LEVELS = [
         type: 'choice',
         q: 'call、apply、bind 三者的区别？',
         options: [
-          'A) 三者完全一样',
-          'B) call 和 apply 立即执行 call 逐个传参 apply 传数组；bind 返回绑定了 this 的新函数不立即执行',
-          'C) bind 会立即执行函数',
-          'D) apply 的参数是逗号分隔的',
+          '三者完全一样',
+          'call 和 apply 立即执行 call 逐个传参 apply 传数组；bind 返回绑定了 this 的新函数不立即执行',
+          'bind 会立即执行函数',
+          'apply 的参数是逗号分隔的',
         ],
         answer: 1,
         explain:
@@ -381,10 +381,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Generator 函数和 async/await 的关系？Generator 怎么实现自动执行？',
         options: [
-          'A) Generator 和 async/await 没有任何关系',
-          'B) Generator 用 yield 暂停并由 next/throw 恢复；执行器可以驱动它等待 Promise，从而模拟某些 async/await 控制流程',
-          'C) Generator 可以自动执行不需要 next()',
-          'D) async/await 是 Generator 的替代品没有关系',
+          'Generator 和 async/await 没有任何关系',
+          'Generator 用 yield 暂停并由 next/throw 恢复；执行器可以驱动它等待 Promise，从而模拟某些 async/await 控制流程',
+          'Generator 可以自动执行不需要 next()',
+          'async/await 是 Generator 的替代品没有关系',
         ],
         answer: 1,
         explain:
@@ -470,10 +470,10 @@ const LEVELS = [
         type: 'choice',
         q: '单例模式是什么？在前端中有什么应用？怎么实现？',
         options: [
-          'A) 单例意味着整个程序只能有一个变量',
-          'B) 在指定作用域中缓存并复用同一实例，如应用日志服务；可用闭包或模块保存实例并提供统一入口',
-          'C) 服务端所有用户状态都适合放在进程级单例中',
-          'D) 调用 new 就自动保证单例',
+          '单例意味着整个程序只能有一个变量',
+          '在指定作用域中缓存并复用同一实例，如应用日志服务；可用闭包或模块保存实例并提供统一入口',
+          '服务端所有用户状态都适合放在进程级单例中',
+          '调用 new 就自动保证单例',
         ],
         answer: 1,
         explain:
@@ -491,10 +491,10 @@ const LEVELS = [
         type: 'choice',
         q: '观察者模式和发布订阅模式的区别？',
         options: [
-          'A) 发布订阅一定异步，观察者一定同步',
-          'B) 观察者由目标登记并通知观察者；发布订阅通常经事件中心按主题交换消息，区别在依赖组织',
-          'C) 两者都不需要管理取消订阅',
-          'D) 使用 EventEmitter 就能自动保证业务消息可靠交付',
+          '发布订阅一定异步，观察者一定同步',
+          '观察者由目标登记并通知观察者；发布订阅通常经事件中心按主题交换消息，区别在依赖组织',
+          '两者都不需要管理取消订阅',
+          '使用 EventEmitter 就能自动保证业务消息可靠交付',
         ],
         answer: 1,
         explain:
@@ -512,10 +512,10 @@ const LEVELS = [
         type: 'choice',
         q: '策略模式是什么？在前端中怎么应用？',
         options: [
-          'A) 策略模式要求删除程序中所有条件判断',
-          'B) 把可替换算法封装为统一契约下的函数或对象，入口选择后由业务调用，例如表单校验与上传通道',
-          'C) 策略必须使用继承且只能在服务端实现',
-          'D) 不同策略可以随意改变成功含义而不影响调用方',
+          '策略模式要求删除程序中所有条件判断',
+          '把可替换算法封装为统一契约下的函数或对象，入口选择后由业务调用，例如表单校验与上传通道',
+          '策略必须使用继承且只能在服务端实现',
+          '不同策略可以随意改变成功含义而不影响调用方',
         ],
         answer: 1,
         explain:
@@ -534,10 +534,10 @@ const LEVELS = [
         type: 'choice',
         q: '代理模式在前端中的应用？和装饰器模式有什么区别？',
         options: [
-          'A) 只要写了包装函数就必然是同一种设计模式',
-          'B) 代理重点控制访问，装饰器重点组合附加职责；代码结构可相似，需要按意图判断',
-          'C) 装饰器只能拒绝访问，不能添加日志或计时',
-          'D) 代理只能读取，不能拦截写入或缓存结果',
+          '只要写了包装函数就必然是同一种设计模式',
+          '代理重点控制访问，装饰器重点组合附加职责；代码结构可相似，需要按意图判断',
+          '装饰器只能拒绝访问，不能添加日志或计时',
+          '代理只能读取，不能拦截写入或缓存结果',
         ],
         answer: 1,
         explain:
@@ -558,10 +558,10 @@ const LEVELS = [
         type: 'choice',
         q: '工厂模式是什么？在前端中有什么实际应用？',
         options: [
-          'A) 工厂模式就是 new 一个对象',
-          'B) 封装对象的创建过程调用者不关心具体类；简单工厂(一个工厂方法) 工厂方法(子类决定创建) 抽象工厂(创建产品族)；前端：React.createElement Vue 的 h() 创建虚拟 DOM',
-          'C) 工厂模式只能创建一种对象',
-          'D) 工厂模式和单例模式一样',
+          '工厂模式就是 new 一个对象',
+          '封装对象的创建过程调用者不关心具体类；简单工厂(一个工厂方法) 工厂方法(子类决定创建) 抽象工厂(创建产品族)；前端：React.createElement Vue 的 h() 创建虚拟 DOM',
+          '工厂模式只能创建一种对象',
+          '工厂模式和单例模式一样',
         ],
         answer: 1,
         explain:
@@ -577,10 +577,10 @@ const LEVELS = [
         type: 'choice',
         q: '装饰器模式是什么？它和 @decorator 语法有什么关系，前端如何应用？',
         options: [
-          'A) 装饰器只是在代码旁边增加注释',
-          'B) 模式通过包装增加职责；@decorator 是具体语法，须区分工具链语义，可用于日志、计时等',
-          'C) 所有 @decorator 写法都是 ES7 正式标准且语义相同',
-          'D) 只有使用 @ 语法才能为函数增加日志',
+          '装饰器只是在代码旁边增加注释',
+          '模式通过包装增加职责；@decorator 是具体语法，须区分工具链语义，可用于日志、计时等',
+          '所有 @decorator 写法都是 ES7 正式标准且语义相同',
+          '只有使用 @ 语法才能为函数增加日志',
         ],
         answer: 1,
         explain:
@@ -628,10 +628,10 @@ const LEVELS = [
         type: 'choice',
         q: '迭代器模式是什么？ES6 中如何实现？',
         options: [
-          'A) 所有有 length 的对象都自动可以 for...of',
-          'B) 可迭代对象提供 Symbol.iterator，返回有 next 的迭代器；for...of、数组展开及数组解构消费它',
-          'C) 对象展开 {...obj} 与 for...of 使用完全相同的遍历协议',
-          'D) 迭代器不能表示按需生成的数据',
+          '所有有 length 的对象都自动可以 for...of',
+          '可迭代对象提供 Symbol.iterator，返回有 next 的迭代器；for...of、数组展开及数组解构消费它',
+          '对象展开 {...obj} 与 for...of 使用完全相同的遍历协议',
+          '迭代器不能表示按需生成的数据',
         ],
         answer: 1,
         explain:
@@ -661,10 +661,10 @@ const LEVELS = [
         type: 'choice',
         q: '手写防抖(debounce)函数？说说原理和应用场景。',
         options: [
-          'A) 防抖就是让函数延迟执行一次',
+          '防抖就是让函数延迟执行一次',
           '尾沿防抖跨调用保存 timer，每次重置计时，静默 wait 后用末次 this 与参数执行；可提供 cancel',
-          'C) 防抖和节流是同一个东西',
-          'D) 防抖函数没有参数',
+          '防抖和节流是同一个东西',
+          '防抖函数没有参数',
         ],
         answer: 1,
         explain:
@@ -683,10 +683,10 @@ const LEVELS = [
         type: 'choice',
         q: '手写节流(throttle)函数？和防抖的区别？',
         options: [
-          'A) 节流就是让函数只执行一次',
+          '节流就是让函数只执行一次',
           '节流限制持续触发时的执行频率，需约定首尾行为；防抖等待静默期，持续触发可能一直推迟',
-          'C) 节流和防抖完全一样',
-          'D) 节流函数不能传参数',
+          '节流和防抖完全一样',
+          '节流函数不能传参数',
         ],
         answer: 1,
         explain:
@@ -707,10 +707,10 @@ const LEVELS = [
         type: 'choice',
         q: '手写深拷贝？处理循环引用和特殊类型？',
         options: [
-          'A) JSON.parse(JSON.stringify()) 就够了',
+          'JSON.parse(JSON.stringify()) 就够了',
           '先约定类型范围，用映射保存原对象到副本，递归前登记以保留循环和共享引用，再按类型及描述符复制',
-          'C) 深拷贝不需要处理循环引用',
-          'D) Object.assign 是深拷贝',
+          '深拷贝不需要处理循环引用',
+          'Object.assign 是深拷贝',
         ],
         answer: 1,
         explain:
@@ -738,10 +738,10 @@ const LEVELS = [
         type: 'choice',
         q: '手写 Promise.all？说说原理和边界处理。',
         options: [
-          'A) Promise.all 就是循环调用 then',
-          'B) 遍历输入，用 Promise.resolve 处理每项，按输入下标保存结果；全部兑现才成功，任一拒绝则失败，空可迭代对象得到空结果',
-          'C) Promise.all 是串行执行',
-          'D) Promise.all 顺序执行每个 Promise',
+          'Promise.all 就是循环调用 then',
+          '遍历输入，用 Promise.resolve 处理每项，按输入下标保存结果；全部兑现才成功，任一拒绝则失败，空可迭代对象得到空结果',
+          'Promise.all 是串行执行',
+          'Promise.all 顺序执行每个 Promise',
         ],
         answer: 1,
         explain:
@@ -765,10 +765,10 @@ const LEVELS = [
         type: 'choice',
         q: '手写一个简易的发布订阅(EventEmitter)？',
         options: [
-          'A) 就是一个数组存函数',
+          '就是一个数组存函数',
           'Map 保存事件订阅集合；on 返回退订函数，emit 按快照通知，once 在调用前退订以处理重入',
           '所有监听器都不需要取消订阅',
-          'D) emit 只能通知一个订阅者',
+          'emit 只能通知一个订阅者',
         ],
         answer: 1,
         explain:
@@ -787,10 +787,10 @@ const LEVELS = [
         type: 'choice',
         q: '手写实现 call/apply/bind？',
         options: [
-          'A) 这三个不能手动实现',
-          'B) call/apply 调用时指定接收者与参数；bind 返回可延后调用的绑定函数，完整语义还涉及部分参数和构造调用',
-          'C) bind 和 call 实现方式完全一样',
-          'D) apply 不能传数组参数',
+          '这三个不能手动实现',
+          'call/apply 调用时指定接收者与参数；bind 返回可延后调用的绑定函数，完整语义还涉及部分参数和构造调用',
+          'bind 和 call 实现方式完全一样',
+          'apply 不能传数组参数',
         ],
         answer: 1,
         explain:
@@ -818,10 +818,10 @@ const LEVELS = [
         type: 'choice',
         q: '手写 Promise（A+ 规范核心）？关键状态管理？',
         options: [
-          'A) Promise 就是一个回调队列',
+          'Promise 就是一个回调队列',
           '终态不可变，then 异步调用处理器并返回新 Promise，采用回调返回的 thenable，抛错或链式自引用使新 Promise 拒绝',
-          'C) Promise 状态可以反复改变',
-          'D) then 不返回 Promise',
+          'Promise 状态可以反复改变',
+          'then 不返回 Promise',
         ],
         answer: 1,
         explain:
@@ -881,10 +881,10 @@ const LEVELS = [
         type: 'choice',
         q: 'ES6 的 Class 和构造函数有什么区别？extends 的本质？',
         options: [
-          'A) Class 完全是新的东西和构造函数无关',
+          'Class 完全是新的东西和构造函数无关',
           'class 基于原型机制，并有严格模式、必须构造调用等语义；extends 连接实例原型和静态继承关系',
-          'C) Class 不支持继承',
-          'D) Class 的方法不在 prototype 上',
+          'Class 不支持继承',
+          'Class 的方法不在 prototype 上',
         ],
         answer: 1,
         explain:
@@ -901,10 +901,10 @@ const LEVELS = [
         type: 'choice',
         q: '说说 TypeScript 的泛型？泛型约束是什么？',
         options: [
-          'A) 泛型就是 any 的别名',
-          'B) 泛型是类型的参数化<T>让类型可复用；泛型约束用 extends 限制类型范围(如<T extends {length:number}>)；keyof T 获取类型键的联合类型；T[K] 索引访问类型',
-          'C) 泛型只能用于函数',
-          'D) 泛型不能有约束',
+          '泛型就是 any 的别名',
+          '泛型是类型的参数化<T>让类型可复用；泛型约束用 extends 限制类型范围(如<T extends {length:number}>)；keyof T 获取类型键的联合类型；T[K] 索引访问类型',
+          '泛型只能用于函数',
+          '泛型不能有约束',
         ],
         answer: 1,
         explain:
@@ -921,10 +921,10 @@ const LEVELS = [
         type: 'choice',
         q: 'TypeScript 的工具类型(Partial/Required/Pick/Omit/Record/Exclude/Extract)怎么用？',
         options: [
-          'A) 工具类型就是给类型起别名',
-          'B) Partial<T> 全可选 Required<T> 全必选 Pick<T,K> 选取属性 Omit<T,K> 排除属性 Record<K,V> 键值对映射 Exclude<T,U> 排除联合类型成员 Extract<T,U> 保留成员',
-          'C) Partial 和 Required 功能相同',
-          'D) Record 只能用于数字键',
+          '工具类型就是给类型起别名',
+          'Partial<T> 全可选 Required<T> 全必选 Pick<T,K> 选取属性 Omit<T,K> 排除属性 Record<K,V> 键值对映射 Exclude<T,U> 排除联合类型成员 Extract<T,U> 保留成员',
+          'Partial 和 Required 功能相同',
+          'Record 只能用于数字键',
         ],
         answer: 1,
         explain:
@@ -942,10 +942,10 @@ const LEVELS = [
         type: 'choice',
         q: 'TypeScript 的条件类型和 infer 关键字？',
         options: [
-          'A) 条件类型就是 if-else',
-          'B) T extends U ? X : Y 条件类型根据类型关系选择；infer R 在条件类型中推断类型变量；常用于提取函数返回类型/参数类型/数组元素类型等类型体操',
-          'C) infer 可以在普通类型中使用',
-          'D) 条件类型不支持嵌套',
+          '条件类型就是 if-else',
+          'T extends U ? X : Y 条件类型根据类型关系选择；infer R 在条件类型中推断类型变量；常用于提取函数返回类型/参数类型/数组元素类型等类型体操',
+          'infer 可以在普通类型中使用',
+          '条件类型不支持嵌套',
         ],
         answer: 1,
         explain:
@@ -964,10 +964,10 @@ const LEVELS = [
         type: 'choice',
         q: 'TypeScript 中 interface 和 type 的区别？什么时候用哪个？',
         options: [
-          'A) 两者完全一样没有区别',
+          '两者完全一样没有区别',
           'interface 支持对象契约的声明合并；type 能表达联合、元组、映射等类型，两者都可描述对象与函数',
-          'C) type 支持声明合并',
-          'D) interface 可以定义联合类型',
+          'type 支持声明合并',
+          'interface 可以定义联合类型',
         ],
         answer: 1,
         explain:
@@ -985,10 +985,10 @@ const LEVELS = [
         type: 'choice',
         q: '说说 TypeScript 的协变和逆变？函数参数类型兼容性？',
         options: [
-          'A) TypeScript 没有协变逆变',
+          'TypeScript 没有协变逆变',
           'strictFunctionTypes 下普通函数参数按逆变方向检查，返回值可更具体；方法声明存在双变检查例外',
-          'C) 协变和逆变只出现在 Java 中',
-          'D) TypeScript 的函数参数是协变的',
+          '协变和逆变只出现在 Java 中',
+          'TypeScript 的函数参数是协变的',
         ],
         answer: 1,
         explain:
@@ -1006,10 +1006,10 @@ const LEVELS = [
         type: 'choice',
         q: 'ES6 的解构赋值有哪些用法？默认值怎么用？',
         options: [
-          'A) 解构只能用于数组',
-          'B) 数组解构按位置对象解构按属性名；默认值用 = 赋予(只在严格 undefined 时生效)；支持嵌套解构和剩余语法 ...rest；函数参数解构常用',
-          'C) 解构不能有默认值',
-          'D) 对象解构按位置',
+          '解构只能用于数组',
+          '数组解构按位置对象解构按属性名；默认值用 = 赋予(只在严格 undefined 时生效)；支持嵌套解构和剩余语法 ...rest；函数参数解构常用',
+          '解构不能有默认值',
+          '对象解构按位置',
         ],
         answer: 1,
         explain:
@@ -1030,10 +1030,10 @@ const LEVELS = [
         type: 'choice',
         q: '模板字符串、标签模板怎么用？常见字符串扩展有哪些？',
         options: [
-          'A) 模板字符串就是字符串拼接',
+          '模板字符串就是字符串拼接',
           '模板字面量支持多行和插值，标签接收静态片段与插值；字符串扩展分属不同标准版本',
-          'C) 模板字符串不能多行',
-          'D) 标签模板没有实际用途',
+          '模板字符串不能多行',
+          '标签模板没有实际用途',
         ],
         answer: 1,
         explain:
@@ -1088,10 +1088,10 @@ const LEVELS = [
         type: 'choice',
         q: '浏览器渲染的完整流程？DOM/CSSOM/渲染树的关系？',
         options: [
-          'A) 浏览器直接渲染 HTML 不需要构建树',
-          'B) 解析 HTML/CSS 后结合 DOM、样式与布局信息完成布局、绘制和合成；display:none 不生成相应布局盒，visibility:hidden 通常仍保留布局空间',
-          'C) CSSOM 和 DOM 是同一棵树',
-          'D) 布局在渲染树之前',
+          '浏览器直接渲染 HTML 不需要构建树',
+          '解析 HTML/CSS 后结合 DOM、样式与布局信息完成布局、绘制和合成；display:none 不生成相应布局盒，visibility:hidden 通常仍保留布局空间',
+          'CSSOM 和 DOM 是同一棵树',
+          '布局在渲染树之前',
         ],
         answer: 1,
         explain:
@@ -1116,10 +1116,10 @@ const LEVELS = [
         type: 'choice',
         q: '什么是回流(重排)和重绘？怎样减少？合成层是什么？',
         options: [
-          'A) 回流和重绘是同一件事',
-          'B) 回流重新计算布局，重绘更新绘制内容；合成层可复用栅格结果。批量读写、减少工作与合适动画有助优化，但 transform/opacity 并非无条件免除绘制成本',
-          'C) 使用 will-change 后就可以无限创建图层而不增加成本',
-          'D) 每次改变文字颜色都必须重新计算整个页面布局',
+          '回流和重绘是同一件事',
+          '回流重新计算布局，重绘更新绘制内容；合成层可复用栅格结果。批量读写、减少工作与合适动画有助优化，但 transform/opacity 并非无条件免除绘制成本',
+          '使用 will-change 后就可以无限创建图层而不增加成本',
+          '每次改变文字颜色都必须重新计算整个页面布局',
         ],
         answer: 1,
         explain:
@@ -1144,10 +1144,10 @@ const LEVELS = [
         type: 'choice',
         q: '浏览器的垃圾回收机制？V8 的新生代和老生代回收策略？',
         options: [
-          'A) 浏览器不回收内存',
-          'B) 回收主要依据对象是否可达；V8 分代管理，短寿命对象与长期存活对象采用相应策略，并结合增量、并行或并发工作降低停顿，细节依版本而变',
-          'C) 被全局变量一直引用的对象只要足够老就一定会被回收',
-          'D) V8 所有版本的新生代大小和晋升阈值都完全固定',
+          '浏览器不回收内存',
+          '回收主要依据对象是否可达；V8 分代管理，短寿命对象与长期存活对象采用相应策略，并结合增量、并行或并发工作降低停顿，细节依版本而变',
+          '被全局变量一直引用的对象只要足够老就一定会被回收',
+          'V8 所有版本的新生代大小和晋升阈值都完全固定',
         ],
         answer: 1,
         explain:
@@ -1168,10 +1168,10 @@ const LEVELS = [
         type: 'choice',
         q: '浏览器的存储方案有哪些？Cookie/LocalStorage/SessionStorage/IndexedDB 的区别？',
         options: [
-          'A) 所有存储都一样',
-          'B) Cookie 按作用域与策略随请求发送；Web Storage 是同步字符串存储，localStorage 与 sessionStorage 生命周期不同；IndexedDB 提供异步结构化存储、索引与事务',
-          'C) LocalStorage 会自动发送给服务器',
-          'D) IndexedDB 同步操作',
+          '所有存储都一样',
+          'Cookie 按作用域与策略随请求发送；Web Storage 是同步字符串存储，localStorage 与 sessionStorage 生命周期不同；IndexedDB 提供异步结构化存储、索引与事务',
+          'LocalStorage 会自动发送给服务器',
+          'IndexedDB 同步操作',
         ],
         answer: 1,
         explain:
@@ -1197,10 +1197,10 @@ const LEVELS = [
         type: 'choice',
         q: 'CSP(内容安全策略)是什么？怎么配置？防什么攻击？',
         options: [
-          'A) CSP 是加密传输协议',
-          'B) 通过 CSP 响应头约束脚本、资源与嵌入等行为，用 nonce 等策略减少脚本注入风险；Report-Only 用于观察候选策略，不能替代输出安全和 HTTPS',
-          'C) CSP 可以替代 HTTPS',
-          'D) CSP 只能防止 CSRF',
+          'CSP 是加密传输协议',
+          '通过 CSP 响应头约束脚本、资源与嵌入等行为，用 nonce 等策略减少脚本注入风险；Report-Only 用于观察候选策略，不能替代输出安全和 HTTPS',
+          'CSP 可以替代 HTTPS',
+          'CSP 只能防止 CSRF',
         ],
         answer: 1,
         explain:
@@ -1221,10 +1221,10 @@ const LEVELS = [
         type: 'choice',
         q: '什么是同源策略？为什么需要它？跨域方案有哪些？',
         options: [
-          'A) 同源策略是浏览器的 bug',
-          'B) 同源策略隔离不同源页面对敏感响应、DOM 和存储的访问；按场景使用 CORS、受控同源代理或校验来源的 postMessage，Cookie 的作用域另有规则',
-          'C) Cookie 的作用域与 origin 完全相同，并且始终按端口隔离',
-          'D) 跨域方案只有 JSONP',
+          '同源策略是浏览器的 bug',
+          '同源策略隔离不同源页面对敏感响应、DOM 和存储的访问；按场景使用 CORS、受控同源代理或校验来源的 postMessage，Cookie 的作用域另有规则',
+          'Cookie 的作用域与 origin 完全相同，并且始终按端口隔离',
+          '跨域方案只有 JSONP',
         ],
         answer: 1,
         explain:
@@ -1245,10 +1245,10 @@ const LEVELS = [
         type: 'choice',
         q: '什么是 Service Worker？它能做什么？和 Web Worker 的区别？',
         options: [
-          'A) Service Worker 就是 Web Worker 改名',
-          'B) Service Worker 是受作用域与生命周期约束的事件驱动代理，可处理受控请求和离线缓存；Dedicated Worker 常用于页面关联后台计算，两者都不能直接操作 DOM',
-          'C) Service Worker 可以操作 DOM',
-          'D) Service Worker 是永不停止的常驻进程，所有全局变量都能永久保留',
+          'Service Worker 就是 Web Worker 改名',
+          'Service Worker 是受作用域与生命周期约束的事件驱动代理，可处理受控请求和离线缓存；Dedicated Worker 常用于页面关联后台计算，两者都不能直接操作 DOM',
+          'Service Worker 可以操作 DOM',
+          'Service Worker 是永不停止的常驻进程，所有全局变量都能永久保留',
         ],
         answer: 1,
         explain:
@@ -1271,10 +1271,10 @@ const LEVELS = [
         type: 'choice',
         q: 'XSS 攻击有哪些类型？如何全面防御？',
         options: [
-          'A) XSS 就是注入 SQL',
-          'B) 按数据持久化与传播路径区分存储型、反射型，并识别 DOM 注入；按输出上下文编码、对富文本清理、限制危险 sink，再结合 CSP 和凭据保护',
-          'C) XSS 只有一种类型',
-          'D) HTTPS 可以防 XSS',
+          'XSS 就是注入 SQL',
+          '按数据持久化与传播路径区分存储型、反射型，并识别 DOM 注入；按输出上下文编码、对富文本清理、限制危险 sink，再结合 CSP 和凭据保护',
+          'XSS 只有一种类型',
+          'HTTPS 可以防 XSS',
         ],
         answer: 1,
         explain:
@@ -1352,10 +1352,10 @@ const LEVELS = [
         type: 'choice',
         q: '缓存穿透是什么？怎么解决？',
         options: [
-          'A) 缓存穿透就是缓存太多数据',
-          'B) 缓存未命中且数据库也不存在，反复查询使请求持续回源；可以校验参数、短期缓存不存在结果、维护布隆过滤器及限流，需处理新增数据失效',
-          'C) 缓存穿透是缓存过期了',
-          'D) 缓存穿透不影响数据库',
+          '缓存穿透就是缓存太多数据',
+          '缓存未命中且数据库也不存在，反复查询使请求持续回源；可以校验参数、短期缓存不存在结果、维护布隆过滤器及限流，需处理新增数据失效',
+          '缓存穿透是缓存过期了',
+          '缓存穿透不影响数据库',
         ],
         answer: 1,
         explain:
@@ -1379,10 +1379,10 @@ const LEVELS = [
         type: 'choice',
         q: '缓存击穿是什么？和穿透的区别？怎么解决？',
         options: [
-          'A) 缓存击穿就是缓存坏了',
-          'B) 热点缓存失效导致并发重建；区别于反复查询不存在数据的穿透。可合并重建、提前刷新或有条件返回旧值，并限制等待时间与回源并发',
-          'C) 缓存击穿和穿透是同一个问题',
-          'D) 缓存击穿不需要处理',
+          '缓存击穿就是缓存坏了',
+          '热点缓存失效导致并发重建；区别于反复查询不存在数据的穿透。可合并重建、提前刷新或有条件返回旧值，并限制等待时间与回源并发',
+          '缓存击穿和穿透是同一个问题',
+          '缓存击穿不需要处理',
         ],
         answer: 1,
         explain:
@@ -1408,10 +1408,10 @@ const LEVELS = [
         type: 'choice',
         q: '缓存雪崩是什么？怎么预防和恢复？',
         options: [
-          'A) 缓存雪崩就是 Redis 崩溃了',
-          'B) 大量缓存集中失效或缓存服务故障造成回源冲击；通过错峰失效、可用性与降级设计预防，故障时先保护数据库，再限速恢复和预热',
-          'C) 缓存雪崩是单个 key 过期',
-          'D) 缓存雪崩不需要预防',
+          '缓存雪崩就是 Redis 崩溃了',
+          '大量缓存集中失效或缓存服务故障造成回源冲击；通过错峰失效、可用性与降级设计预防，故障时先保护数据库，再限速恢复和预热',
+          '缓存雪崩是单个 key 过期',
+          '缓存雪崩不需要预防',
         ],
         answer: 1,
         explain:
@@ -1470,10 +1470,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Redis 的数据结构有哪些？各自的应用场景？',
         options: [
-          'A) Redis 只有 String 一种类型',
-          'B) String 适合简单值和计数，Hash 适合字段访问，Set 适合去重，ZSet 适合按分值排序，List/Stream 可组织队列；可靠性与内存收益需按实现验证',
-          'C) Redis 不能做排行榜',
-          'D) Redis 的 Hash 不能存储对象',
+          'Redis 只有 String 一种类型',
+          'String 适合简单值和计数，Hash 适合字段访问，Set 适合去重，ZSet 适合按分值排序，List/Stream 可组织队列；可靠性与内存收益需按实现验证',
+          'Redis 不能做排行榜',
+          'Redis 的 Hash 不能存储对象',
         ],
         answer: 1,
         explain:
@@ -1594,10 +1594,10 @@ const LEVELS = [
         type: 'choice',
         q: '链表的高频操作？反转链表/检测环/合并有序链表怎么做？',
         options: [
-          'A) 链表和数组操作完全一样',
-          'B) 反转：三指针(prev/curr/next)迭代或递归；检测环：快慢指针(快 2 步慢 1 步相遇有环)或 Set；合并：哑节点+双指针比较；找中点：快慢指针(快到尾慢在中点)',
-          'C) 反转链表只能用递归',
-          'D) 检测环不能用快慢指针',
+          '链表和数组操作完全一样',
+          '反转：三指针(prev/curr/next)迭代或递归；检测环：快慢指针(快 2 步慢 1 步相遇有环)或 Set；合并：哑节点+双指针比较；找中点：快慢指针(快到尾慢在中点)',
+          '反转链表只能用递归',
+          '检测环不能用快慢指针',
         ],
         answer: 1,
         explain:
@@ -1618,10 +1618,10 @@ const LEVELS = [
         type: 'choice',
         q: '二叉树的遍历方式？前/中/后/层序怎么实现？',
         options: [
-          'A) 二叉树只能递归遍历',
-          'B) 前序(根左右) 中序(左根右 BST 升序) 后序(左右根) 层序(BFS 队列)；递归简单 非递归用栈(前/中/后)或队列(层序)；常见题：最大深度/翻转/对称路径/最近公共祖先',
-          'C) 层序遍历用栈',
-          'D) 中序遍历 BST 得到降序序列',
+          '二叉树只能递归遍历',
+          '前序(根左右) 中序(左根右 BST 升序) 后序(左右根) 层序(BFS 队列)；递归简单 非递归用栈(前/中/后)或队列(层序)；常见题：最大深度/翻转/对称路径/最近公共祖先',
+          '层序遍历用栈',
+          '中序遍历 BST 得到降序序列',
         ],
         answer: 1,
         explain:
@@ -1643,10 +1643,10 @@ const LEVELS = [
         type: 'choice',
         q: '什么是动态规划？核心要素？和贪心的区别？',
         options: [
-          'A) 动态规划就是递归',
+          '动态规划就是递归',
           '定义状态与转移并复用子问题结果，明确初值和计算顺序；贪心每步取局部最优，须另证其选择安全',
-          'C) 贪心一定得到全局最优',
-          'D) DP 不需要状态定义',
+          '贪心一定得到全局最优',
+          'DP 不需要状态定义',
         ],
         answer: 1,
         explain:
@@ -1670,10 +1670,10 @@ const LEVELS = [
         type: 'choice',
         q: '栈和队列的应用场景？用栈实现队列/用队列实现栈怎么做？',
         options: [
-          'A) 栈和队列功能完全一样',
+          '栈和队列功能完全一样',
           '栈后进先出、队列先进先出；双栈倒入可实现队列，队列旋转可让新元素位于队首从而模拟栈',
-          'C) 栈可以随机访问',
-          'D) 队列是 LIFO',
+          '栈可以随机访问',
+          '队列是 LIFO',
         ],
         answer: 1,
         explain:
@@ -1736,10 +1736,10 @@ const LEVELS = [
         type: 'choice',
         q: '说说 BFC 是什么？解决了什么问题？',
         options: [
-          'A) BFC 让内部元素完全不受外部尺寸影响',
-          'B) BFC 规定块与浮动的布局边界，可用 flow-root 包含浮动并阻止跨边界的外边距折叠',
-          'C) 只有 overflow:hidden 能建立 BFC',
-          'D) 建立 BFC 后所有相邻外边距都不再折叠',
+          'BFC 让内部元素完全不受外部尺寸影响',
+          'BFC 规定块与浮动的布局边界，可用 flow-root 包含浮动并阻止跨边界的外边距折叠',
+          '只有 overflow:hidden 能建立 BFC',
+          '建立 BFC 后所有相邻外边距都不再折叠',
         ],
         answer: 1,
         explain:
@@ -1762,10 +1762,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Flex 布局中 flex: 1 代表什么？',
         options: [
-          'A) flex: 1 就是宽度为 1px',
-          'B) flex: 1 是 flex-grow:1/flex-shrink:1/flex-basis:0% 的简写表示元素自动伸缩填充剩余空间',
-          'C) flex: 1 表示元素不可缩放',
-          'D) flex: 1 和 flex-grow:1 完全等价',
+          'flex: 1 就是宽度为 1px',
+          'flex: 1 是 flex-grow:1/flex-shrink:1/flex-basis:0% 的简写表示元素自动伸缩填充剩余空间',
+          'flex: 1 表示元素不可缩放',
+          'flex: 1 和 flex-grow:1 完全等价',
         ],
         answer: 1,
         explain:
@@ -1786,10 +1786,10 @@ const LEVELS = [
         type: 'choice',
         q: '如何实现水平垂直居中？说几种方式。',
         options: [
-          'A) 只能用 margin:auto',
-          'B) 1)Flex: display:flex justify-content:center align-items:center 2)Grid: display:grid place-items:center 3)绝对定位+transform: top:50% left:50% transform:translate(-50%,-50%)',
-          'C) text-align:center 就能垂直居中',
-          'D) line-height 只能水平居中',
+          '只能用 margin:auto',
+          '1)Flex: display:flex justify-content:center align-items:center 2)Grid: display:grid place-items:center 3)绝对定位+transform: top:50% left:50% transform:translate(-50%,-50%)',
+          'text-align:center 就能垂直居中',
+          'line-height 只能水平居中',
         ],
         answer: 1,
         explain:
@@ -1810,10 +1810,10 @@ const LEVELS = [
         type: 'choice',
         q: '重排（reflow）和重绘（repaint）的区别？如何优化？',
         options: [
-          'A) 重排与重绘是同一个阶段',
-          'B) 布局计算几何，绘制生成像素；减少强制同步布局并按测量选择合成友好的动画',
-          'C) 改颜色一定会重新布局整页',
-          'D) requestAnimationFrame 会自动让任何计算不阻塞页面',
+          '重排与重绘是同一个阶段',
+          '布局计算几何，绘制生成像素；减少强制同步布局并按测量选择合成友好的动画',
+          '改颜色一定会重新布局整页',
+          'requestAnimationFrame 会自动让任何计算不阻塞页面',
         ],
         answer: 1,
         explain:
@@ -1830,10 +1830,10 @@ const LEVELS = [
         type: 'choice',
         q: 'CSS 选择器优先级是怎么计算的？',
         options: [
-          'A) 选择器越长总是越优先',
-          'B) 先比较层叠条件，再按 ID、类/属性/伪类、类型/伪元素的三元组逐位比较',
-          'C) 十个 class 的优先级必然等于一个 ID',
-          'D) !important 是选择器优先级中的第四位数字',
+          '选择器越长总是越优先',
+          '先比较层叠条件，再按 ID、类/属性/伪类、类型/伪元素的三元组逐位比较',
+          '十个 class 的优先级必然等于一个 ID',
+          '!important 是选择器优先级中的第四位数字',
         ],
         answer: 1,
         explain:
@@ -1852,10 +1852,10 @@ const LEVELS = [
         type: 'choice',
         q: '响应式布局有哪些实现方案？',
         options: [
-          'A) 只能用 Bootstrap',
-          'B) 1)媒体查询 @media 2)Flex/Grid 弹性布局 3)rem/em/vw/vh 相对单位 4)CSS Container Queries(新特性) 5)picture 标签适配不同分辨率',
-          'C) 响应式布局就是缩小页面',
-          'D) 只能用 JS 计算屏幕宽度',
+          '只能用 Bootstrap',
+          '1)媒体查询 @media 2)Flex/Grid 弹性布局 3)rem/em/vw/vh 相对单位 4)CSS Container Queries(新特性) 5)picture 标签适配不同分辨率',
+          '响应式布局就是缩小页面',
+          '只能用 JS 计算屏幕宽度',
         ],
         answer: 1,
         explain:
@@ -1915,10 +1915,10 @@ const LEVELS = [
         type: 'choice',
         q: 'CSS 中 ::before 和 :before 有什么区别？伪元素和伪类的区别？',
         options: [
-          'A) 单冒号写法在所有浏览器中都已失效',
-          'B) ::before 是标准伪元素写法，:before 为兼容旧语法保留；伪类选择状态，伪元素表示元素的某个部分或生成盒',
-          'C) 所有伪元素都必须写 content 才生效',
-          'D) :hover 会插入一个新的 DOM 元素',
+          '单冒号写法在所有浏览器中都已失效',
+          '::before 是标准伪元素写法，:before 为兼容旧语法保留；伪类选择状态，伪元素表示元素的某个部分或生成盒',
+          '所有伪元素都必须写 content 才生效',
+          ':hover 会插入一个新的 DOM 元素',
         ],
         answer: 1,
         explain:
@@ -1936,10 +1936,10 @@ const LEVELS = [
         type: 'choice',
         q: 'CSS 中 grid 布局的核心概念？和 flex 的区别？',
         options: [
-          'A) Grid 只能排一行，Flex 只能排一列',
-          'B) Grid 共享行列轨道，可用 fr、minmax、repeat 和区域定位；Flex 每条线分别分配主轴空间',
-          'C) flex-wrap 会让所有换行自动共享同一套列宽',
-          'D) Grid 的所有轨道都必须写固定像素',
+          'Grid 只能排一行，Flex 只能排一列',
+          'Grid 共享行列轨道，可用 fr、minmax、repeat 和区域定位；Flex 每条线分别分配主轴空间',
+          'flex-wrap 会让所有换行自动共享同一套列宽',
+          'Grid 的所有轨道都必须写固定像素',
         ],
         answer: 1,
         explain:
@@ -1990,10 +1990,10 @@ const LEVELS = [
         type: 'choice',
         q: '说说从输入 URL 到页面显示的完整过程？',
         options: [
-          'A) 就是发个 HTTP 请求然后渲染',
-          'B) 先判断导航、缓存与连接复用；按需完成域名解析、传输和 TLS，再请求响应、增量解析资源并布局绘制，脚本执行可能与这些阶段交错',
-          'C) 浏览器直接渲染没有网络请求',
-          'D) 先渲染再请求',
+          '就是发个 HTTP 请求然后渲染',
+          '先判断导航、缓存与连接复用；按需完成域名解析、传输和 TLS，再请求响应、增量解析资源并布局绘制，脚本执行可能与这些阶段交错',
+          '浏览器直接渲染没有网络请求',
+          '先渲染再请求',
         ],
         answer: 1,
         explain:
@@ -2023,10 +2023,10 @@ const LEVELS = [
         type: 'choice',
         q: 'TCP 三次握手的过程？为什么是三次而不是两次？',
         options: [
-          'A) 客户端发 SYN 服务端回 ACK 完成',
-          'B) SYN(seq=x)、SYN+ACK(seq=y,ack=x+1)、ACK(ack=y+1)：同步双方序列空间并确认对端接收了本方 SYN，避免仅因迟到旧 SYN 就完成连接',
-          'C) 四次握手才能建立连接',
-          'D) TCP 不需要握手',
+          '客户端发 SYN 服务端回 ACK 完成',
+          'SYN(seq=x)、SYN+ACK(seq=y,ack=x+1)、ACK(ack=y+1)：同步双方序列空间并确认对端接收了本方 SYN，避免仅因迟到旧 SYN 就完成连接',
+          '四次握手才能建立连接',
+          'TCP 不需要握手',
         ],
         answer: 1,
         explain:
@@ -2050,10 +2050,10 @@ const LEVELS = [
         type: 'choice',
         q: 'TCP 关闭为什么常被描述为四次挥手？一定需要四个报文吗？',
         options: [
-          'A) TCP 两个方向必须在同一瞬间关闭',
-          'B) 两个方向独立关闭，接收 FIN 后可能先确认、稍后再发自己的 FIN；若条件允许，ACK 与 FIN 可以合并，因此并非必须四个报文',
-          'C) 四次挥手是多余的',
-          'D) 只有客户端可以发起关闭',
+          'TCP 两个方向必须在同一瞬间关闭',
+          '两个方向独立关闭，接收 FIN 后可能先确认、稍后再发自己的 FIN；若条件允许，ACK 与 FIN 可以合并，因此并非必须四个报文',
+          '四次挥手是多余的',
+          '只有客户端可以发起关闭',
         ],
         answer: 1,
         explain:
@@ -2077,10 +2077,10 @@ const LEVELS = [
         type: 'choice',
         q: 'TCP 和 UDP 的区别？各自适用什么场景？',
         options: [
-          'A) 没区别都是传输协议',
-          'B) TCP 提供可靠有序字节流，适合依赖此语义的应用；UDP 提供独立数据报，适合自行处理时效、重传或在其上实现 QUIC 等传输机制',
-          'C) UDP 比 TCP 更安全',
-          'D) UDP 会自动提供可靠有序的字节流',
+          '没区别都是传输协议',
+          'TCP 提供可靠有序字节流，适合依赖此语义的应用；UDP 提供独立数据报，适合自行处理时效、重传或在其上实现 QUIC 等传输机制',
+          'UDP 比 TCP 更安全',
+          'UDP 会自动提供可靠有序的字节流',
         ],
         answer: 1,
         explain:
@@ -2099,10 +2099,10 @@ const LEVELS = [
         type: 'choice',
         q: 'HTTP 和 HTTPS 的区别？HTTPS 的工作原理？',
         options: [
-          'A) HTTPS 就是 HTTP 加了个锁',
-          'B) HTTPS 通过 TLS 提供传输保密、完整性与身份认证；现代握手协商密钥并认证对端，业务数据使用对称认证加密保护',
-          'C) HTTPS 只编码内容，不需要验证服务端身份',
-          'D) 只要使用 HTTPS，业务权限漏洞就会消失',
+          'HTTPS 就是 HTTP 加了个锁',
+          'HTTPS 通过 TLS 提供传输保密、完整性与身份认证；现代握手协商密钥并认证对端，业务数据使用对称认证加密保护',
+          'HTTPS 只编码内容，不需要验证服务端身份',
+          '只要使用 HTTPS，业务权限漏洞就会消失',
         ],
         answer: 1,
         explain:
@@ -2122,10 +2122,10 @@ const LEVELS = [
         type: 'choice',
         q: 'HTTP 1.0、1.1、2.0、3.0 的区别？',
         options: [
-          'A) 版本号不同功能一样',
-          'B) 1.1 默认持久连接；2 用二进制帧、流复用和 HPACK，但仍受 TCP 丢包影响；3 在 QUIC 上运行并使用 QPACK，减少不同流之间的传输层阻塞',
-          'C) HTTP/2 每个请求都必须单独建立一条 TCP 连接',
-          'D) HTTP/3 还是用 TCP',
+          '版本号不同功能一样',
+          '1.1 默认持久连接；2 用二进制帧、流复用和 HPACK，但仍受 TCP 丢包影响；3 在 QUIC 上运行并使用 QPACK，减少不同流之间的传输层阻塞',
+          'HTTP/2 每个请求都必须单独建立一条 TCP 连接',
+          'HTTP/3 还是用 TCP',
         ],
         answer: 1,
         explain:
@@ -2146,10 +2146,10 @@ const LEVELS = [
         type: 'choice',
         q: '常见 HTTP 状态码？301 和 302 的区别？',
         options: [
-          'A) 200 就是成功其他不重要',
-          'B) 2xx 表示成功、3xx 为重定向或缓存验证、4xx 为请求相关错误、5xx 为服务器处理失败；301 是永久重定向，302 是临时重定向',
-          'C) 301 和 302 完全一样',
-          'D) 4xx 是服务端错误',
+          '200 就是成功其他不重要',
+          '2xx 表示成功、3xx 为重定向或缓存验证、4xx 为请求相关错误、5xx 为服务器处理失败；301 是永久重定向，302 是临时重定向',
+          '301 和 302 完全一样',
+          '4xx 是服务端错误',
         ],
         answer: 1,
         explain:
@@ -2173,10 +2173,10 @@ const LEVELS = [
         type: 'choice',
         q: 'GET 和 POST 的区别？',
         options: [
-          'A) 没区别都能传数据',
-          'B) GET 用于获取表示且语义安全、幂等；POST 用于按资源约定处理请求内容，通常不保证幂等；长度、缓存与保密不能仅凭方法名断言',
-          'C) POST 比 GET 更安全因为加密了',
-          'D) GET 不能传参数',
+          '没区别都能传数据',
+          'GET 用于获取表示且语义安全、幂等；POST 用于按资源约定处理请求内容，通常不保证幂等；长度、缓存与保密不能仅凭方法名断言',
+          'POST 比 GET 更安全因为加密了',
+          'GET 不能传参数',
         ],
         answer: 1,
         explain:
@@ -2198,10 +2198,10 @@ const LEVELS = [
         type: 'choice',
         q: '什么是跨域？怎么解决？',
         options: [
-          'A) 跨域就是页面在不同浏览器打开',
-          'B) 协议、主机或有效端口不同即不同源；跨源读取可由服务端 CORS 授权，也可通过受控同源代理组织请求，不能靠前端删除浏览器限制',
-          'C) 跨域问题只出现在 IE',
-          'D) 前端设置 Access-Control-Allow-Origin 请求头就能授权自己读取任意响应',
+          '跨域就是页面在不同浏览器打开',
+          '协议、主机或有效端口不同即不同源；跨源读取可由服务端 CORS 授权，也可通过受控同源代理组织请求，不能靠前端删除浏览器限制',
+          '跨域问题只出现在 IE',
+          '前端设置 Access-Control-Allow-Origin 请求头就能授权自己读取任意响应',
         ],
         answer: 1,
         explain:
@@ -2222,10 +2222,10 @@ const LEVELS = [
         type: 'choice',
         q: 'XSS 攻击和 CSRF 攻击是什么？怎么防御？',
         options: [
-          'A) 都是服务器被黑了',
-          'B) XSS 使不可信内容以受害站点权限执行，靠安全输出和清理等防护；CSRF 利用浏览器携带身份凭据发起非预期请求，需令牌、来源校验及合适 SameSite 等防护',
-          'C) XSS 和 CSRF 是同一种攻击',
-          'D) HTTPS 能完全防止 XSS',
+          '都是服务器被黑了',
+          'XSS 使不可信内容以受害站点权限执行，靠安全输出和清理等防护；CSRF 利用浏览器携带身份凭据发起非预期请求，需令牌、来源校验及合适 SameSite 等防护',
+          'XSS 和 CSRF 是同一种攻击',
+          'HTTPS 能完全防止 XSS',
         ],
         answer: 1,
         explain:
@@ -2302,10 +2302,10 @@ const LEVELS = [
         type: 'choice',
         q: 'TCP 如何保证可靠传输？流量控制和拥塞控制的区别？',
         options: [
-          'A) TCP 不保证可靠性',
-          'B) 序列号、确认、校验与重传支持有序可靠交付；接收窗口保护接收端，拥塞窗口及相应算法控制对网络路径的压力',
-          'C) 流量控制和拥塞控制是同一个机制',
-          'D) TCP 没有拥塞控制',
+          'TCP 不保证可靠性',
+          '序列号、确认、校验与重传支持有序可靠交付；接收窗口保护接收端，拥塞窗口及相应算法控制对网络路径的压力',
+          '流量控制和拥塞控制是同一个机制',
+          'TCP 没有拥塞控制',
         ],
         answer: 1,
         explain:
@@ -2325,10 +2325,10 @@ const LEVELS = [
         type: 'choice',
         q: 'HTTPS 的 TLS 握手过程？TLS 1.3 相比 1.2 的优化？',
         options: [
-          'A) TLS 握手就是交换密码',
-          'B) 常见 TLS 1.3 完整握手协商参数和共享秘密、验证证书与握手签名，再派生流量密钥；常规握手减少往返，恢复的 0-RTT 早期数据有重放风险',
-          'C) TLS 1.3 的 0-RTT 可以安全重放任意资金请求',
-          'D) TLS 1.3 使用 RSA 密钥传输作为唯一密钥协商机制',
+          'TLS 握手就是交换密码',
+          '常见 TLS 1.3 完整握手协商参数和共享秘密、验证证书与握手签名，再派生流量密钥；常规握手减少往返，恢复的 0-RTT 早期数据有重放风险',
+          'TLS 1.3 的 0-RTT 可以安全重放任意资金请求',
+          'TLS 1.3 使用 RSA 密钥传输作为唯一密钥协商机制',
         ],
         answer: 1,
         explain:
@@ -2348,10 +2348,10 @@ const LEVELS = [
         type: 'choice',
         q: '什么是 CDN？它的工作原理？CDN 加速的本质是什么？',
         options: [
-          'A) CDN 就是一个更大的服务器',
-          'B) CDN 将请求调度到合适边缘节点，命中可缓存内容时就地返回，未命中时按策略回源；收益来自路径优化、连接与缓存复用，节点并非必定物理最近',
-          'C) CDN 只能加速动态请求',
-          'D) CDN 和 DNS 无关',
+          'CDN 就是一个更大的服务器',
+          'CDN 将请求调度到合适边缘节点，命中可缓存内容时就地返回，未命中时按策略回源；收益来自路径优化、连接与缓存复用，节点并非必定物理最近',
+          'CDN 只能加速动态请求',
+          'CDN 和 DNS 无关',
         ],
         answer: 1,
         explain:
@@ -2372,10 +2372,10 @@ const LEVELS = [
         type: 'choice',
         q: 'WebSocket 和 HTTP 的区别？为什么需要 WebSocket？',
         options: [
-          'A) WebSocket 就是 HTTP 的一个版本',
-          'B) HTTP 提供请求响应语义，SSE 可持续下发服务端事件；WebSocket 提供双向消息通道，适合频繁双向交互，仍需处理认证、积压和重连',
-          'C) WebSocket 需要多次 TCP 连接',
-          'D) WebSocket 自动保存全部断线消息并在重连后恰好投递一次',
+          'WebSocket 就是 HTTP 的一个版本',
+          'HTTP 提供请求响应语义，SSE 可持续下发服务端事件；WebSocket 提供双向消息通道，适合频繁双向交互，仍需处理认证、积压和重连',
+          'WebSocket 需要多次 TCP 连接',
+          'WebSocket 自动保存全部断线消息并在重连后恰好投递一次',
         ],
         answer: 1,
         explain:
@@ -2437,10 +2437,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Vue3 的响应式原理？和 Vue2 有什么区别？',
         options: [
-          'A) Vue 3 继续仅用 defineProperty 遍历全部属性',
-          'B) Vue 2 主要拦截已有属性，Vue 3 用 Proxy 跟踪对象操作，ref 跟踪 .value；依赖变化调度相关更新',
-          'C) Proxy 会让所有对象操作自动变成异步',
-          'D) Vue 3 修改任何字段都会重新创建全部组件',
+          'Vue 3 继续仅用 defineProperty 遍历全部属性',
+          'Vue 2 主要拦截已有属性，Vue 3 用 Proxy 跟踪对象操作，ref 跟踪 .value；依赖变化调度相关更新',
+          'Proxy 会让所有对象操作自动变成异步',
+          'Vue 3 修改任何字段都会重新创建全部组件',
         ],
         answer: 1,
         explain:
@@ -2460,10 +2460,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Vue3 的 Composition API 解决了什么问题？',
         options: [
-          'A) 让代码看起来更复杂',
-          'B) 解决 Options API 中相关逻辑散落在 data/methods/computed/watch 各处的问题；按功能组织代码逻辑复用从 mixin 升级为 composable 函数无命名冲突来源清晰',
-          'C) Composition API 取代了 Options API',
-          'D) Composition API 性能更好',
+          '让代码看起来更复杂',
+          '解决 Options API 中相关逻辑散落在 data/methods/computed/watch 各处的问题；按功能组织代码逻辑复用从 mixin 升级为 composable 函数无命名冲突来源清晰',
+          'Composition API 取代了 Options API',
+          'Composition API 性能更好',
         ],
         answer: 1,
         explain:
@@ -2480,10 +2480,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Vue 的生命周期钩子有哪些？在哪发请求？在哪销毁？',
         options: [
-          'A) 只有 created 和 mounted 两个',
-          'B) setup(替代 beforeCreate/created) onBeforeMount onMounted(发请求) onBeforeUpdate onUpdated onBeforeUnmount(清理) onUnmounted',
-          'C) 在 beforeCreate 发请求最好',
-          'D) 不需要手动清理',
+          '只有 created 和 mounted 两个',
+          'setup(替代 beforeCreate/created) onBeforeMount onMounted(发请求) onBeforeUpdate onUpdated onBeforeUnmount(清理) onUnmounted',
+          '在 beforeCreate 发请求最好',
+          '不需要手动清理',
         ],
         answer: 1,
         explain:
@@ -2500,10 +2500,10 @@ const LEVELS = [
         type: 'choice',
         q: 'computed 和 watch 的区别？什么时候用哪个？',
         options: [
-          'A) computed 和 watch 都只在创建时执行一次',
-          'B) computed 缓存纯派生值，watch 显式监听源并执行副作用；watch 回调的返回值不是派生状态',
-          'C) watch 无法取消过期请求',
-          'D) computed 的 getter 适合提交订单等写操作',
+          'computed 和 watch 都只在创建时执行一次',
+          'computed 缓存纯派生值，watch 显式监听源并执行副作用；watch 回调的返回值不是派生状态',
+          'watch 无法取消过期请求',
+          'computed 的 getter 适合提交订单等写操作',
         ],
         answer: 1,
         explain:
@@ -2520,10 +2520,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Vue 虚拟 DOM 和 diff 算法怎么工作？',
         options: [
-          'A) Vue 更新总是删除全部 DOM 后重建',
-          'B) VNode 描述界面，Vue 3 的 keyed diff 同步头尾、匹配中间节点并用最长递增子序列减少移动；编译信息还能跳过静态部分',
-          'C) Vue 3 的 keyed diff 与 Vue 2 的双端交叉比较过程完全相同',
-          'D) 每次随机生成 key 可以提升组件复用率',
+          'Vue 更新总是删除全部 DOM 后重建',
+          'VNode 描述界面，Vue 3 的 keyed diff 同步头尾、匹配中间节点并用最长递增子序列减少移动；编译信息还能跳过静态部分',
+          'Vue 3 的 keyed diff 与 Vue 2 的双端交叉比较过程完全相同',
+          '每次随机生成 key 可以提升组件复用率',
         ],
         answer: 1,
         explain:
@@ -2541,10 +2541,10 @@ const LEVELS = [
         type: 'choice',
         q: 'v-if 和 v-show 的区别？',
         options: [
-          'A) Node 中每个 setTimeout 都创建一条专属 JavaScript 线程',
-          'B) v-if 真正条件渲染(销毁/重建初始开销小切换开销大适合不频繁切换)；v-show CSS display 控制(始终渲染初始开销大切换开销小适合频繁切换)',
-          'C) v-show 不渲染 DOM',
-          'D) v-if 性能永远比 v-show 好',
+          'Node 中每个 setTimeout 都创建一条专属 JavaScript 线程',
+          'v-if 真正条件渲染(销毁/重建初始开销小切换开销大适合不频繁切换)；v-show CSS display 控制(始终渲染初始开销大切换开销小适合频繁切换)',
+          'v-show 不渲染 DOM',
+          'v-if 性能永远比 v-show 好',
         ],
         answer: 1,
         explain:
@@ -2561,10 +2561,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Vue 组件通信有哪些方式？',
         options: [
-          'A) 只能通过 props',
-          'B) 父→子：props/ref；子→父：emit；兄弟：mitt/状态管理；跨层级：provide/inject；全局状态：Pinia',
-          'C) Vue 组件不能通信',
-          'D) 只能用全局变量',
+          '只能通过 props',
+          '父→子：props/ref；子→父：emit；兄弟：mitt/状态管理；跨层级：provide/inject；全局状态：Pinia',
+          'Vue 组件不能通信',
+          '只能用全局变量',
         ],
         answer: 1,
         explain:
@@ -2580,10 +2580,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Pinia 和 Vuex 的区别？为什么 Vue3 推荐用 Pinia？',
         options: [
-          'A) Pinia 与 Vuex 的 API 和状态修改约束完全相同',
-          'B) Pinia 不要求 mutation，按 store 定义状态与 action，组合式 API 和 TypeScript 集成更直接；SSR 仍要隔离应用状态',
-          'C) Pinia 会自动把所有状态写入浏览器持久存储',
-          'D) Pinia 只能定义一个 store',
+          'Pinia 与 Vuex 的 API 和状态修改约束完全相同',
+          'Pinia 不要求 mutation，按 store 定义状态与 action，组合式 API 和 TypeScript 集成更直接；SSR 仍要隔离应用状态',
+          'Pinia 会自动把所有状态写入浏览器持久存储',
+          'Pinia 只能定义一个 store',
         ],
         answer: 1,
         explain:
@@ -2640,10 +2640,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Vue 的 keep-alive 是什么？有什么用？',
         options: [
-          'A) keep-alive 就是让组件永远不销毁',
-          'B) 缓存不活动的组件实例避免重复渲染保留状态；有 include/exclude 控制哪些组件缓存 max 控制缓存上限；activated/deactivated 是缓存组件的生命周期；场景：Tab 切换保留滚动位置/表单输入',
-          'C) keep-alive 会增加内存但不能保留状态',
-          'D) keep-alive 不需要配置',
+          'keep-alive 就是让组件永远不销毁',
+          '缓存不活动的组件实例避免重复渲染保留状态；有 include/exclude 控制哪些组件缓存 max 控制缓存上限；activated/deactivated 是缓存组件的生命周期；场景：Tab 切换保留滚动位置/表单输入',
+          'keep-alive 会增加内存但不能保留状态',
+          'keep-alive 不需要配置',
         ],
         answer: 1,
         explain:
@@ -2662,10 +2662,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Vue3 中 ref 和 reactive 的区别？什么时候用哪个？',
         options: [
-          'A) ref 只能包装数字，reactive 只能包装数组',
-          'B) ref 可包装原始值或对象并通过 .value 整体替换；reactive 代理对象，选择取决于状态形态和身份保持方式',
-          'C) 解构 reactive 中的普通数字后仍自动关联原属性',
-          'D) ref 包装的对象永远不会转成响应式对象',
+          'ref 只能包装数字，reactive 只能包装数组',
+          'ref 可包装原始值或对象并通过 .value 整体替换；reactive 代理对象，选择取决于状态形态和身份保持方式',
+          '解构 reactive 中的普通数字后仍自动关联原属性',
+          'ref 包装的对象永远不会转成响应式对象',
         ],
         answer: 1,
         explain:
@@ -2682,10 +2682,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Vue 的插槽(Slot)有哪几种？作用域插槽怎么用？',
         options: [
-          'A) 只有默认插槽一种',
-          'B) 默认插槽(父内容注入子) 具名插槽(v-slot:name/#name 多个出口) 作用域插槽(子传数据给父父用 slotProps 渲染)；场景：列表组件让父控制每项渲染方式',
-          'C) 作用域插槽不需要传数据',
-          'D) 具名插槽只能有一个',
+          '只有默认插槽一种',
+          '默认插槽(父内容注入子) 具名插槽(v-slot:name/#name 多个出口) 作用域插槽(子传数据给父父用 slotProps 渲染)；场景：列表组件让父控制每项渲染方式',
+          '作用域插槽不需要传数据',
+          '具名插槽只能有一个',
         ],
         answer: 1,
         explain:
@@ -2724,10 +2724,10 @@ const LEVELS = [
         type: 'choice',
         q: 'React 的 Fiber 架构是什么？为什么需要它？',
         options: [
-          'A) Fiber 就是一个新的 DOM 渲染方式',
-          'B) Fiber 为协调工作建立可保存的单元；并发渲染可以在单元之间让出、恢复或放弃工作，但单个长同步函数仍会阻塞主线程',
-          'C) Fiber 让 React 更慢了',
-          'D) Fiber 和 Virtual DOM 无关',
+          'Fiber 就是一个新的 DOM 渲染方式',
+          'Fiber 为协调工作建立可保存的单元；并发渲染可以在单元之间让出、恢复或放弃工作，但单个长同步函数仍会阻塞主线程',
+          'Fiber 让 React 更慢了',
+          'Fiber 和 Virtual DOM 无关',
         ],
         answer: 1,
         explain:
@@ -2745,10 +2745,10 @@ const LEVELS = [
         type: 'choice',
         q: 'React 中 useState 的更新是同步还是异步？',
         options: [
-          'A) 调用 setter 后当前闭包变量立即变成新值',
-          'B) setter 排队更新，当前渲染保留原快照；后续渲染读到新值，连续依赖旧结果时用函数式更新',
-          'C) setter 返回 Promise，await 后即可读当前闭包中的新值',
-          'D) 所有异步边界内的更新一定合并成一次渲染',
+          '调用 setter 后当前闭包变量立即变成新值',
+          'setter 排队更新，当前渲染保留原快照；后续渲染读到新值，连续依赖旧结果时用函数式更新',
+          'setter 返回 Promise，await 后即可读当前闭包中的新值',
+          '所有异步边界内的更新一定合并成一次渲染',
         ],
         answer: 1,
         explain:
@@ -2765,10 +2765,10 @@ const LEVELS = [
         type: 'choice',
         q: 'useEffect、useLayoutEffect、useMemo、useCallback 的区别？',
         options: [
-          'A) 四者都用于在渲染后发送请求',
-          'B) Effect 同步外部系统，LayoutEffect 在绘制前处理布局；Memo 缓存计算值，Callback 缓存函数身份',
-          'C) useMemo 的回调适合提交订单等副作用',
-          'D) useLayoutEffect 可把计算移到后台线程',
+          '四者都用于在渲染后发送请求',
+          'Effect 同步外部系统，LayoutEffect 在绘制前处理布局；Memo 缓存计算值，Callback 缓存函数身份',
+          'useMemo 的回调适合提交订单等副作用',
+          'useLayoutEffect 可把计算移到后台线程',
         ],
         answer: 1,
         explain:
@@ -2786,10 +2786,10 @@ const LEVELS = [
         type: 'choice',
         q: 'React 虚拟 DOM 和 Diff 算法原理？',
         options: [
-          'A) React 没有虚拟 DOM',
-          'B) React 根据元素类型、位置及同级 key 协调树；key 帮助识别列表项，Fiber 承载协调与调度工作',
-          'C) diff 会跨层级比较',
-          'D) key 不影响 diff',
+          'React 没有虚拟 DOM',
+          'React 根据元素类型、位置及同级 key 协调树；key 帮助识别列表项，Fiber 承载协调与调度工作',
+          'diff 会跨层级比较',
+          'key 不影响 diff',
         ],
         answer: 1,
         explain:
@@ -2807,10 +2807,10 @@ const LEVELS = [
         type: 'choice',
         q: 'React 中受控组件和非受控组件的区别？',
         options: [
-          'A) 受控与非受控只影响组件文件的大小',
-          'B) 受控输入由 React 的 value/checked 及更新回调保持值；非受控由 DOM 保存当前值，必要时用 ref 读取',
-          'C) 把受控输入的 value 改成 undefined 是标准重置方式',
-          'D) 非受控表单不能设置初始默认值',
+          '受控与非受控只影响组件文件的大小',
+          '受控输入由 React 的 value/checked 及更新回调保持值；非受控由 DOM 保存当前值，必要时用 ref 读取',
+          '把受控输入的 value 改成 undefined 是标准重置方式',
+          '非受控表单不能设置初始默认值',
         ],
         answer: 1,
         explain:
@@ -2827,10 +2827,10 @@ const LEVELS = [
         type: 'choice',
         q: 'React 组件性能优化有哪些手段？',
         options: [
-          'A) React 性能很好不需要优化',
-          'B) 1)React.memo 缓存组件 2)useMemo/useCallback 缓存值和函数 3)虚拟列表(react-window) 4)懒加载 React.lazy+Suspense 5)合理拆分 state 减少大范围重渲染',
-          'C) 优化只能改代码结构',
-          'D) memo 没有用处',
+          'React 性能很好不需要优化',
+          '1)React.memo 缓存组件 2)useMemo/useCallback 缓存值和函数 3)虚拟列表(react-window) 4)懒加载 React.lazy+Suspense 5)合理拆分 state 减少大范围重渲染',
+          '优化只能改代码结构',
+          'memo 没有用处',
         ],
         answer: 1,
         explain:
@@ -2848,10 +2848,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Redux 的工作原理？中间件是什么？',
         options: [
-          'A) Redux 就是一个全局变量',
-          'B) 单一数据源(store)+action 描述事件+reducer 纯函数处理；dispatch(action)→reducer→new state→UI 更新；中间件在 dispatch 和 reducer 之间拦截处理异步(thunk/saga)',
-          'C) Redux 不需要 reducer',
-          'D) Redux 只能用于 React',
+          'Redux 就是一个全局变量',
+          '单一数据源(store)+action 描述事件+reducer 纯函数处理；dispatch(action)→reducer→new state→UI 更新；中间件在 dispatch 和 reducer 之间拦截处理异步(thunk/saga)',
+          'Redux 不需要 reducer',
+          'Redux 只能用于 React',
         ],
         answer: 1,
         explain:
@@ -2870,10 +2870,10 @@ const LEVELS = [
         type: 'choice',
         q: 'React 18 有哪些新特性？',
         options: [
-          'A) 没什么新东西',
-          'B) 新 root API 下扩展自动批处理；提供 startTransition/useDeferredValue、流式 SSR、useId/useSyncExternalStore，并扩展 Suspense 支持',
-          'C) React 18 不支持并发',
-          'D) 自动批处理只在事件函数中',
+          '没什么新东西',
+          '新 root API 下扩展自动批处理；提供 startTransition/useDeferredValue、流式 SSR、useId/useSyncExternalStore，并扩展 Suspense 支持',
+          'React 18 不支持并发',
+          '自动批处理只在事件函数中',
         ],
         answer: 1,
         explain:
@@ -2936,10 +2936,10 @@ const LEVELS = [
         type: 'choice',
         q: 'React 中 useRef 的用途？和 useState 的区别？',
         options: [
-          'A) useRef 就是 useState 的别名',
-          'B) useRef 创建可变引用对象{current:T}修改不触发重渲染适合存储 DOM 引用/定时器 ID/不参与渲染的数据；useState 修改触发重渲染参与 UI 渲染；useRef 在整个生命周期保持同一对象',
-          'C) useRef 修改会触发重渲染',
-          'D) useRef 不能用于 DOM',
+          'useRef 就是 useState 的别名',
+          'useRef 创建可变引用对象{current:T}修改不触发重渲染适合存储 DOM 引用/定时器 ID/不参与渲染的数据；useState 修改触发重渲染参与 UI 渲染；useRef 在整个生命周期保持同一对象',
+          'useRef 修改会触发重渲染',
+          'useRef 不能用于 DOM',
         ],
         answer: 1,
         explain:
@@ -2955,10 +2955,10 @@ const LEVELS = [
         type: 'choice',
         q: 'React 的 Context 是什么？什么时候用？有什么性能问题？',
         options: [
-          'A) Context 能让所有消费者自动按字段订阅',
-          'B) Context 向后代提供共享值，Provider 值按 Object.is 变化会通知消费者；可拆分上下文并稳定未改变的值',
-          'C) 给消费者加 memo 就一定阻止 Context 更新',
-          'D) useMemo 能保证 Provider 的任何数据变化都不触发消费者渲染',
+          'Context 能让所有消费者自动按字段订阅',
+          'Context 向后代提供共享值，Provider 值按 Object.is 变化会通知消费者；可拆分上下文并稳定未改变的值',
+          '给消费者加 memo 就一定阻止 Context 更新',
+          'useMemo 能保证 Provider 的任何数据变化都不触发消费者渲染',
         ],
         answer: 1,
         explain:
@@ -2975,10 +2975,10 @@ const LEVELS = [
         type: 'choice',
         q: 'React 的错误边界(Error Boundary)是什么？怎么用？',
         options: [
-          'A) 错误边界就是 try/catch',
-          'B) 用类组件错误边界处理后代渲染错误，getDerivedStateFromError 提供备用 UI，componentDidCatch 记录信息；普通事件或异步回调错误需按调用路径处理',
-          'C) 错误边界能捕获 setTimeout 中的错误',
-          'D) 函数组件可以直接实现错误边界',
+          '错误边界就是 try/catch',
+          '用类组件错误边界处理后代渲染错误，getDerivedStateFromError 提供备用 UI，componentDidCatch 记录信息；普通事件或异步回调错误需按调用路径处理',
+          '错误边界能捕获 setTimeout 中的错误',
+          '函数组件可以直接实现错误边界',
         ],
         answer: 1,
         explain:
@@ -3023,10 +3023,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Node.js 的事件循环和浏览器的有什么区别？',
         options: [
-          'A) 完全一样',
-          'B) Node 的 libuv 循环处理定时器、I/O 与 check 等阶段，并有 nextTick；浏览器还协调渲染，具体顺序需结合回调检查点、模块格式和运行时版本',
-          'C) Node 没有事件循环',
-          'D) Node 的事件循环和浏览器完全相同',
+          '完全一样',
+          'Node 的 libuv 循环处理定时器、I/O 与 check 等阶段，并有 nextTick；浏览器还协调渲染，具体顺序需结合回调检查点、模块格式和运行时版本',
+          'Node 没有事件循环',
+          'Node 的事件循环和浏览器完全相同',
         ],
         answer: 1,
         explain:
@@ -3052,10 +3052,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Node.js 中 Stream 有哪些类型？应用场景？',
         options: [
-          'A) Stream 只有一种类型',
-          'B) Readable、Writable、Duplex、Transform；用于文件、网络、压缩等分块处理，通过背压、错误传播与取消控制资源',
-          'C) Stream 不能用于网络请求',
-          'D) Stream 会把整个文件加载到内存',
+          'Stream 只有一种类型',
+          'Readable、Writable、Duplex、Transform；用于文件、网络、压缩等分块处理，通过背压、错误传播与取消控制资源',
+          'Stream 不能用于网络请求',
+          'Stream 会把整个文件加载到内存',
         ],
         answer: 1,
         explain:
@@ -3077,10 +3077,10 @@ const LEVELS = [
         type: 'choice',
         q: '什么是中间件？Express 中间件的执行机制？',
         options: [
-          'A) 中间件就是路由',
-          'B) 按匹配和注册顺序调用中间件，它可结束响应或通过 next 交给后续处理；错误中间件有四个参数，不响应也不 next 会让请求悬住',
-          'C) 中间件不能有参数',
-          'D) 中间件执行顺序是随机的',
+          '中间件就是路由',
+          '按匹配和注册顺序调用中间件，它可结束响应或通过 next 交给后续处理；错误中间件有四个参数，不响应也不 next 会让请求悬住',
+          '中间件不能有参数',
+          '中间件执行顺序是随机的',
         ],
         answer: 1,
         explain:
@@ -3146,10 +3146,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Webpack 的 Loader 和 Plugin 的区别？',
         options: [
-          'A) Loader 和 Plugin 没区别',
-          'B) Loader 主要转换模块资源；Plugin 通过构建生命周期钩子介入模块图、优化和资源输出等流程，普通 loader 转换链通常从右向左执行',
-          'C) Loader 的普通转换阶段永远按从左到右的顺序执行',
-          'D) Plugin 不允许访问构建生命周期或编译上下文',
+          'Loader 和 Plugin 没区别',
+          'Loader 主要转换模块资源；Plugin 通过构建生命周期钩子介入模块图、优化和资源输出等流程，普通 loader 转换链通常从右向左执行',
+          'Loader 的普通转换阶段永远按从左到右的顺序执行',
+          'Plugin 不允许访问构建生命周期或编译上下文',
         ],
         answer: 1,
         explain:
@@ -3169,10 +3169,10 @@ const LEVELS = [
         type: 'choice',
         q: 'JWT 的原理？和 Session 有什么区别？',
         options: [
-          'A) JWT 就是加密的密码',
-          'B) 常见签名 JWT 编码声明并用签名保护完整性，验证后仍要检查有效期、受众等约束；传统 Session 通常用不透明标识查询服务端状态，撤销和权限变更都需设计',
-          'C) JWT 的 Base64URL 编码会隐藏用户敏感信息',
-          'D) JWT 和 Session 完全一样',
+          'JWT 就是加密的密码',
+          '常见签名 JWT 编码声明并用签名保护完整性，验证后仍要检查有效期、受众等约束；传统 Session 通常用不透明标识查询服务端状态，撤销和权限变更都需设计',
+          'JWT 的 Base64URL 编码会隐藏用户敏感信息',
+          'JWT 和 Session 完全一样',
         ],
         answer: 1,
         explain:
@@ -3193,10 +3193,10 @@ const LEVELS = [
         type: 'choice',
         q: '前端性能优化有哪些手段？全链路说。',
         options: [
-          'A) 性能优化就是压缩图片',
-          'B) 先用真实用户指标和链路测量定位，再分别优化网络等待、关键资源、JS 执行与渲染，并用同条件对照和上线监控验证结果',
-          'C) 性能优化只在服务器端',
-          'D) 压缩 JS 就够了',
+          '性能优化就是压缩图片',
+          '先用真实用户指标和链路测量定位，再分别优化网络等待、关键资源、JS 执行与渲染，并用同条件对照和上线监控验证结果',
+          '性能优化只在服务器端',
+          '压缩 JS 就够了',
         ],
         answer: 1,
         explain:
@@ -3272,10 +3272,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Node.js 中的内存管理和 V8 的堆内存限制？如何处理大内存？',
         options: [
-          'A) Node.js 没有内存限制',
-          'B) 读取实际 V8 堆上限并区分 RSS、heapUsed、external 等指标；用流式处理、背压和有界并发控制峰值，按堆内或原生增长来源定位',
-          'C) Node.js 可以无限制使用内存',
-          'D) 把 --max-old-space-size 调大就能修复所有内存泄漏',
+          'Node.js 没有内存限制',
+          '读取实际 V8 堆上限并区分 RSS、heapUsed、external 等指标；用流式处理、背压和有界并发控制峰值，按堆内或原生增长来源定位',
+          'Node.js 可以无限制使用内存',
+          '把 --max-old-space-size 调大就能修复所有内存泄漏',
         ],
         answer: 1,
         explain:
@@ -3298,10 +3298,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Express 和 Koa 的区别？洋葱模型是什么？',
         options: [
-          'A) Express 和 Koa 完全一样',
-          'B) Express 的 next 传递控制权；Koa 的 await next 等待下游完成，可形成进入时由外到内、退出时由内到外的异步洋葱模型',
-          'C) Express 的 next() 总会返回代表全部下游异步工作完成的 Promise',
-          'D) Koa 不支持 async/await',
+          'Express 和 Koa 完全一样',
+          'Express 的 next 传递控制权；Koa 的 await next 等待下游完成，可形成进入时由外到内、退出时由内到外的异步洋葱模型',
+          'Express 的 next() 总会返回代表全部下游异步工作完成的 Promise',
+          'Koa 不支持 async/await',
         ],
         answer: 1,
         explain:
@@ -3322,10 +3322,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Node.js 中的 Cluster 和 worker_threads 的区别？什么时候用哪个？',
         options: [
-          'A) 两者完全一样',
-          'B) Cluster 使用独立进程承载多实例服务；worker_threads 在同进程内并行执行 JS，适合受控的 CPU 任务池，并需要明确数据传递与故障边界',
-          'C) Worker 自动共享所有 JavaScript 对象',
-          'D) Worker 的 JavaScript 始终只能在主线程运行',
+          '两者完全一样',
+          'Cluster 使用独立进程承载多实例服务；worker_threads 在同进程内并行执行 JS，适合受控的 CPU 任务池，并需要明确数据传递与故障边界',
+          'Worker 自动共享所有 JavaScript 对象',
+          'Worker 的 JavaScript 始终只能在主线程运行',
         ],
         answer: 1,
         explain:
@@ -3371,10 +3371,10 @@ const LEVELS = [
         type: 'choice',
         q: '迁移 19 个 PHP 接口到 Node.js/TS 时分层架构怎么设计？',
         options: [
-          'A) 只分 Controller 和数据库查询两层',
-          'B) Controller/AO/Util/Middleware 分层：Controller 参数校验和响应封装 AO 业务逻辑调用下游 RPC Util 工具函数 Middleware 鉴权和错误码统一处理',
-          'C) 所有逻辑写在路由里',
-          'D) 按 MVC 分 Model 负责一切',
+          '只分 Controller 和数据库查询两层',
+          'Controller/AO/Util/Middleware 分层：Controller 参数校验和响应封装 AO 业务逻辑调用下游 RPC Util 工具函数 Middleware 鉴权和错误码统一处理',
+          '所有逻辑写在路由里',
+          '按 MVC 分 Model 负责一切',
         ],
         answer: 1,
         explain:
@@ -3396,10 +3396,10 @@ const LEVELS = [
         type: 'choice',
         q: '迁移过程中 protobuf/Long/Buffer 类型转换遇到什么坑？',
         options: [
-          'A) 所有 64 位整数都可以先转 Number 再序列化',
-          'B) 标识符保留无损表示，Buffer 明确编码，protobuf 字段按 schema 转换并验证边界样例',
-          'C) 只把 PHP array 改成 TS object 就能保持所有语义',
-          'D) BigInt 可以默认无配置地被 JSON.stringify 序列化',
+          '所有 64 位整数都可以先转 Number 再序列化',
+          '标识符保留无损表示，Buffer 明确编码，protobuf 字段按 schema 转换并验证边界样例',
+          '只把 PHP array 改成 TS object 就能保持所有语义',
+          'BigInt 可以默认无配置地被 JSON.stringify 序列化',
         ],
         answer: 1,
         explain:
@@ -3429,10 +3429,10 @@ const LEVELS = [
         type: 'choice',
         q: '6 周完成 9000+ 行迁移零事故上线做了哪些保障？',
         options: [
-          'A) 改完直接上线出问题再修',
-          'B) 接口逐一对比 PHP 和 Node 输入输出一致性、灰度切流先小流量验证、补齐监控告警、准备回滚方案、细粒度权限管控和自动化部署',
-          'C) 只做了单元测试就够了',
-          'D) 让 QA 全手动回归',
+          '改完直接上线出问题再修',
+          '接口逐一对比 PHP 和 Node 输入输出一致性、灰度切流先小流量验证、补齐监控告警、准备回滚方案、细粒度权限管控和自动化部署',
+          '只做了单元测试就够了',
+          '让 QA 全手动回归',
         ],
         answer: 1,
         explain:
@@ -3482,10 +3482,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Web Worker 在分片上传中的作用？为什么不在主线程算 Hash？',
         options: [
-          'A) 创建 Worker 后浏览器自动完成分片上传和所有重试',
-          'B) 将摘要计算移出主线程，并明确分块、传输成本与服务端去重授权条件',
-          'C) Worker 保证计算耗时更短且不占用额外内存',
-          'D) 相同文件名已经足以安全秒传，无需内容校验',
+          '创建 Worker 后浏览器自动完成分片上传和所有重试',
+          '将摘要计算移出主线程，并明确分块、传输成本与服务端去重授权条件',
+          'Worker 保证计算耗时更短且不占用额外内存',
+          '相同文件名已经足以安全秒传，无需内容校验',
         ],
         answer: 1,
         explain:
@@ -3510,10 +3510,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Redis 分布式锁在分片上传中怎么用？',
         options: [
-          'A) 防止用户误操作',
-          'B) 用带唯一标识和租期的锁减少重复合并；原子校验持有者后释放，最终提交用持久化状态约束',
-          'C) 限制上传速度',
-          'D) 防止黑客攻击',
+          '防止用户误操作',
+          '用带唯一标识和租期的锁减少重复合并；原子校验持有者后释放，最终提交用持久化状态约束',
+          '限制上传速度',
+          '防止黑客攻击',
         ],
         answer: 1,
         explain:
@@ -3537,10 +3537,10 @@ const LEVELS = [
         type: 'choice',
         q: '上传成功率从 70% 提升到 99% 做了哪些优化？',
         options: [
-          'A) 换了更快的服务器',
-          'B) 分片上传(降低单次失败影响)+断点续传(网络中断可恢复)+动态并发控制(网络好加并发差时减)+秒传+错误重试',
-          'C) 只加大了超时时间',
-          'D) 用浏览器自带上传',
+          '换了更快的服务器',
+          '分片上传(降低单次失败影响)+断点续传(网络中断可恢复)+动态并发控制(网络好加并发差时减)+秒传+错误重试',
+          '只加大了超时时间',
+          '用浏览器自带上传',
         ],
         answer: 1,
         explain:
@@ -3582,10 +3582,10 @@ const LEVELS = [
         type: 'choice',
         q: '以“最近目录规则优先，范围内用户 > 部门 > 角色，同层多角色取允许动作并集”为题设，权限怎样计算并落实到前后端？',
         options: [
-          'A) 只读取第一个角色，其余角色与个人规则都忽略',
-          'B) 先解析目录生效范围，再处理维度优先级和同层并集；前端展示与服务端授权都遵循规则',
-          'C) 不管个人或目录规则如何，都把所有允许动作直接合并',
-          'D) 只要 PermissionGuard 隐藏按钮，就可以省略接口授权',
+          '只读取第一个角色，其余角色与个人规则都忽略',
+          '先解析目录生效范围，再处理维度优先级和同层并集；前端展示与服务端授权都遵循规则',
+          '不管个人或目录规则如何，都把所有允许动作直接合并',
+          '只要 PermissionGuard 隐藏按钮，就可以省略接口授权',
         ],
         answer: 1,
         explain:
@@ -3602,10 +3602,10 @@ const LEVELS = [
         type: 'choice',
         q: '延迟双删策略的具体流程？解决什么问题？',
         options: [
-          'A) 两次 DEL 一定使任何并发请求都读到最新值',
-          'B) 按约定删缓存、写库、延迟再删，缓解期间旧值回填，但仍须处理慢请求和失效任务失败',
-          'C) 延迟只要大于一次 DB 写入耗时就能保证强一致',
-          'D) 只要 TTL 足够长，就不会出现旧值回填',
+          '两次 DEL 一定使任何并发请求都读到最新值',
+          '按约定删缓存、写库、延迟再删，缓解期间旧值回填，但仍须处理慢请求和失效任务失败',
+          '延迟只要大于一次 DB 写入耗时就能保证强一致',
+          '只要 TTL 足够长，就不会出现旧值回填',
         ],
         answer: 1,
         explain:
@@ -3628,10 +3628,10 @@ const LEVELS = [
         type: 'choice',
         q: 'BFF 层的动机是什么？解决了什么问题？',
         options: [
-          'A) BFF 是行业趋势大家都用',
-          'B) 前端直连多个异构下游(ERP/SSO/文件存储)导致耦合高鉴权散乱；BFF 统一接口聚合与权限校验后端变更对前端透明',
-          'C) 让项目看起来更复杂',
-          'D) 前端不能直接调后端接口',
+          'BFF 是行业趋势大家都用',
+          '前端直连多个异构下游(ERP/SSO/文件存储)导致耦合高鉴权散乱；BFF 统一接口聚合与权限校验后端变更对前端透明',
+          '让项目看起来更复杂',
+          '前端不能直接调后端接口',
         ],
         answer: 1,
         explain:
@@ -3654,10 +3654,10 @@ const LEVELS = [
         type: 'choice',
         q: 'Monorepo 共享 TypeScript 类型定义的好处和代价？',
         options: [
-          'A) 类型共享后任何历史数据和旧客户端都自动兼容',
-          'B) 编译期减少重复定义与部分漂移，同时需要管理依赖和发布边界，并补运行时校验',
-          'C) Monorepo 必须让所有服务每次一起部署',
-          'D) TypeScript 类型会随 JSON 自动传到运行时进行校验',
+          '类型共享后任何历史数据和旧客户端都自动兼容',
+          '编译期减少重复定义与部分漂移，同时需要管理依赖和发布边界，并补运行时校验',
+          'Monorepo 必须让所有服务每次一起部署',
+          'TypeScript 类型会随 JSON 自动传到运行时进行校验',
         ],
         answer: 1,
         explain:

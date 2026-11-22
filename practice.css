@@ -1,12 +1,14 @@
 :host {
   color-scheme: light;
-  --ink: #182d2a;
-  --mute: #4b625b;
-  --brand: #12604e;
-  --paper: #f7f8f3;
-  --line: #cbd6cd;
+  /* Inherit the shared palette from :root; these are the fallbacks. */
+  --ink: var(--text, #182d2a);
+  --mute: var(--text-light, #4b625b);
+  --brand: var(--primary, #12604e);
+  --paper: var(--bg, #f7f8f3);
+  --line: var(--border, #cbd6cd);
   --white: #fff;
   --lime: #d9f596;
+  --focus: var(--orange, #b36118);
 }
 * {
   box-sizing: border-box;
@@ -38,7 +40,7 @@ a:focus-visible,
 summary:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #b36118;
+  outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
 button {
@@ -430,16 +432,16 @@ pre {
 .source-link {
   display: block;
   margin: 8px 0;
-  color: #12604e;
+  color: var(--brand);
   overflow-wrap: anywhere;
 }
 .source-item {
   padding: 10px 15px;
-  border-bottom: 1px solid #cbd6cd;
+  border-bottom: 1px solid var(--line);
 }
 .source-item > a {
   display: block;
-  color: #12604e;
+  color: var(--brand);
   font-size: 14px;
   overflow-wrap: anywhere;
 }
