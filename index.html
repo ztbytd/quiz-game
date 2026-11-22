@@ -6,669 +6,113 @@
 <title>面试闯关 · 前端勇士的冒险</title>
 <style>
 :root {
-  --primary: #58cc02;
-  --primary-dark: #46a302;
-  --primary-light: #d7ffb8;
-  --blue: #1cb0f6;
-  --blue-dark: #0a92d9;
-  --purple: #ce82ff;
-  --purple-dark: #a860e0;
-  --red: #ff4b4b;
-  --red-dark: #e03838;
-  --orange: #ff9600;
-  --gold: #ffc800;
-  --bg: #f7f7f7;
-  --card-bg: #ffffff;
-  --text: #3c3c3c;
-  --text-light: #777777;
-  --border: #e5e5e5;
-  --shadow: 0 2px 0 rgba(0,0,0,0.1);
-  --shadow-lg: 0 4px 0 rgba(0,0,0,0.15);
-  --radius: 16px;
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* ============ 顶部状态栏 ============ */
-.top-bar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
-  padding: 12px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: var(--shadow);
-}
-
-.top-bar .title {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.top-bar .stats {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-
-.stat-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 700;
-  font-size: 14px;
-  padding: 6px 14px;
-  border-radius: 20px;
-  background: #f0f0f0;
-}
-
-.stat-pill.hearts { color: var(--red); }
-.stat-pill.xp { color: var(--gold); }
-.stat-pill.streak { color: var(--orange); }
-
-.stat-pill .icon { font-size: 18px; }
-
-/* ============ 关卡地图 ============ */
-.map-container {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 32px 20px 100px;
-  position: relative;
-}
-
-.map-path {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-}
-
-.level-node {
-  position: relative;
-  margin-bottom: 28px;
-  z-index: 1;
-}
-
-.level-btn {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  font-size: 28px;
-  font-weight: 800;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  transition: transform 0.15s;
-  box-shadow: var(--shadow-lg);
-}
-
-.level-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.level-btn:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow: var(--shadow);
-}
-
-.level-btn.completed {
-  background: var(--primary);
-  border-bottom: 4px solid var(--primary-dark);
-}
-
-.level-btn.current {
-  background: var(--gold);
-  border-bottom: 4px solid #e0b000;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.level-btn.locked {
-  background: #c8c8c8;
-  border-bottom: 4px solid #aaa;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-}
-
-.level-btn .star-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: var(--blue);
-  color: white;
-  border-radius: 12px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 800;
-  border: 2px solid white;
-}
-
-.level-btn .lock-icon {
-  font-size: 24px;
-  opacity: 0.7;
-}
-
-/* 连接线 */
-.connector {
-  width: 4px;
-  height: 24px;
-  background: #ddd;
-  margin: -14px 0 -14px 0;
-  border-radius: 2px;
-}
-
-.connector.done { background: var(--primary); }
-
-/* 关卡标签 */
-.level-label {
-  position: absolute;
-  left: 90px;
-  top: 50%;
-  transform: translateY(-50%);
-  white-space: nowrap;
-}
-
-.level-label .name {
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--text);
-}
-
-.level-label .desc {
-  font-size: 12px;
-  color: var(--text-light);
-  margin-top: 2px;
-}
-
-.level-label .tag {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 10px;
-  margin-top: 4px;
-}
-
-.tag-easy { background: var(--primary-light); color: var(--primary-dark); }
-.tag-medium { background: #fff3d6; color: #c4860a; }
-.tag-hard { background: #ffe0e0; color: var(--red-dark); }
-.tag-boss { background: #f0e0ff; color: var(--purple-dark); }
-
-/* 交替左右 */
-.level-node:nth-child(even) .level-label {
-  left: auto;
-  right: 90px;
-  text-align: right;
-}
-
-/* ============ 答题界面 ============ */
-.quiz-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.3);
-  z-index: 200;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.quiz-overlay.active { display: flex; }
-
-.quiz-card {
-  background: var(--card-bg);
-  border-radius: 24px;
-  max-width: 640px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-  animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.quiz-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.quiz-header .progress-bar {
-  flex: 1;
-  height: 10px;
-  background: #eee;
-  border-radius: 5px;
-  margin-right: 16px;
-  overflow: hidden;
-}
-
-.quiz-header .progress-fill {
-  height: 100%;
-  background: var(--primary);
-  border-radius: 5px;
-  transition: width 0.3s;
-}
-
-.quiz-header .close-btn {
-  background: none;
-  border: none;
-  font-size: 22px;
-  cursor: pointer;
-  color: var(--text-light);
-  padding: 4px 8px;
-}
-
-.quiz-body {
-  padding: 24px;
-}
-
-.question-type {
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--blue);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 8px;
-}
-
-.question-text {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1.5;
-  margin-bottom: 24px;
-}
-
-.options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.option-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  border: 2px solid var(--border);
-  border-radius: 16px;
-  background: white;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-  transition: all 0.15s;
-  text-align: left;
-  line-height: 1.4;
-}
-
-.option-btn:hover {
-  border-color: var(--blue);
-  background: #f0faff;
-}
-
-.option-btn .opt-key {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 14px;
-  color: var(--text-light);
-  flex-shrink: 0;
-}
-
-.option-btn.selected {
-  border-color: var(--blue);
-  background: #f0faff;
-}
-
-.option-btn.selected .opt-key {
-  border-color: var(--blue);
-  background: var(--blue);
-  color: white;
-}
-
-.option-btn.correct {
-  border-color: var(--primary);
-  background: var(--primary-light);
-}
-
-.option-btn.correct .opt-key {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: white;
-}
-
-.option-btn.wrong {
-  border-color: var(--red);
-  background: #ffe0e0;
-}
-
-.option-btn.wrong .opt-key {
-  border-color: var(--red);
-  background: var(--red);
-  color: white;
-}
-
-/* 简答题输入 */
-.text-input {
-  width: 100%;
-  padding: 16px;
-  border: 2px solid var(--border);
-  border-radius: 16px;
-  font-size: 15px;
-  font-family: inherit;
-  min-height: 100px;
-  resize: vertical;
-  transition: border-color 0.15s;
-  line-height: 1.5;
-}
-
-.text-input:focus {
-  outline: none;
-  border-color: var(--blue);
-}
-
-/* 判断题 */
-.true-false {
-  display: flex;
-  gap: 12px;
-}
-
-.true-false .option-btn {
-  flex: 1;
-  justify-content: center;
-}
-
-/* 答题反馈 */
-.feedback {
-  margin-top: 20px;
-  padding: 16px 20px;
-  border-radius: 16px;
-  display: none;
-  animation: slideUp 0.2s ease;
-}
-
-.feedback.show { display: block; }
-
-.feedback.correct {
-  background: var(--primary-light);
-  border: 2px solid var(--primary);
-}
-
-.feedback.wrong {
-  background: #ffe0e0;
-  border: 2px solid var(--red);
-}
-
-.feedback .result-icon {
-  font-size: 20px;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-
-.feedback.correct .result-icon { color: var(--primary-dark); }
-.feedback.wrong .result-icon { color: var(--red-dark); }
-
-.feedback .explanation {
-  font-size: 14px;
-  color: var(--text);
-  line-height: 1.6;
-}
-
-.feedback .explanation strong {
-  color: var(--text);
-}
-
-/* 底部按钮 */
-.quiz-footer {
-  padding: 16px 24px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.btn {
-  padding: 12px 32px;
-  border: none;
-  border-radius: 14px;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-
-.btn:active { transform: translateY(1px); }
-
-.btn-primary {
-  background: var(--primary);
-  color: white;
-  border-bottom: 4px solid var(--primary-dark);
-}
-
-.btn-primary:hover { background: var(--primary-dark); }
-.btn-primary:disabled {
-  background: #ccc;
-  border-bottom-color: #aaa;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: #fff;
-  color: var(--blue);
-  border: 2px solid var(--border);
-}
-
-.btn-secondary:hover { border-color: var(--blue); }
-
-/* ============ 通关动画 ============ */
-.victory-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 300;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.victory-overlay.active { display: flex; }
-
-.victory-card {
-  background: white;
-  border-radius: 24px;
-  padding: 40px;
-  max-width: 400px;
-  width: 90%;
-  text-align: center;
-  animation: bounceIn 0.5s ease;
-}
-
-@keyframes bounceIn {
-  0% { transform: scale(0.5); opacity: 0; }
-  60% { transform: scale(1.05); }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.victory-card .trophy {
-  font-size: 64px;
-  margin-bottom: 12px;
-  animation: trophyShake 0.8s ease;
-}
-
-@keyframes trophyShake {
-  0%, 100% { transform: rotate(0); }
-  25% { transform: rotate(-15deg); }
-  75% { transform: rotate(15deg); }
-}
-
-.victory-card h2 {
-  font-size: 24px;
-  font-weight: 800;
-  margin-bottom: 8px;
-  color: var(--text);
-}
-
-.victory-card .subtitle {
-  font-size: 14px;
-  color: var(--text-light);
-  margin-bottom: 24px;
-}
-
-.victory-card .rewards {
-  display: flex;
-  justify-content: center;
-  gap: 24px;
-  margin-bottom: 28px;
-}
-
-.reward-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.reward-item .reward-icon { font-size: 32px; }
-.reward-item .reward-val { font-size: 18px; font-weight: 800; }
-.reward-item .reward-label { font-size: 11px; color: var(--text-light); }
-
-/* ============ 成就系统 ============ */
-.achievement-toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  background: var(--purple);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 16px;
-  font-weight: 700;
-  font-size: 14px;
-  z-index: 400;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: transform 0.3s ease;
-}
-
-.achievement-toast.show {
-  transform: translateX(-50%) translateY(0);
-}
-
-/* ============ 开场画面 ============ */
-.start-screen {
-  text-align: center;
-  padding: 60px 20px;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.start-screen .hero-icon {
-  font-size: 72px;
-  margin-bottom: 16px;
-  animation: bounceIn 0.6s ease;
-}
-
-.start-screen h1 {
-  font-size: 28px;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-
-.start-screen .subtitle {
-  font-size: 16px;
-  color: var(--text-light);
-  margin-bottom: 32px;
-}
-
-.start-screen .player-card {
-  background: white;
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: var(--shadow);
-  margin-bottom: 24px;
-  text-align: left;
-}
-
-.start-screen .player-card .row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.start-screen .player-card .row:last-child { border-bottom: none; }
-
-.start-screen .player-card .label { color: var(--text-light); font-size: 14px; }
-.start-screen .player-card .value { font-weight: 700; font-size: 14px; }
-
-/* 提示气泡 */
-.tip-bubble {
-  background: #fff;
-  border: 2px solid var(--border);
-  border-radius: 16px;
-  padding: 14px 18px;
-  font-size: 14px;
-  color: var(--text-light);
-  margin: 16px 0;
-  position: relative;
-}
-
-.tip-bubble::before {
-  content: '💡';
-  margin-right: 6px;
-}
-
-/* 响应式 */
-@media (max-width: 480px) {
-  .level-label .desc { display: none; }
-  .level-btn { width: 60px; height: 60px; font-size: 22px; }
-  .question-text { font-size: 17px; }
-  .top-bar .title { font-size: 15px; }
-  .stat-pill { font-size: 12px; padding: 4px 10px; }
-}
+  --primary: #58cc02; --primary-dark: #46a302; --primary-light: #d7ffb8;
+  --blue: #1cb0f6; --blue-dark: #0a92d9; --purple: #ce82ff; --purple-dark: #a860e0;
+  --red: #ff4b4b; --red-dark: #e03838; --orange: #ff9600; --gold: #ffc800;
+  --bg: #f7f7f7; --card-bg: #fff; --text: #3c3c3c; --text-light: #777;
+  --border: #e5e5e5; --shadow: 0 2px 0 rgba(0,0,0,.1); --shadow-lg: 0 4px 0 rgba(0,0,0,.15);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;user-select:none;-webkit-user-select:none}
+.top-bar{position:sticky;top:0;z-index:100;background:var(--card-bg);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow)}
+.top-bar .title{font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px}
+.top-bar .stats{display:flex;gap:16px;align-items:center}
+.stat-pill{display:flex;align-items:center;gap:6px;font-weight:700;font-size:14px;padding:6px 14px;border-radius:20px;background:#f0f0f0}
+.stat-pill.hearts{color:var(--red)} .stat-pill.xp{color:var(--gold)} .stat-pill.streak{color:var(--orange)}
+.stat-pill .icon{font-size:18px}
+.map-container{max-width:720px;margin:0 auto;padding:32px 20px 100px}
+.map-path{display:flex;flex-direction:column;align-items:center}
+.level-node{position:relative;margin-bottom:28px;z-index:1}
+.level-btn{width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;font-size:28px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;position:relative;transition:transform .15s;box-shadow:var(--shadow-lg)}
+.level-btn:hover:not(:disabled){transform:translateY(-2px)}
+.level-btn:active:not(:disabled){transform:translateY(2px);box-shadow:var(--shadow)}
+.level-btn.completed{background:var(--primary);border-bottom:4px solid var(--primary-dark)}
+.level-btn.current{background:var(--gold);border-bottom:4px solid #e0b000;animation:pulse 1.5s ease-in-out infinite}
+.level-btn.locked{background:#c8c8c8;border-bottom:4px solid #aaa;cursor:not-allowed;opacity:.6}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.level-btn .star-badge{position:absolute;top:-8px;right:-8px;background:var(--blue);color:#fff;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:800;border:2px solid #fff}
+.level-btn .lock-icon{font-size:24px;opacity:.7}
+.connector{width:4px;height:24px;background:#ddd;margin:-14px 0 -14px 0;border-radius:2px}
+.connector.done{background:var(--primary)}
+.level-label{position:absolute;left:90px;top:50%;transform:translateY(-50%);white-space:nowrap}
+.level-label .name{font-size:15px;font-weight:800}
+.level-label .desc{font-size:12px;color:var(--text-light);margin-top:2px}
+.level-label .tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:4px}
+.tag-easy{background:var(--primary-light);color:var(--primary-dark)}
+.tag-medium{background:#fff3d6;color:#c4860a}
+.tag-hard{background:#ffe0e0;color:var(--red-dark)}
+.tag-boss{background:#f0e0ff;color:var(--purple-dark)}
+.level-node:nth-child(even) .level-label{left:auto;right:90px;text-align:right}
+.quiz-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.3);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.quiz-overlay.active{display:flex}
+.quiz-card{background:var(--card-bg);border-radius:24px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.2);animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.quiz-header{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.quiz-header .progress-bar{flex:1;height:10px;background:#eee;border-radius:5px;margin-right:16px;overflow:hidden}
+.quiz-header .progress-fill{height:100%;background:var(--primary);border-radius:5px;transition:width .3s}
+.quiz-header .close-btn{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-light);padding:4px 8px}
+.quiz-body{padding:24px}
+.question-type{font-size:12px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.question-text{font-size:20px;font-weight:700;line-height:1.5;margin-bottom:24px}
+.options{display:flex;flex-direction:column;gap:12px}
+.option-btn{display:flex;align-items:center;gap:12px;padding:16px 20px;border:2px solid var(--border);border-radius:16px;background:#fff;cursor:pointer;font-size:15px;font-weight:600;color:var(--text);transition:all .15s;text-align:left;line-height:1.4}
+.option-btn:hover{border-color:var(--blue);background:#f0faff}
+.option-btn .opt-key{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--text-light);flex-shrink:0}
+.option-btn.selected{border-color:var(--blue);background:#f0faff}
+.option-btn.selected .opt-key{border-color:var(--blue);background:var(--blue);color:#fff}
+.option-btn.correct{border-color:var(--primary);background:var(--primary-light)}
+.option-btn.correct .opt-key{border-color:var(--primary);background:var(--primary);color:#fff}
+.option-btn.wrong{border-color:var(--red);background:#ffe0e0}
+.option-btn.wrong .opt-key{border-color:var(--red);background:var(--red);color:#fff}
+.text-input{width:100%;padding:16px;border:2px solid var(--border);border-radius:16px;font-size:15px;font-family:inherit;min-height:100px;resize:vertical;transition:border-color .15s;line-height:1.5}
+.text-input:focus{outline:none;border-color:var(--blue)}
+.true-false{display:flex;gap:12px}
+.true-false .option-btn{flex:1;justify-content:center}
+.feedback{margin-top:20px;padding:16px 20px;border-radius:16px;display:none}
+.feedback.show{display:block;animation:slideUp .2s ease}
+.feedback.correct{background:var(--primary-light);border:2px solid var(--primary)}
+.feedback.wrong{background:#ffe0e0;border:2px solid var(--red)}
+.feedback .result-icon{font-size:20px;font-weight:800;margin-bottom:8px}
+.feedback.correct .result-icon{color:var(--primary-dark)}
+.feedback.wrong .result-icon{color:var(--red-dark)}
+.feedback .explanation{font-size:14px;line-height:1.6}
+.feedback .explanation strong{color:var(--text)}
+.quiz-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.btn{padding:12px 32px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;transition:transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--primary);color:#fff;border-bottom:4px solid var(--primary-dark)}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-primary:disabled{background:#ccc;border-bottom-color:#aaa;cursor:not-allowed}
+.victory-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:center;justify-content:center}
+.victory-overlay.active{display:flex}
+.victory-card{background:#fff;border-radius:24px;padding:40px;max-width:400px;width:90%;text-align:center;animation:bi .5s ease}
+@keyframes bi{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+.victory-card .trophy{font-size:64px;margin-bottom:12px;animation:ts .8s ease}
+@keyframes ts{0%,100%{transform:rotate(0)}25%{transform:rotate(-15deg)}75%{transform:rotate(15deg)}}
+.victory-card h2{font-size:24px;font-weight:800;margin-bottom:8px}
+.victory-card .subtitle{font-size:14px;color:var(--text-light);margin-bottom:24px}
+.victory-card .rewards{display:flex;justify-content:center;gap:24px;margin-bottom:28px}
+.reward-item{display:flex;flex-direction:column;align-items:center;gap:4px}
+.reward-item .reward-icon{font-size:32px}
+.reward-item .reward-val{font-size:18px;font-weight:800}
+.reward-item .reward-label{font-size:11px;color:var(--text-light)}
+.achievement-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--purple);color:#fff;padding:12px 24px;border-radius:16px;font-weight:700;font-size:14px;z-index:400;box-shadow:0 4px 16px rgba(0,0,0,.2);display:flex;align-items:center;gap:8px;transition:transform .3s ease}
+.achievement-toast.show{transform:translateX(-50%) translateY(0)}
+.start-screen{text-align:center;padding:60px 20px;max-width:600px;margin:0 auto}
+.start-screen .hero-icon{font-size:72px;margin-bottom:16px;animation:bi .6s ease}
+.start-screen h1{font-size:28px;font-weight:800;margin-bottom:8px}
+.start-screen .subtitle{font-size:16px;color:var(--text-light);margin-bottom:32px}
+.start-screen .player-card{background:#fff;border-radius:20px;padding:24px;box-shadow:var(--shadow);margin-bottom:24px;text-align:left}
+.start-screen .player-card .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0}
+.start-screen .player-card .row:last-child{border-bottom:none}
+.start-screen .player-card .label{color:var(--text-light);font-size:14px}
+.start-screen .player-card .value{font-weight:700;font-size:14px}
+.tip-bubble{background:#fff;border:2px solid var(--border);border-radius:16px;padding:14px 18px;font-size:14px;color:var(--text-light);margin:16px 0}
+.tip-bubble::before{content:'\1F4A1';margin-right:6px}
+@media(max-width:480px){.level-label .desc{display:none}.level-btn{width:60px;height:60px;font-size:22px}.question-text{font-size:17px}.top-bar .title{font-size:15px}.stat-pill{font-size:12px;padding:4px 10px}}
 </style>
 </head>
 <body>
-
-<!-- 顶部状态栏 -->
 <div class="top-bar">
   <div class="title">⚔️ 前端勇士的面试冒险</div>
   <div class="stats">
@@ -677,805 +121,173 @@ body {
     <div class="stat-pill streak"><span class="icon">🔥</span><span id="streak">0</span></div>
   </div>
 </div>
-
-<!-- 开场画面 -->
 <div id="startScreen" class="start-screen">
   <div class="hero-icon">🛡️</div>
   <h1>前端勇士的面试冒险</h1>
-  <p class="subtitle">基于你的简历量身定制 · 闯关式面试模拟</p>
-
+  <p class="subtitle">100+ 道八股文 · 10个关卡 · 闯关式面试模拟</p>
   <div class="player-card">
     <div class="row"><span class="label">玩家</span><span class="value">叶正雄</span></div>
     <div class="row"><span class="label">职业</span><span class="value">高级前端工程师（5年）</span></div>
-    <div class="row"><span class="label">待解锁关卡</span><span class="value">8 个</span></div>
+    <div class="row"><span class="label">待解锁关卡</span><span class="value">10 个</span></div>
+    <div class="row"><span class="label">题目总数</span><span class="value">100+ 道</span></div>
     <div class="row"><span class="label">目标</span><span class="value">下周一面试 · 满状态出战</span></div>
   </div>
-
-  <div class="tip-bubble">每关 3~5 道题，答错扣 1 颗心，通关获得 XP 和星星。连续答对会有连击加成！</div>
-
+  <div class="tip-bubble">覆盖 JS / CSS / 计算机网络 / Vue / React / Node.js / 项目实战 / 面试BOSS，每题答案都适合直接口答！</div>
   <button class="btn btn-primary" onclick="startGame()">开始冒险</button>
 </div>
-
-<!-- 关卡地图 -->
-<div id="mapContainer" class="map-container" style="display:none;">
-  <div class="map-path" id="mapPath"></div>
-</div>
-
-<!-- 答题界面 -->
-<div id="quizOverlay" class="quiz-overlay">
-  <div class="quiz-card">
-    <div class="quiz-header">
-      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-      <button class="close-btn" onclick="quitQuiz()">✕</button>
-    </div>
-    <div class="quiz-body" id="quizBody"></div>
-    <div class="quiz-footer" id="quizFooter">
-      <span style="color:var(--text-light);font-size:13px;" id="quizHint">选择你认为正确的答案</span>
-      <button class="btn btn-primary" id="checkBtn" onclick="checkAnswer()" disabled>确认</button>
-    </div>
-  </div>
-</div>
-
-<!-- 通关画面 -->
-<div id="victoryOverlay" class="victory-overlay">
-  <div class="victory-card">
-    <div class="trophy" id="trophyIcon">🏆</div>
-    <h2 id="victoryTitle">关卡通过！</h2>
-    <p class="subtitle" id="victorySubtitle">你离面试成功又近了一步</p>
-    <div class="rewards">
-      <div class="reward-item">
-        <div class="reward-icon">⭐</div>
-        <div class="reward-val" id="rewardXp">+50</div>
-        <div class="reward-label">经验值</div>
-      </div>
-      <div class="reward-item">
-        <div class="reward-icon">🌟</div>
-        <div class="reward-val" id="rewardStars">3</div>
-        <div class="reward-label">星数</div>
-      </div>
-    </div>
-    <button class="btn btn-primary" onclick="closeVictory()">继续冒险</button>
-  </div>
-</div>
-
-<!-- 成就提示 -->
-<div id="achievementToast" class="achievement-toast">
-  <span>🏅</span><span id="achievementText">成就解锁</span>
-</div>
-
+<div id="mapContainer" class="map-container" style="display:none;"><div class="map-path" id="mapPath"></div></div>
+<div id="quizOverlay" class="quiz-overlay"><div class="quiz-card">
+  <div class="quiz-header"><div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div><button class="close-btn" onclick="quitQuiz()">✕</button></div>
+  <div class="quiz-body" id="quizBody"></div>
+  <div class="quiz-footer"><span style="color:var(--text-light);font-size:13px" id="quizHint">选择你认为正确的答案</span><button class="btn btn-primary" id="checkBtn" disabled>确认</button></div>
+</div></div>
+<div id="victoryOverlay" class="victory-overlay"><div class="victory-card">
+  <div class="trophy" id="trophyIcon">🏆</div>
+  <h2 id="victoryTitle">关卡通过！</h2>
+  <p class="subtitle" id="victorySubtitle">你离面试成功又近了一步</p>
+  <div class="rewards"><div class="reward-item"><div class="reward-icon">⭐</div><div class="reward-val" id="rewardXp">+50</div><div class="reward-label">经验值</div></div><div class="reward-item"><div class="reward-icon">🌟</div><div class="reward-val" id="rewardStars">3</div><div class="reward-label">星数</div></div></div>
+  <button class="btn btn-primary" onclick="closeVictory()">继续冒险</button>
+</div></div>
+<div id="achievementToast" class="achievement-toast"><span>🏅</span><span id="achievementText">成就解锁</span></div>
 <script>
-// ============ 游戏数据 ============
-const LEVELS = [
-  {
-    id: 0,
-    name: "技术基础村",
-    desc: "Vue / React / TS 基础概念",
-    difficulty: "easy",
-    icon: "🌱",
-    questions: [
-      {
-        type: "choice",
-        question: "Vue3 相比 Vue2 的 Composition API，最大的优势是什么？",
-        options: [
-          "A) 运行时性能提升10倍以上",
-          "B) 逻辑复用更灵活，按功能组织代码而非按选项类型",
-          "C) 不再需要 Vue Router，路由内置",
-          "D) 完全兼容 Vue2 的所有写法，零迁移成本"
-        ],
-        answer: 1,
-        explanation: "Composition API 的核心优势是<strong>按逻辑功能组织代码</strong>，解决了 Options API 下相关逻辑散落在 data/methods/computed 中的问题。逻辑复用从 mixin 升级为 composable 函数，更清晰、更安全（无命名冲突）。性能提升确实有，但不是主要卖点。"
-      },
-      {
-        type: "choice",
-        question: "React 中 useMemo 和 useCallback 的区别？什么场景下应该使用？",
-        options: [
-          "A) 没有区别，只是名字不同",
-          "B) useMemo 缓存计算结果，useCallback 缓存函数引用；用于避免子组件不必要的重新渲染",
-          "C) useMemo 只能用于数字，useCallback 只能用于字符串",
-          "D) 两者都应该在每次渲染时调用以确保最新"
-        ],
-        answer: 1,
-        explanation: "<strong>useMemo</strong> 缓存的是<strong>计算结果值</strong>，<strong>useCallback</strong> 缓存的是<strong>函数引用</strong>。核心场景：把值/函数传给被 React.memo 包裹的子组件时，避免因引用变化触发子组件重渲染。<strong>不要滥用</strong>——缓存本身有开销，简单计算或未传给子组件的场景不需要。"
-      },
-      {
-        type: "choice",
-        question: "TypeScript 中 type 和 interface 的区别？你项目中更倾向用哪个？",
-        options: [
-          "A) 完全一样，随便用",
-          "B) interface 只能描述对象类型，type 可以描述联合、交叉、元组等；interface 支持声明合并，type 不支持",
-          "C) type 是编译时的，interface 是运行时的",
-          "D) interface 性能更好，应该永远用 interface"
-        ],
-        answer: 1,
-        explanation: "<strong>interface</strong> 支持声明合并（同名自动合并），适合定义对象/类的形状。<strong>type</strong> 更灵活，支持联合类型、交叉类型、映射类型等。实际项目中：API 响应类型、组件 Props 用 interface；工具类型、联合类型用 type。你的简历中提到 BFF 层共享 TypeScript 类型定义，面试官可能会追问这里的实践。"
-      },
-      {
-        type: "choice",
-        question: "Vue3 的 ref 和 reactive 有什么区别？什么场景下用哪个？",
-        options: [
-          "A) 完全等价，用哪个都行",
-          "B) ref 用于基本类型，reactive 用于对象；ref 需要 .value 访问，reactive 直接访问；实际推荐用 ref 统一管理，避免 reactive 的解构丢失响应性问题",
-          "C) ref 是同步的，reactive 是异步的",
-          "D) reactive 比 ref 性能好10倍"
-        ],
-        answer: 1,
-        explanation: "<strong>ref</strong> 包装基本类型和对象，需要 <code>.value</code> 访问（模板中自动解包）。<strong>reactive</strong> 只能用于对象，直接访问属性，但<strong>解构后会丢失响应性</strong>（需要 toRefs）。社区趋势是推荐统一用 ref，心智负担更小。"
-      },
-      {
-        type: "truefalse",
-        question: "Vite 比 Webpack 快是因为它使用了 Rust 重写了打包工具。",
-        answer: false,
-        explanation: "Vite 快的核心原因是<strong>利用浏览器原生 ES Module</strong>——开发时不打包，按需编译（esbuild 做预构建）。生产环境打包用的还是 Rollup。esbuild 确实是 Go 写的，但不是 Rust，也不是 Vite 快的全部原因。"
-      }
-    ]
-  },
-  {
-    id: 1,
-    name: "Node.js 迁迁洞",
-    desc: "PHP → Node.js 接口迁移实战",
-    difficulty: "medium",
-    icon: "🔀",
-    questions: [
-      {
-        type: "choice",
-        question: "你在迁移 19 个 PHP 接口到 Node.js/TS 时，分层架构是怎么设计的？为什么这样分？",
-        options: [
-          "A) 只分 Controller 和数据库查询两层就够了",
-          "B) 按 Controller / AO / Util / Middleware 分层，Controller 处理请求响应，AO 处理业务逻辑，Util 放工具函数，Middleware 统一处理鉴权和错误码",
-          "C) 所有逻辑写在路由里，简单直接",
-          "D) 按 MVC 分，Model 负责一切业务逻辑"
-        ],
-        answer: 1,
-        explanation: "你的简历中写的是 <strong>Controller / AO / Util / Middleware</strong> 分层。面试时要能说清楚：<strong>Controller</strong> 只做参数校验和响应封装；<strong>AO（Application Object）</strong> 承载核心业务逻辑，调用下游 RPC；<strong>Middleware</strong> 统一处理 OA 登录态校验、错误码转义、监控上报；<strong>Util</strong> 放纯函数工具。这种分层让迁移时职责清晰，也便于补齐测试和监控。"
-      },
-      {
-        type: "choice",
-        question: "迁移过程中处理 protobuf / Long / Buffer 类型转换时，遇到了什么坑？",
-        options: [
-          "A) 没遇到任何问题，类型转换都很顺利",
-          "B) PHP 的松散类型和 TS 强类型之间的差异，Long 类型在 JSON 序列化时精度丢失，Buffer 编码不一致，需要统一封装类型转换工具",
-          "C) 只需要把 PHP 的 array 换成 TS 的 object 就行了",
-          "D) protobuf 在 Node.js 中不能使用"
-        ],
-        answer: 1,
-        explanation: "关键坑点：<strong>Long 类型</strong>（64位整数）在 JSON 中会精度丢失（JS Number 最大安全整数是 2^53-1），需要用 long 库或 BigInt；<strong>Buffer 编码</strong>在 PHP 和 Node.js 之间可能不一致（hex/base64/utf8）；<strong>protobuf</strong> 的字段在 RPC 调用时需要严格匹配类型定义。面试时可以举例说明你封装了统一的类型转换工具。"
-      },
-      {
-        type: "choice",
-        question: "6周内完成 9000+ 行代码迁移并零事故上线，你做了哪些保障措施？",
-        options: [
-          "A) 直接改完就上线，出了问题再修",
-          "B) 补齐监控上报、细粒度权限管控、自动化部署；接口逐一对比验证；灰度切流",
-          "C) 只做了单元测试就够了",
-          "D) 让 QA 全手动回归测试"
-        ],
-        answer: 1,
-        explanation: "你的简历提到：<strong>补齐监控上报、细粒度权限管控与自动化部署能力</strong>。面试时可以展开：1) 接口逐一对比 PHP 和 Node.js 的输入输出一致性；2) 灰度切流，先小流量验证再全量；3) 监控告警确保异常能第一时间发现；4) 回滚方案准备好。"
-      },
-      {
-        type: "text",
-        question: "如果面试官问「为什么不直接重写，而要迁移？」你会怎么回答？",
-        answer: "迁移",
-        explanation: "<strong>参考思路</strong>：迁移而非重写，因为 1) 业务逻辑是经过验证的，重写有业务理解偏差风险；2) 迁移可以逐接口进行，风险可控，随时可回滚；3) 核心目标是<strong>技术栈统一</strong>（前端团队同时维护前后端）和<strong>接入内部基础设施</strong>（监控、部署、权限体系），不是业务变更。重写是把洗澡水和婴儿一起倒掉，迁移是换盆但不伤花。"
-      }
-    ]
-  },
-  {
-    id: 2,
-    name: "文件上传峡谷",
-    desc: "大文件分片上传全链路",
-    difficulty: "medium",
-    icon: "📦",
-    questions: [
-      {
-        type: "choice",
-        question: "你实现的大文件分片上传中，Web Worker 的作用是什么？为什么不在主线程计算 Hash？",
-        options: [
-          "A) Web Worker 负责网络请求，减轻主线程压力",
-          "B) Web Worker 异步计算文件 Hash，避免阻塞主线程导致页面卡顿；用户在上传计算期间仍可正常操作界面",
-          "C) Web Worker 负责文件压缩",
-          "D) Web Worker 负责分片切割"
-        ],
-        answer: 1,
-        explanation: "大文件 Hash 计算（如 MD5/SHA）是 CPU 密集型操作，在主线程执行会<strong>完全阻塞 UI</strong>——页面无法响应任何交互。用 <strong>Web Worker</strong> 把计算移到子线程，主线程保持流畅。计算完 Hash 后用于<strong>秒传判断</strong>——如果服务端已有相同 Hash 的文件，直接返回成功，不用再传。"
-      },
-      {
-        type: "choice",
-        question: "Redis 分布式锁在你的分片上传中怎么用的？为什么需要它？",
-        options: [
-          "A) 加锁让上传更安全，防止用户误操作",
-          "B) 防止多个请求同时合并同一个文件的分片，避免分片冲突或重复写入；用 SET NX EX 实现互斥锁，加过期时间防死锁",
-          "C) 用 Redis 锁来限制上传速度",
-          "D) 分布式锁是为了防止黑客攻击"
-        ],
-        answer: 1,
-        explanation: "<strong>核心场景</strong>：多个分片上传请求并发到达，可能同时触发合并操作。分布式锁确保<strong>只有一个请求执行合并</strong>。实现：<code>SET key value NX EX 30</code>（不存在才设置 + 30秒过期）。你简历中提到的<strong>延迟双删</strong>策略也在这里——合并完成后先删锁，延迟再删一次，防止并发场景下锁被误删。"
-      },
-      {
-        type: "choice",
-        question: "上传成功率从 70% 提升到 99%，你做了哪些关键优化？",
-        options: [
-          "A) 换了更快的服务器",
-          "B) 分片上传 + 断点续传 + 动态并发控制 + 秒传 + 错误重试机制",
-          "C) 只加大了超时时间",
-          "D) 让用户用浏览器自带的上传功能"
-        ],
-        answer: 1,
-        explanation: "关键组合拳：<strong>分片</strong>降低单次失败影响范围；<strong>断点续传</strong>让网络中断后可恢复；<strong>动态并发</strong>根据网络状况调整并发数；<strong>秒传</strong>通过 Hash 判断避免重复上传；<strong>重试</strong>对失败分片自动重试。面试时可以展开讲动态并发的逻辑——网络好时加并发，差时减并发。"
-      },
-      {
-        type: "truefalse",
-        question: "断点续传的实现思路是：上传前先请求服务端查询已上传的分片列表，只上传缺失的分片。",
-        answer: true,
-        explanation: "正确。流程：1) 前端计算文件 Hash；2) 用 Hash 查询服务端已有的分片；3) 只上传缺失的分片；4) 所有分片就绪后触发合并。你简历中的实现还包含了<strong>上传进度持久化</strong>——即使用户关闭页面再回来，也能恢复。"
-      }
-    ]
-  },
-  {
-    id: 3,
-    name: "权限系统堡垒",
-    desc: "三级权限模型设计",
-    difficulty: "hard",
-    icon: "🔐",
-    questions: [
-      {
-        type: "choice",
-        question: "你设计的「用户 > 部门 > 角色三级权限模型」，权限是怎么计算的？一个用户同时属于多个角色时怎么办？",
-        options: [
-          "A) 取第一个角色的权限",
-          "B) 多角色权限取并集合并；目录支持继承与显式覆盖；前端通过 PermissionGuard 组件统一渲染控制",
-          "C) 取所有角色权限的交集，最安全",
-          "D) 每个角色权限独立判断，不合并"
-        ],
-        answer: 1,
-        explanation: "<strong>并集合并</strong>是常见做法——用户拥有的权限是所有角色权限的超集。目录权限支持<strong>继承</strong>（子目录默认继承父目录）和<strong>显式覆盖</strong>（子目录可以单独设置）。前端用 <strong>PermissionGuard</strong> 组件包裹菜单/模块/按钮，集中管控权限逻辑，不散落到业务组件中。面试可能追问：显式覆盖和继承的优先级怎么处理？答：就近原则，显式设置覆盖继承值。"
-      },
-      {
-        type: "choice",
-        question: "Redis 缓存 + 延迟双删策略解决全量查 DB 的性能瓶颈，延迟双删的具体流程是什么？",
-        options: [
-          "A) 先删缓存，再更新数据库，再删缓存",
-          "B) 先删缓存 → 更新数据库 → 延迟一段时间再删一次缓存；解决并发读写导致的脏数据问题",
-          "C) 先更新数据库，再删缓存，删两次",
-          "D) 只删一次缓存就够了，延迟是浪费时间"
-        ],
-        answer: 1,
-        explanation: "<strong>延迟双删</strong>流程：1) <strong>先删缓存</strong>（让后续请求走 DB 拿最新值）；2) <strong>更新数据库</strong>；3) <strong>延迟 N 毫秒后再删一次缓存</strong>。第二次删除是为了解决：在步骤1和2之间，有并发请求把旧数据写回了缓存。延迟时间需要 > 一次 DB 写操作耗时。这是缓存一致性经典方案。"
-      },
-      {
-        type: "text",
-        question: "面试官追问：如果权限变更后缓存没有及时更新，用户看到了不该看的菜单，怎么办？",
-        answer: "缓存",
-        explanation: "<strong>参考思路</strong>：1) 权限变更时主动<strong>清除对应用户的权限缓存</strong>（通过用户ID定向清除）；2) 设置合理的 <strong>TTL 过期时间</strong>作为兜底（如5分钟）；3) 前端 PermissionGuard 做双重校验——不只是隐藏菜单，<strong>API 层也要校验权限</strong>，防止用户通过直接输入 URL 绕过；4) 后端接口做权限校验是最后一道防线。前端隐藏只是体验层面的，安全底线在后端。"
-      }
-    ]
-  },
-  {
-    id: 4,
-    name: "BFF 架构之塔",
-    desc: "Monorepo + BFF 层设计",
-    difficulty: "hard",
-    icon: "🏗️",
-    questions: [
-      {
-        type: "choice",
-        question: "你引入 BFF 层的动机是什么？解决了什么具体问题？",
-        options: [
-          "A) 因为 BFF 是行业趋势，大家都用",
-          "B) 前端直连多个异构下游（ERP、SSO、文件存储）导致耦合高、鉴权散乱；BFF 统一接口聚合与权限校验，后端变更对前端透明",
-          "C) 为了让项目看起来更复杂",
-          "D) 因为前端不能直接调后端接口"
-        ],
-        answer: 1,
-        explanation: "<strong>核心痛点</strong>：前端直连 ERP、SSO、文件存储等多个服务，每个服务有不同的鉴权方式和数据格式，前端处理这些导致<strong>耦合高 + 鉴权逻辑散乱</strong>。BFF 层把这些问题收敛：<strong>接口聚合</strong>（一个页面需要的数据 BFF 一次性返回）、<strong>统一鉴权</strong>（BFF 统一处理各下游的认证）、<strong>数据裁剪</strong>（只返回前端需要的字段）。"
-      },
-      {
-        type: "choice",
-        question: "Monorepo 管理前后端代码，共享 TypeScript 类型定义的好处是什么？有什么代价？",
-        options: [
-          "A) 没有代价，只有好处",
-          "B) 好处是接口契约在编译期对齐，消除类型漂移；代价是仓库管理复杂度增加，需要工具链支持（如 pnpm workspace），构建缓存需要配置",
-          "C) 共享类型定义会让性能变差",
-          "D) Monorepo 只能用在大公司"
-        ],
-        answer: 1,
-        explanation: "<strong>好处</strong>：前后端用同一套类型定义，改一个接口定义，前端立即编译报错，不用等联调时才发现。消除「文档说A，代码是B」的类型漂移问题。<strong>代价</strong>：需要 pnpm workspace / turborepo 等工具链；CI/CD 需要增量构建；代码权限控制更难（所有人看到所有代码）。"
-      },
-      {
-        type: "text",
-        question: "面试官问：BFF 层会不会成为单点瓶颈？你怎么保证它的可用性？",
-        answer: "可用性",
-        explanation: "<strong>参考思路</strong>：1) BFF 是<strong>无状态</strong>的（状态在 Redis/DB），可以水平扩展多实例；2) 配合 <strong>Nginx 负载均衡</strong> + <strong>PM2 进程管理</strong>（你简历中提到的），多进程多实例；3) <strong>熔断降级</strong>：下游服务不可用时 BFF 返回降级数据而非直接报错；4) <strong>监控告警</strong>：BFF 的响应时间、错误率需要重点监控。你简历中 Docker + GitLab CI 的部署体系也保证了快速回滚能力。"
-      }
-    ]
-  },
-  {
-    id: 5,
-    name: "支付风控迷宫",
-    desc: "微信支付分账与资金管控",
-    difficulty: "hard",
-    icon: "💰",
-    questions: [
-      {
-        type: "choice",
-        question: "微信支付分账中「分账方」「分账发起方」「分账接收方」三个角色的关系是什么？",
-        options: [
-          "A) 都是同一个商户的不同身份",
-          "B) 分账方是出钱方（特约商户），分账发起方是服务商（下发指令），分账接收方是拿钱方（平台、骑手等）",
-          "C) 分账方是平台，接收方是用户",
-          "D) 三个角色都是微信支付"
-        ],
-        answer: 1,
-        explanation: "以外卖为例：用户付30元 → 分账方（餐厅/特约商户）出22元 → 接收方（平台5元 + 骑手3元）。分账发起方（服务商）不碰钱，只下发分账指令。分账解决两个问题：<strong>合规</strong>（避免二清违规，钱不经过平台账户）和<strong>自动化</strong>（无需手动转账）。"
-      },
-      {
-        type: "choice",
-        question: "你的资金管控审批流覆盖了哪些环节？为什么高风险操作需要全链路审批？",
-        options: [
-          "A) 只在操作前审批一次就行",
-          "B) 覆盖去重、构建、回调、落地完整闭环；因为涉及资金操作，任何误操作都可能导致资金损失，需要审计可追溯",
-          "C) 审批流是为了让流程看起来正规",
-          "D) 只需要操作后审计就行"
-        ],
-        answer: 1,
-        explanation: "你的简历写的是<strong>「覆盖去重、构建、回调、落地完整闭环」</strong>。每个环节的意义：<strong>去重</strong>（防重复提交）、<strong>构建</strong>（组装审批参数）、<strong>回调</strong>（审批结果通知）、<strong>落地</strong>（审批通过后执行操作）。支付级别的要求是<strong>可审计、可追溯、可拦截</strong>——出了事能查到谁批的、谁操作的、中间哪步出的问题。"
-      },
-      {
-        type: "choice",
-        question: "Part-UAT 端到端自动化测试覆盖核心异常链路达 90%+，你设计了哪些关键测试场景？",
-        options: [
-          "A) 只测正常流程能跑通就行",
-          "B) 造数 → 风控处罚 → 分账发起 → 结果校验 → 数据清理全流程；覆盖重复分账、超比例分账、未授权分账等异常场景",
-          "C) 手动测试异常场景",
-          "D) 让运营人员自己测"
-        ],
-        answer: 1,
-        explanation: "你的简历描述了<strong>「串联造数、风控处罚、分账发起、结果校验、数据清理全流程」</strong>。面试时可以展开的关键异常场景：1) <strong>重复分账</strong>（同一订单分两次）；2) <strong>超比例分账</strong>（超过授权的最大比例）；3) <strong>未授权分账</strong>（商户未签署协议）；4) <strong>余额不足</strong>。每个场景验证错误码、拦截逻辑和数据一致性。"
-      }
-    ]
-  },
-  {
-    id: 6,
-    name: "性能优化冰原",
-    desc: "虚拟滚动 / 懒加载 / 缓存策略",
-    difficulty: "medium",
-    icon: "⚡",
-    questions: [
-      {
-        type: "choice",
-        question: "文件列表引入虚拟滚动，具体是怎么实现的？渲染了多少条数据时才需要虚拟滚动？",
-        options: [
-          "A) 渲染超过 50 条就需要虚拟滚动",
-          "B) 只渲染可视区域的节点（通常 20~50 条），通过 scrollTop 计算应该渲染的区间，配合定高/变高策略；通常数据量超过 1000 条时收益明显",
-          "C) 虚拟滚动就是把列表改成表格",
-          "D) 用 CSS overflow:scroll 就够了"
-        ],
-        answer: 1,
-        explanation: "<strong>核心原理</strong>：维护一个可视区域（viewport），根据 <code>scrollTop</code> 和行高计算 <code>startIndex</code> 和 <code>endIndex</code>，只渲染这个区间的 DOM。用一个占位元素撑起总高度维持滚动条。<strong>定高</strong>实现简单（index * height），<strong>变高</strong>需要缓存每行高度或用二分查找。面试追问：如何处理行高动态变化？答：维护一个行高缓存数组，渲染后更新实际高度。"
-      },
-      {
-        type: "choice",
-        question: "目录树懒加载策略是什么？展开节点时如何处理子节点为空的情况？",
-        options: [
-          "A) 首次加载就把整棵树拉下来缓存",
-          "B) 节点展开时才请求子节点数据，子节点为空时显示空状态提示并保持展开状态不变",
-          "C) 懒加载就是加 loading 动画",
-          "D) 目录树不能用懒加载"
-        ],
-        answer: 1,
-        explanation: "<strong>懒加载</strong>：节点展开时 <code>onExpand</code> 触发请求子节点，请求中显示 loading，成功后填充子节点数据。子节点为空时展示空状态（如「暂无文件」）。好处：避免首次加载全量树数据（大目录可能有上万节点），按需加载减少首屏时间。面试追问：如何处理展开后重新折叠再展开的重复请求？答：加缓存，已加载的不再重复请求。"
-      },
-      {
-        type: "truefalse",
-        question: "在线预览中引入 HMAC-SHA256 时效签名，是为了防止未授权用户通过拼接 URL 直接访问文件。",
-        answer: true,
-        explanation: "正确。签名包含<strong>文件ID + 过期时间戳 + 密钥</strong>，服务端校验签名有效性和时间戳是否过期。即使 URL 泄露，过期后也无法访问。你的简历中还提到<strong>异步队列 + 缓存</strong>将重复预览响应降至毫秒级——第一次预览转换格式后缓存，后续直接返回缓存结果。"
-      }
-    ]
-  },
-  {
-    id: 7,
-    name: "终极面试 BOSS",
-    desc: "综合场景 + 开放性问题",
-    difficulty: "boss",
-    icon: "👑",
-    questions: [
-      {
-        type: "text",
-        question: "「请做一个自我介绍。」—— 这是面试必问的第一题，用 1 分钟介绍自己。",
-        answer: "自我介绍",
-        explanation: "<strong>参考模板（按你的简历定制）</strong>：「我叫叶正雄，5年前端经验，目前在腾讯驻场做微信支付资金业务平台。我擅长 Vue3 和 React 全栈开发，在当前项目中独立承担了 10+ 个资金运营后台的前后端全链路交付，主导了 19 个 PHP 接口向 Node.js/TS 的迁移。之前在企业级文档协同平台服务过 10000+ 日活用户，从零搭建了大文件分片上传、三级权限系统和 CI/CD 流水线。我对工程化和全栈交付比较有经验，也对 AI 工程化有实践积累。」<strong>关键点</strong>：名字 + 经验年限 + 核心项目一句话 + 技术亮点 + 收尾。不要念简历。"
-      },
-      {
-        type: "text",
-        question: "「你迁移 19 个 PHP 接口时遇到的最大挑战是什么？怎么解决的？」—— 用 STAR 法则回答。",
-        answer: "STAR",
-        explanation: "<strong>S（情境）</strong>：微信支付资金业务平台有 19 个存量 PHP 接口，9000+ 行代码，需要迁移到 Node.js/TS 以统一技术栈。<strong>T（任务）</strong>：6 周内完成全量迁移，零事故上线。<strong>A（行动）</strong>：1) 按 Controller/AO/Util/Middleware 分层重构；2) 统一封装 Svrkit RPC 对接和 protobuf 类型转换；3) 补齐监控、权限、自动化部署；4) 逐接口对比验证 + 灰度切流。<strong>R（结果）</strong>：6 周完成，零事故上线，系统可观测性和交付规范对齐内部标准。<strong>技巧</strong>：每个环节有具体数字和时间，展示工程严谨性。"
-      },
-      {
-        type: "text",
-        question: "「你觉得自己最大的不足是什么？」—— 这题坑很深，怎么答？",
-        answer: "不足",
-        explanation: "<strong>策略</strong>：说一个真实的、但正在改进的、且不影响核心岗位匹配的不足。<strong>参考</strong>：「我的学历是大专，早期找工作时确实遇到过门槛。但我通过持续学习和项目实战弥补了这一点——从 Python 转型前端，在 5 年里做到了高级前端工程师，独立承担支付级业务的全栈交付。另一个不足是之前在系统设计层面的经验不够多，目前通过研究 BFF 架构和分布式系统在主动学习。」<strong>切忌</strong>：说「我太追求完美」「我工作太努力」这种假缺点；也不要说影响核心能力的真缺点（如「我不擅长写代码」）。"
-      },
-      {
-        type: "text",
-        question: "「你对 AI 工程化有实践，能具体说说吗？」—— 简历中提到了 LLM、MCP、Claude Code。",
-        answer: "AI",
-        explanation: "<strong>参考思路</strong>：「我在 AI 工程化方面有几块实践：1) <strong>LLM API 集成</strong>——做过 SSE 流式输出、Function Calling/Tool Use、多轮上下文管理；2) <strong>Prompt Engineering</strong>——使用 Few-shot 调优提升输出质量；3) <strong>MCP 协议</strong>——了解和实践了 Model Context Protocol 的工具集成模式；4) <strong>Claude Code 工程化</strong>——在实际项目中使用 AI 辅助开发，包括 Skill 模块设计。」<strong>加分点</strong>：如果面试官对 AI 感兴趣，可以聊你对 AI 编程工具的理解和实际提效数据。"
-      },
-      {
-        type: "text",
-        question: "「你还有什么想问我们的？」—— 面试最后的反向提问，很关键。",
-        answer: "提问",
-        explanation: "<strong>好问题示例</strong>：1) 「团队目前的技术栈和架构是什么？前端团队在整个研发流程中的定位是怎样的？」——了解技术环境；2) 「这个岗位主要承接的业务是什么？目前最大的技术挑战是什么？」——展示对业务的关注；3) 「团队在 AI 工程化方面有什么规划吗？」——结合你的 AI 实践，展示前瞻性；<strong>不要问</strong>：薪资福利（等 HR 面）、加班多不多（负面信号）、「没什么问题了」（显得没兴趣）。"
-      }
-    ]
-  }
+// ===================== 题库数据 =====================
+const LEVELS=[
+{id:0,name:"JavaScript 基础村",desc:"JS 核心概念与原理",difficulty:"easy",icon:"🌱",questions:[
+{type:"choice",q:"说说 JavaScript 中的事件循环（Event Loop）机制？",options:["A) 就是先执行同步代码再执行异步代码","B) 同步代码在调用栈执行，异步任务完成后回调放入任务队列，事件循环不断检查栈是否清空，清空后从队列取回调执行；微任务（Promise.then）优先于宏任务（setTimeout）","C) 事件循环就是 setInterval","D) 所有代码都是同步执行的没有事件循环"],answer:1,explain:"<strong>口答要点</strong>：JS 单线程，靠事件循环实现异步。调用栈执行同步代码；异步任务由 Web API 处理，完成后回调进入任务队列。栈清空后事件循环从队列取回调执行。<strong>微任务</strong>（Promise.then、queueMicrotask）在每次宏任务前清空；<strong>宏任务</strong>（setTimeout、I/O）按队列顺序执行。"},
+{type:"choice",q:"说说闭包是什么？有什么实际应用？",options:["A) 闭包就是函数套函数没有特殊用途","B) 函数可以访问其外层作用域的变量即使外层函数已执行完毕；用于数据私有化、模块化、防抖节流、柯里化","C) 闭包会导致内存泄漏不应该使用","D) 闭包是 ES6 新增的"],answer:1,explain:"<strong>口答要点</strong>：闭包是函数与其词法环境的组合。内层函数引用外层函数变量，外层执行完后这些变量不回收。<strong>应用</strong>：1)数据私有化 2)模块模式(IIFE) 3)防抖/节流 4)柯里化 5)事件监听器保留状态。注意不当使用会内存泄漏。"},
+{type:"choice",q:"var、let、const 三者的区别？",options:["A) 没有区别只是不同写法","B) var 有变量提升可重复声明函数作用域；let 无提升(暂时性死区)不可重复声明块级作用域；const 声明常量必须初始化不可重新赋值但对象内部属性可改","C) let 和 const 是 ES5 的","D) const 声明的对象属性也不能修改"],answer:1,explain:"<strong>口答要点</strong>：<strong>var</strong>：变量提升、函数作用域、可重复声明。<strong>let</strong>：块级作用域、暂时性死区、不可重复声明。<strong>const</strong>：必须初始化、不可重新赋值，但对象/数组内部属性可修改（引用地址没变）。推荐默认用 const，需要改值用 let，不用 var。"},
+{type:"choice",q:"说说原型链是什么？如何实现继承？",options:["A) 原型链就是 prototype 属性的链条","B) 每个对象有 __proto__ 指向其构造函数的 prototype 形成原型链；访问属性先找自身找不到沿原型链向上找直到 null；ES6 用 class/extends 实现继承本质仍是原型链","C) 原型链是 ES6 才有的","D) 原型链和继承没有关系"],answer:1,explain:"<strong>口答要点</strong>：每个对象有 __proto__ 指向构造函数的 prototype。访问属性先找自身，找不到沿 __proto__ 向上找直到 null。ES5 继承：组合继承(call+Object.create)；ES6 继承：class extends+super，语法糖但更清晰。"},
+{type:"choice",q:"this 的指向规则？箭头函数的 this 有什么不同？",options:["A) this 永远指向 window","B) 普通函数 this 在调用时确定：默认指向 window(严格模式 undefined)、对象方法指向对象、构造函数指向实例；箭头函数没有自己的 this 继承定义时的外层 this 不可被 bind 改变","C) 箭头函数的 this 指向 window","D) this 在函数定义时就确定了"],answer:1,explain:"<strong>口答要点</strong>：普通函数 this 在<strong>调用时</strong>确定——谁调用指向谁。箭头函数<strong>没有自己的 this</strong>，继承外层作用域，定义时确定，call/apply/bind 无法改变。React 类组件用 bind 或箭头函数解决 this 问题；Vue 中不要用箭头函数定义 methods。"},
+{type:"choice",q:"Promise 的状态有哪些？Promise.all 和 Promise.race 的区别？",options:["A) Promise 有 pending fulfilled rejected 三种状态状态不可逆","B) pending→fulfilled 或 pending→rejected 不可逆；Promise.all 所有成功才成功一个失败就失败；Promise.race 第一个完成的决定结果","C) Promise 状态可以反复改变","D) Promise.all 只要有一个成功就成功"],answer:1,explain:"<strong>口答要点</strong>：三种状态 pending/fulfilled/rejected 不可逆。Promise.all 全部 fulfilled 才 fulfilled，任一 rejected 立即 rejected。Promise.race 第一个完成的决定结果。还有 Promise.allSettled（等全部完成不管成败）和 Promise.any（任一 fulfilled 就 fulfilled）。"},
+{type:"choice",q:"async/await 的原理？和 Promise 是什么关系？",options:["A) async/await 是 Promise 的替代品完全独立","B) async/await 是 Generator+Promise 的语法糖；async 函数返回 Promise，await 等待 Promise resolve；让异步代码看起来像同步，错误用 try/catch 捕获","C) await 只能等待 Promise","D) async 函数不返回 Promise"],answer:1,explain:"<strong>口答要点</strong>：async/await 是 Generator+自动执行器的语法糖。async 返回 Promise；await 暂停函数执行直到 Promise resolve。错误用 try/catch。注意<strong>串行 await 性能问题</strong>——不依赖的异步操作应该用 Promise.all 并行。"},
+{type:"choice",q:"说说 JavaScript 的垃圾回收机制？",options:["A) JS 没有垃圾回收需手动释放内存","B) 标记清除(主流)：从根出发标记可达对象清除不可达对象；V8 新生代用 Scavenge(复制)老生代用标记清除+标记整理","C) 垃圾回收只在页面关闭时执行","D) 闭包变量永远不会被回收"],answer:1,explain:"<strong>口答要点</strong>：V8 用<strong>分代回收</strong>——新生代用 Scavenge（from/to 空间复制）；老生代用标记清除+标记整理。核心：从 GC Roots 出发遍历，可达对象保留，不可达回收。常见内存泄漏：意外全局变量、遗忘的定时器、闭包引用、DOM 引用未清理。"},
+{type:"choice",q:"深拷贝和浅拷贝的区别？怎么实现深拷贝？",options:["A) 没区别都是复制","B) 浅拷贝只复制第一层嵌套对象共享引用(Object.assign/展开运算符)；深拷贝递归复制所有层级(JSON.parse(JSON.stringify())有局限 structuredClone()推荐 或递归处理循环引用)","C) JSON.parse(JSON.stringify()) 能正确处理函数和 Date","D) 展开运算符是深拷贝"],answer:1,explain:"<strong>口答要点</strong>：浅拷贝：Object.assign、{...obj} 只复制一层。深拷贝：JSON 方法简单但不能处理函数/undefined/Symbol/循环引用/Date/RegExp；structuredClone() 原生支持循环引用和大部分类型；手写递归用 WeakMap 记录已拷贝对象处理循环引用。"},
+{type:"choice",q:"call、apply、bind 三者的区别？",options:["A) 三者完全一样","B) call 和 apply 立即执行 call 逐个传参 apply 传数组；bind 返回绑定了 this 的新函数不立即执行","C) bind 会立即执行函数","D) apply 的参数是逗号分隔的"],answer:1,explain:"<strong>口答要点</strong>：<strong>call</strong>：fn.call(obj,arg1,arg2) 立即执行逐个传参。<strong>apply</strong>：fn.apply(obj,[args]) 立即执行传数组。<strong>bind</strong>：fn.bind(obj) 返回新函数 this 永久绑定可稍后执行。实际：call/apply 借用方法如 Array.prototype.slice.call(arguments)；bind 用于事件回调绑定 this。"},
+{type:"truefalse",q:"typeof null 返回 'null'。",answer:false,explain:"<strong>口答要点</strong>：不对，typeof null 返回 'object'。这是 JS 历史 bug——早期类型标签低位 000 代表对象，null 全零位被误判。准确判断类型用 Object.prototype.toString.call(value)。判断 null 用 value === null。"},
+{type:"truefalse",q:"== 比较时会进行类型转换，=== 不会。",answer:true,explain:"<strong>口答要点</strong>：正确。== 宽松相等会类型转换（1=='1' 为 true，null==undefined 为 true）。=== 严格相等不转换类型，类型和值都必须相同。推荐始终用 ===。"},
+{type:"truefalse",q:"JavaScript 中所有对象都是通过 new 创建的。",answer:false,explain:"<strong>口答要点</strong>：不对。对象字面量 {} 也创建对象不需要 new。函数声明 function foo(){} 也不需要 new。Object.create(null) 创建的对象没有原型。"},
+]},
+{id:1,name:"CSS 与布局之森",desc:"CSS 布局、动画与工程化",difficulty:"easy",icon:"🎨",questions:[
+{type:"choice",q:"说说 BFC 是什么？解决了什么问题？",options:["A) BFC 就是块级格式化上下文不重要","B) Block Formatting Context 独立渲染区域内部元素不受外部影响；解决 margin 塌陷、浮动溢出、清除浮动；触发：overflow:hidden display:flex/inline-block position:absolute/fixed","C) BFC 只能用 overflow:hidden 触发","D) BFC 和浮动没有关系"],answer:1,explain:"<strong>口答要点</strong>：BFC 是独立渲染区域，内部元素不影响外部。<strong>触发</strong>：overflow 非 visible、display 为 flex/grid/inline-block、position 为 absolute/fixed、float 非 none。<strong>解决</strong>：1)margin 塌陷 2)清除浮动 3)避免文字环绕。"},
+{type:"choice",q:"Flex 布局中 flex: 1 代表什么？",options:["A) flex: 1 就是宽度为 1px","B) flex: 1 是 flex-grow:1/flex-shrink:1/flex-basis:0% 的简写表示元素自动伸缩填充剩余空间","C) flex: 1 表示元素不可缩放","D) flex: 1 和 flex-grow:1 完全等价"],answer:1,explain:"<strong>口答要点</strong>：flex:1 是三个属性简写——<strong>flex-grow:1</strong>(有剩余空间等比例放大)、<strong>flex-shrink:1</strong>(空间不足等比例缩小)、<strong>flex-basis:0%</strong>(初始大小为 0 完全依赖 grow 分配)。和 flex-grow:1 区别：flex:1 的 basis 是 0% 不考虑自身内容大小。"},
+{type:"choice",q:"如何实现水平垂直居中？说几种方式。",options:["A) 只能用 margin:auto","B) 1)Flex: display:flex justify-content:center align-items:center 2)Grid: display:grid place-items:center 3)绝对定位+transform: top:50% left:50% transform:translate(-50%,-50%)","C) text-align:center 就能垂直居中","D) line-height 只能水平居中"],answer:1,explain:"<strong>口答要点</strong>：最常用两种：1)<strong>Flex</strong>推荐：display:flex;justify-content:center;align-items:center 一行搞定。2)<strong>Grid</strong>：display:grid;place-items:center 更简洁。3)绝对定位+transform 适合不确定子元素大小的情况。"},
+{type:"choice",q:"重排（reflow）和重绘（repaint）的区别？如何优化？",options:["A) 没区别都是重新渲染","B) 重排：元素大小/位置变化需重新计算布局代价大；重绘：外观变化(颜色/背景)不改变布局代价小；优化：用 transform 代替 top/left opacity 代替 visibility 避免频繁读取布局属性用 requestAnimationFrame","C) 改变颜色会触发重排","D) transform 会触发重排"],answer:1,explain:"<strong>口答要点</strong>：<strong>重排</strong>：几何属性变化(宽高/位置/显示隐藏)触发需重新计算布局代价大。<strong>重绘</strong>：外观变化(颜色/背景)触发不改变布局代价小。<strong>优化</strong>：用 transform/opacity 做动画走合成层不触发重排重绘；避免逐条修改样式用 class 切换；避免频繁读取 offsetTop 等强制重排属性。"},
+{type:"choice",q:"CSS 选择器优先级是怎么计算的？",options:["A) 按代码顺序后面的优先","B) !important > 内联(1000) > ID(100) > 类/伪类/属性(10) > 标签/伪元素(1) > 通配符(0)；同优先级后写的覆盖先写的","C) class 的优先级比 ID 高","D) !important 可以被任何选择器覆盖"],answer:1,explain:"<strong>口答要点</strong>：从高到低：!important > 内联 style(1000) > ID(100) > 类/伪类/属性(10) > 标签/伪元素(1) > 通配符(0)。同权重后写覆盖先写。建议尽量用 class 选择器避免 !important 和内联样式。"},
+{type:"choice",q:"响应式布局有哪些实现方案？",options:["A) 只能用 Bootstrap","B) 1)媒体查询 @media 2)Flex/Grid 弹性布局 3)rem/em/vw/vh 相对单位 4)CSS Container Queries(新特性) 5)picture 标签适配不同分辨率","C) 响应式布局就是缩小页面","D) 只能用 JS 计算屏幕宽度"],answer:1,explain:"<strong>口答要点</strong>：1)<strong>媒体查询</strong>：@media (max-width:768px) 针对不同断点写样式。2)<strong>弹性布局</strong>：Flex 和 Grid 自适应。3)<strong>相对单位</strong>：rem、vw/vh。4)<strong>容器查询</strong>：根据父容器大小适配(较新)。通常是媒体查询+Flex/Grid+rem 的组合。"},
+{type:"truefalse",q:"CSS 中 position:sticky 是 relative 和 fixed 的结合体。",answer:true,explain:"<strong>口答要点</strong>：正确。sticky 元素滚动到指定阈值前表现为 relative，达到阈值后变为 fixed 固定。需设置 top/left/right/bottom 之一才生效。常见用途：表头吸顶、侧边栏滚动固定。父元素不能有 overflow:hidden 否则 sticky 失效。"},
+{type:"truefalse",q:"transition 和 animation 都需要触发条件才能开始动画。",answer:false,explain:"<strong>口答要点</strong>：不对。transition 需要<strong>触发条件</strong>(如 hover)只有起始和结束两个状态。animation <strong>不需要触发</strong>可以自动开始循环暂停，支持 @keyframes 定义多个中间状态。简单状态过渡用 transition，复杂动画用 animation。"},
+]},
+{id:2,name:"计算机网络山脉",desc:"HTTP/TCP/UDP/HTTPS",difficulty:"medium",icon:"🌐",questions:[
+{type:"choice",q:"说说从输入 URL 到页面显示的完整过程？",options:["A) 就是发个 HTTP 请求然后渲染","B) 1)DNS 解析获取 IP 2)TCP 三次握手 3)如果是 HTTPS 还要 TLS 握手 4)发送 HTTP 请求 5)服务器处理返回响应 6)浏览器解析 HTML 构建 DOM 树解析 CSS 构建 CSSOM 合成渲染树布局绘制合成 7)加载 JS 执行","C) 浏览器直接渲染没有网络请求","D) 先渲染再请求"],answer:1,explain:"<strong>口答要点</strong>：经典大题要条理清晰：1)<strong>DNS 解析</strong>：浏览器缓存→系统缓存→hosts→本地 DNS→递归查询。2)<strong>TCP 三次握手</strong>。3)<strong>TLS 握手</strong>(HTTPS)。4)<strong>发送 HTTP 请求</strong>。5)<strong>服务器处理返回</strong>。6)<strong>渲染</strong>：HTML→DOM CSS→CSSOM 合成 Render Tree Layout→Paint→Composite。7)<strong>JS 执行</strong>可能阻塞渲染。"},
+{type:"choice",q:"TCP 三次握手的过程？为什么是三次而不是两次？",options:["A) 客户端发 SYN 服务端回 ACK 完成","B) 1)客户端发 SYN(seq=x) 2)服务端回 SYN+ACK(seq=y,ack=x+1) 3)客户端发 ACK(ack=y+1)。三次是因为双方都要确认对方收发能力，两次无法确认客户端接收能力且防止历史连接请求导致服务端白建连接","C) 四次握手才能建立连接","D) TCP 不需要握手"],answer:1,explain:"<strong>口答要点</strong>：1)客户端发 SYN 2)服务端回 SYN+ACK 3)客户端发 ACK。<strong>为什么不是两次</strong>：1)两次无法确认客户端接收能力 2)防止旧 SYN 报文滞留后到达服务端误建连接浪费资源。三次握手让客户端有机会拒绝历史连接。"},
+{type:"choice",q:"TCP 四次挥手为什么是四次而不是三次？",options:["A) 和三次握手一样可以合并","B) TCP 全双工两个方向独立关闭；服务端收到客户端 FIN 后可能还有数据没发完先回 ACK 等数据发完再发 FIN 所以不能合并","C) 四次挥手是多余的","D) 只有客户端可以发起关闭"],answer:1,explain:"<strong>口答要点</strong>：TCP <strong>全双工</strong>通信两个方向独立关闭。1)主动方发 FIN 2)被动方回 ACK(可能还有数据要发) 3)被动方数据发完后发 FIN 4)主动方回 ACK 并进入 TIME_WAIT。<strong>不能合并 2 和 3</strong>：服务端收到 FIN 时可能还有数据没发完。"},
+{type:"choice",q:"TCP 和 UDP 的区别？各自适用什么场景？",options:["A) 没区别都是传输协议","B) TCP 面向连接可靠有序字节流有流量/拥塞控制适合 HTTP/文件传输/邮件；UDP 无连接不可靠报文开销小快适合 DNS/视频直播/游戏/语音","C) UDP 比 TCP 更安全","D) TCP 比 UDP 快"],answer:1,explain:"<strong>口答要点</strong>：<strong>TCP</strong>：面向连接(三次握手)、可靠(重传确认排序)、字节流、有流量和拥塞控制。适合 HTTP/文件传输/邮件。<strong>UDP</strong>：无连接、不可靠、报文、首部 8 字节(vs TCP 20)、快。适合 DNS/视频直播/在线游戏/语音通话。"},
+{type:"choice",q:"HTTP 和 HTTPS 的区别？HTTPS 的工作原理？",options:["A) HTTPS 就是 HTTP 加了个锁","B) HTTP 明文传输端口 80；HTTPS=HTTP+SSL/TLS 加密端口 443；握手：客户端验证证书→生成随机数用公钥加密发给服务端→服务端用私钥解密→双方用该随机数作对称密钥通信；非对称加密交换密钥对称加密传输数据","C) HTTPS 不需要证书","D) HTTPS 比 HTTP 快"],answer:1,explain:"<strong>口答要点</strong>：HTTP 明文不安全。HTTPS=HTTP+SSL/TLS。<strong>握手</strong>：1)客户端发加密套件和随机数 2)服务端返回证书和随机数 3)客户端验证证书生成预主密钥用公钥加密发送 4)双方用三个随机数算对称密钥 5)后续对称加密通信。<strong>核心</strong>：非对称加密安全交换密钥对称加密高效传输。"},
+{type:"choice",q:"HTTP 1.0、1.1、2.0、3.0 的区别？",options:["A) 版本号不同功能一样","B) 1.0 短连接每次新建 TCP；1.1 默认长连接 keep-alive 管线化 断点续传；2.0 多路复用 二进制分帧 HPACK 头部压缩 服务器推送；3.0 基于 QUIC(UDP) 解决 TCP 队头阻塞","C) HTTP/2 比 HTTP/1.1 慢","D) HTTP/3 还是用 TCP"],answer:1,explain:"<strong>口答要点</strong>：<strong>1.0</strong>：短连接每请求新建 TCP。<strong>1.1</strong>：默认长连接复用 TCP、管线化(不常用)、断点续传。<strong>2.0</strong>：多路复用(一个连接并行多请求)、二进制分帧、HPACK 头部压缩、服务器推送。<strong>3.0</strong>：基于 QUIC(UDP) 解决 TCP 层队头阻塞、连接迁移。"},
+{type:"choice",q:"常见 HTTP 状态码？301 和 302 的区别？",options:["A) 200 就是成功其他不重要","B) 200 OK 301 永久重定向 302 临时重定向 304 协商缓存未修改 400 参数错误 401 未认证 403 禁止访问 404 未找到 500 服务器内部错误 502 网关错误 503 服务不可用；301 搜索引擎更新索引 302 不会","C) 301 和 302 完全一样","D) 4xx 是服务端错误"],answer:1,explain:"<strong>口答要点</strong>：<strong>2xx</strong>成功：200/201/204。<strong>3xx</strong>重定向：301 永久(SEO 权重转移)/302 临时/304 协商缓存命中。<strong>4xx</strong>客户端错误：400/401 未认证/403 禁止/404。<strong>5xx</strong>服务端错误：500/502/503/504。"},
+{type:"choice",q:"GET 和 POST 的区别？",options:["A) 没区别都能传数据","B) GET 参数在 URL(长度有限制可缓存幂等不安全)；POST 参数在 body(无长度限制不可缓存非幂等相对安全)；GET 获取资源 POST 提交数据","C) POST 比 GET 更安全因为加密了","D) GET 不能传参数"],answer:1,explain:"<strong>口答要点</strong>：<strong>参数位置</strong>：GET 在 URL POST 在 body。<strong>长度</strong>：GET 受 URL 限制(约 2KB) POST 理论无限制。<strong>缓存</strong>：GET 可缓存 POST 不缓存。<strong>幂等</strong>：GET 幂等 POST 非幂等。<strong>安全</strong>：都不是加密的但 GET 参数暴露在 URL 不适合敏感信息。"},
+{type:"choice",q:"什么是跨域？怎么解决？",options:["A) 跨域就是页面在不同浏览器打开","B) 浏览器同源策略：协议/域名/端口任一不同就跨域；解决：1)CORS(服务端设 Access-Control-Allow-Origin) 2)代理(Nginx/Webpack devServer) 3)JSONP(只支持 GET 已过时)","C) 跨域问题只出现在 IE","D) CORS 需要前端配置"],answer:1,explain:"<strong>口答要点</strong>：同源策略要求协议+域名+端口完全一致。<strong>CORS</strong>(推荐)：服务端设 Access-Control-Allow-Origin，复杂请求先发 OPTIONS 预检。<strong>代理</strong>：开发用 vite/webpack devServer proxy，生产用 Nginx 反向代理，服务器间没有跨域限制。<strong>JSONP</strong>：利用 script 标签不受同源策略限制只支持 GET 基本淘汰。"},
+{type:"choice",q:"XSS 攻击和 CSRF 攻击是什么？怎么防御？",options:["A) 都是服务器被黑了","B) XSS 跨站脚本：注入恶意脚本到页面，防御：转义输出 CSP HttpOnly Cookie；CSRF 跨站请求伪造：冒用用户身份发请求，防御：Token SameSite Cookie Referer 校验","C) XSS 和 CSRF 是同一种攻击","D) HTTPS 能完全防止 XSS"],answer:1,explain:"<strong>口答要点</strong>：<strong>XSS</strong>：注入恶意 JS 执行。防御：1)输入输出转义 2)CSP 3)HttpOnly Cookie。<strong>CSRF</strong>：诱导用户在已登录站点执行非预期操作。防御：1)CSRF Token 2)SameSite Cookie 3)校验 Referer 4)关键操作二次确认。"},
+{type:"truefalse",q:"HTTP 是无状态协议，意味着服务器不知道上一次请求是谁发的。",answer:true,explain:"<strong>口答要点</strong>：正确。HTTP 无状态指每个请求独立服务器不记录之前请求。保持登录靠 Cookie+Session 或 JWT Token。Cookie 存客户端 Session 存服务端通过 sessionid 关联。JWT 是无状态 Token 方案。"},
+{type:"truefalse",q:"304 状态码表示服务器返回了新的内容。",answer:false,explain:"<strong>口答要点</strong>：不对。304 Not Modified 表示资源未修改服务端告诉客户端用本地缓存。这是<strong>协商缓存</strong>命中——浏览器带 If-None-Match(ETag) 或 If-Modified-Since 请求，服务端对比后未变化返回 304 不返回 body 节省带宽。"},
+{type:"truefalse",q:"Cookie 存在客户端，Session 存在服务端。",answer:true,explain:"<strong>口答要点</strong>：正确。Cookie 存浏览器端每次请求自动带上大小限制 4KB。Session 存服务器端通过 sessionid(通常存在 Cookie)关联客户端。Session 更安全但占服务器资源。常组合使用：Cookie 存 sessionid Session 存用户数据。"},
+]},
+{id:3,name:"Vue 阵营",desc:"Vue3 响应式与生态",difficulty:"medium",icon:"💚",questions:[
+{type:"choice",q:"Vue3 的响应式原理？和 Vue2 有什么区别？",options:["A) Vue3 用 Object.defineProperty 和 Vue2 一样","B) Vue2 用 Object.defineProperty(只能劫持已有属性新增/删除要 $set 不能监听数组索引)；Vue3 用 Proxy(代理整个对象能监听新增/删除支持数组性能更好)", "C) Vue3 没有响应式系统","D) Proxy 和 defineProperty 功能完全一样"],answer:1,explain:"<strong>口答要点</strong>：Vue2 用 Object.defineProperty 逐个劫持 getter/setter，<strong>局限</strong>：新增/删除属性检测不到(需 Vue.set)、数组索引监听不到。Vue3 用 Proxy 代理整个对象，<strong>优势</strong>：能检测属性新增/删除、支持数组、性能更好(惰性响应式只有被访问才 track)。"},
+{type:"choice",q:"Vue3 的 Composition API 解决了什么问题？",options:["A) 让代码看起来更复杂","B) 解决 Options API 中相关逻辑散落在 data/methods/computed/watch 各处的问题；按功能组织代码逻辑复用从 mixin 升级为 composable 函数无命名冲突来源清晰","C) Composition API 取代了 Options API","D) Composition API 性能更好"],answer:1,explain:"<strong>口答要点</strong>：Options API 按选项类型组织导致<strong>同一功能逻辑散落各处</strong>。Composition API 按功能组织——一个功能的状态计算副作用都在一个 composable 里。逻辑复用从 mixin(命名冲突来源不清晰)升级为 composable 函数(如 useCounter())显式传入返回清晰可追踪。"},
+{type:"choice",q:"Vue 的生命周期钩子有哪些？在哪发请求？在哪销毁？",options:["A) 只有 created 和 mounted 两个","B) setup(替代 beforeCreate/created) onBeforeMount onMounted(发请求) onBeforeUpdate onUpdated onBeforeUnmount(清理) onUnmounted","C) 在 beforeCreate 发请求最好","D) 不需要手动清理"],answer:1,explain:"<strong>口答要点</strong>：<strong>setup</strong>(最早执行替代 beforeCreate+created)、<strong>onMounted</strong>(DOM 挂载完成推荐在此发请求)、<strong>onBeforeUnmount</strong>(组件卸载前在此清理定时器/事件监听/WebSocket)。不涉及 DOM 时 setup 里也可以发请求。"},
+{type:"choice",q:"computed 和 watch 的区别？什么时候用哪个？",options:["A) 没区别都可以监听数据","B) computed 有缓存必须返回值用于派生数据；watch 无缓存不返回值用于副作用(发请求/操作 DOM)；computed 依赖不变时不重新计算","C) watch 有缓存","D) computed 可以发请求"],answer:1,explain:"<strong>口答要点</strong>：<strong>computed</strong>：基于依赖缓存只有依赖变化才重新计算适合<strong>派生数据</strong>。<strong>watch</strong>：监听值变化执行副作用不返回值适合<strong>异步或开销较大操作</strong>。优先用 computed 只有需要副作用才用 watch。"},
+{type:"choice",q:"Vue 虚拟 DOM 和 diff 算法怎么工作？",options:["A) Vue 没有虚拟 DOM","B) 用 JS 对象描述真实 DOM(VNode)更新时生成新 VNode diff 比较新旧 VNode 最小化 DOM 操作；Vue diff 同层比较双端交叉比较 Key 用于识别复用节点；Vue3 静态提升和 Block Tree 优化","C) diff 会比较所有层级节点","D) Key 不影响 diff 结果"],answer:1,explain:"<strong>口答要点</strong>：虚拟 DOM 是 JS 对象描述的 DOM 结构。更新三步：1)生成新 VNode 2)diff 比较新旧 VNode 找差异 3)最小化更新真实 DOM。Vue3 diff 优化：<strong>同层比较</strong>、<strong>双端交叉比较</strong>、<strong>静态提升</strong>(静态节点编译时提升跳过 diff)、<strong>Block Tree</strong>(只 diff 动态节点)。Key 用于列表 diff 时识别节点是否可复用。"},
+{type:"choice",q:"v-if 和 v-show 的区别？",options:["A) 完全一样","B) v-if 真正条件渲染(销毁/重建初始开销小切换开销大适合不频繁切换)；v-show CSS display 控制(始终渲染初始开销大切换开销小适合频繁切换)","C) v-show 不渲染 DOM","D) v-if 性能永远比 v-show 好"],answer:1,explain:"<strong>口答要点</strong>：<strong>v-if</strong>：真正条件渲染 false 时组件不创建/被销毁切换触发生命周期。适合<strong>不频繁切换</strong>如权限控制。<strong>v-show</strong>：始终渲染通过 display:none 控制不触发生命周期。适合<strong>频繁切换</strong>如 Tab 切换。"},
+{type:"choice",q:"Vue 组件通信有哪些方式？",options:["A) 只能通过 props","B) 父→子：props/ref；子→父：emit；兄弟：mitt/状态管理；跨层级：provide/inject；全局状态：Pinia","C) Vue 组件不能通信","D) 只能用全局变量"],answer:1,explain:"<strong>口答要点</strong>：1)<strong>props/emit</strong>：父子最常用 2)<strong>ref</strong>：父直接访问子组件 3)<strong>provide/inject</strong>：跨层级传值 4)<strong>mitt</strong>：Vue3 替代 EventBus 5)<strong>Pinia</strong>：全局状态管理(推荐比 Vuex 更简洁)。"},
+{type:"choice",q:"Pinia 和 Vuex 的区别？为什么 Vue3 推荐用 Pinia？",options:["A) 没区别换了个名字","B) Pinia 没有 mutation 直接修改 state 更好的 TS 支持模块化更简单(每个 store 独立)体积更小支持组合式 API","C) Pinia 不支持 TypeScript","D) Vuex 比 Pinia 性能好"],answer:1,explain:"<strong>口答要点</strong>：Pinia 是 Vue 官方推荐的新一代状态管理。<strong>核心优势</strong>：1)没有 mutation 直接在 action 里改 state 2)<strong>TS 支持好</strong>自动推导类型 3)<strong>模块化简单</strong>每个 store 独立定义不需 modules 嵌套 4)体积更小(约 1KB) 5)支持组合式 API 风格。"},
+{type:"truefalse",q:"Vue3 中 ref 需要 .value 访问但 reactive 不需要。",answer:true,explain:"<strong>口答要点</strong>：正确。ref 包装的值需通过 <strong>.value</strong> 访问(因为 ref 是 {value:T} 对象)。但模板中自动解包不需写 .value。reactive 包装对象直接访问属性。注意：reactive 解构后会丢失响应性需用 toRefs。"},
+{type:"truefalse",q:"Vue 中用 index 作为 key 没有任何问题。",answer:false,explain:"<strong>口答要点</strong>：不对。用 index 作 key 在列表项增删重排时会导致<strong>错误复用节点</strong>——Vue diff 时通过 key 识别节点，index 变化会导致数据错乱。应该用稳定的唯一 ID 作 key，让 Vue 正确识别哪些节点是新增/删除/移动的。"},
+{type:"truefalse",q:"Vue3 的 nextTick 作用是在下次 DOM 更新后执行回调。",answer:true,explain:"<strong>口答要点</strong>：正确。修改响应式数据后 DOM 还没更新，用 nextTick 等待 DOM 更新完成再操作 DOM(如获取更新后的元素高度)。Vue3 中 nextTick 返回 Promise 可以用 await。"},
+]},
+{id:4,name:"React 堡垒",desc:"React 核心原理与生态",difficulty:"medium",icon:"⚛️",questions:[
+{type:"choice",q:"React 的 Fiber 架构是什么？为什么需要它？",options:["A) Fiber 就是一个新的 DOM 渲染方式","B) React15 递归渲染不可中断大组件树阻塞主线程掉帧；Fiber 将渲染拆成可中断的小任务单元(fiber 节点)利用时间切片在空闲时执行实现优先级调度和并发渲染","C) Fiber 让 React 更慢了","D) Fiber 和 Virtual DOM 无关"],answer:1,explain:"<strong>口答要点</strong>：React15 的渲染是<strong>同步递归</strong>不可中断大组件树会阻塞主线程导致掉帧。Fiber 把渲染拆成小工作单元可以<strong>中断暂停恢复</strong>。通过时间切片(约 5ms)和优先级调度让高优先级任务(用户输入)先执行。React18 的 Concurrent Rendering 基于此实现。"},
+{type:"choice",q:"React 中 useState 的更新是同步还是异步？",options:["A) 完全同步立即生效","B) 在 React 事件处理函数中是异步的(批处理多次 setState 合并为一次渲染)；React18 后所有场景统一批处理都是异步的；拿不到最新值要函数式更新 setState(prev=>prev+1)","C) useState 更新永远同步","D) setState 后立即能拿到新值"],answer:1,explain:"<strong>口答要点</strong>：React <strong>批量合并</strong>同一事件中的多次 state 更新只触发一次重新渲染——看起来是异步的。React18 引入<strong>自动批处理</strong>所有场景(setTimeout/Promise)都批处理。基于前值更新用函数式：<code>setCount(prev=>prev+1)</code>。"},
+{type:"choice",q:"useEffect、useLayoutEffect、useMemo、useCallback 的区别？",options:["A) 都是 hooks 没区别","B) useEffect 异步执行副作用(发请求/订阅)不阻塞渲染；useLayoutEffect 同步在 DOM 更新后执行(操作 DOM 测量)；useMemo 缓存计算结果；useCallback 缓存函数引用避免子组件重渲染","C) useEffect 在渲染前执行","D) useMemo 和 useCallback 完全一样"],answer:1,explain:"<strong>口答要点</strong>：<strong>useEffect</strong>：渲染完成后异步执行处理副作用。依赖数组控制何时重新执行。<strong>useLayoutEffect</strong>：DOM 更新后<strong>同步</strong>执行适合读取 DOM 布局信息(会阻塞渲染慎用)。<strong>useMemo</strong>：缓存计算结果避免重复计算。<strong>useCallback</strong>：缓存函数引用配合 memo 子组件使用。"},
+{type:"choice",q:"React 虚拟 DOM 和 Diff 算法原理？",options:["A) React 没有虚拟 DOM","B) JSX→React.createElement→React Element(虚拟 DOM)；diff 同层比较类型不同直接替换列表用 key 识别；Fiber 把递归 diff 改为可中断的链表遍历","C) diff 会跨层级比较","D) key 不影响 diff"],answer:1,explain:"<strong>口答要点</strong>：JSX 编译成 React.createElement 生成 React Element(虚拟 DOM)。Diff 三大策略：1)<strong>同层比较</strong>不跨层级移动 2)<strong>类型不同直接替换</strong>整个子树销毁重建 3)<strong>列表用 key</strong>同类型元素通过 key 识别复用。Fiber 把递归 diff 改为<strong>可中断链式遍历</strong>。"},
+{type:"choice",q:"React 中受控组件和非受控组件的区别？",options:["A) 没区别都是表单","B) 受控组件：表单值由 React state 控制(value={state}+onChange)数据流单向；非受控组件：表单值由 DOM 自己管理(ref 读取)React 不控制；推荐受控组件","C) 受控组件用 ref","D) 非受控组件用 state"],answer:1,explain:"<strong>口答要点</strong>：<strong>受控组件</strong>：input 的 value 绑定 state 通过 onChange 更新。React 完全控制表单数据便于验证格式化。<strong>非受控组件</strong>：input 不绑定 state 用 ref 在需要时读取 DOM 值。推荐优先用受控组件。"},
+{type:"choice",q:"React 组件性能优化有哪些手段？",options:["A) React 性能很好不需要优化","B) 1)React.memo 缓存组件 2)useMemo/useCallback 缓存值和函数 3)虚拟列表(react-window) 4)懒加载 React.lazy+Suspense 5)合理拆分 state 减少大范围重渲染","C) 优化只能改代码结构","D) memo 没有用处"],answer:1,explain:"<strong>口答要点</strong>：1)<strong>React.memo</strong>：包裹组件 props 不变时跳过重渲染 2)<strong>useMemo/useCallback</strong>：缓存传给 memo 子组件的对象/函数 3)<strong>虚拟列表</strong>：react-window 海量数据只渲染可见区域 4)<strong>代码分割</strong>：React.lazy+Suspense 按路由懒加载 5)<strong>合理 state 拆分</strong>：频繁变化的 state 隔离到小组件。"},
+{type:"choice",q:"Redux 的工作原理？中间件是什么？",options:["A) Redux 就是一个全局变量","B) 单一数据源(store)+action 描述事件+reducer 纯函数处理；dispatch(action)→reducer→new state→UI 更新；中间件在 dispatch 和 reducer 之间拦截处理异步(thunk/saga)","C) Redux 不需要 reducer","D) Redux 只能用于 React"],answer:1,explain:"<strong>口答要点</strong>：三大原则：1)<strong>单一数据源</strong> 2)<strong>State 只读</strong>只能 dispatch action 改变 3)<strong>纯函数 reducer</strong>。<strong>中间件</strong>：在 dispatch 到 reducer 之间插入拦截层，redux-thunk 处理异步(action 可以是函数)。推荐用 <strong>RTK(Redux Toolkit)</strong>简化配置。"},
+{type:"choice",q:"React 18 有哪些新特性？",options:["A) 没什么新东西","B) 1)Concurrent Rendering(并发渲染) startTransition/useDeferredValue 2)自动批处理 3)Suspense 支持数据获取 4)新 SSR 架构(streaming) 5)useId/useSyncExternalStore","C) React 18 不支持并发","D) 自动批处理只在事件函数中"],answer:1,explain:"<strong>口答要点</strong>：1)<strong>并发渲染</strong>：渲染可中断恢复高优先级任务插队。startTransition 标记低优先级更新。2)<strong>自动批处理</strong>：所有场景的多次 setState 都批处理。3)<strong>Suspense 数据获取</strong>。4)<strong>流式 SSR</strong>：分块返回 HTML。"},
+{type:"truefalse",q:"React 中 JSX 本质是 React.createElement 的语法糖。",answer:true,explain:"<strong>口答要点</strong>：正确。JSX 编译后变成 React.createElement(type,props,...children) 返回 React Element 对象(虚拟 DOM)。React17+ 新 JSX Transform 不需要 import React。"},
+{type:"truefalse",q:"useEffect 如果不传依赖数组每次渲染都会执行。",answer:true,explain:"<strong>口答要点</strong>：正确。1)<strong>不传</strong>——每次渲染后都执行 2)<strong>传空数组 []</strong>——只在挂载后执行一次 3)<strong>传依赖 [a,b]</strong>——a 或 b 变化时才执行。依赖数组要完整否则可能用到旧的闭包值。"},
+{type:"truefalse",q:"React.memo 和 useMemo 的作用相同。",answer:false,explain:"<strong>口答要点</strong>：不对。<strong>React.memo</strong>是<strong>高阶组件</strong>包裹整个组件 props 不变时跳过重渲染。<strong>useMemo</strong>是<strong>Hook</strong>缓存一个计算结果值。常配合使用：父组件用 useMemo 缓存传给子组件的对象子组件用 React.memo 包裹。"},
+]},
+{id:5,name:"Node.js 与工程化之塔",desc:"Node.js+构建工具+CI/CD",difficulty:"hard",icon:"🏗️",questions:[
+{type:"choice",q:"Node.js 的事件循环和浏览器的有什么区别？",options:["A) 完全一样","B) Node 有 6 个阶段：timers→pending callbacks→idle/prepare→poll→check→close callbacks；微任务在每阶段切换间清空(process.nextTick 优先于 Promise)；浏览器在每个宏任务后清空微任务","C) Node 没有事件循环","D) Node 的事件循环和浏览器完全相同"],answer:1,explain:"<strong>口答要点</strong>：Node 基于 libuv 有 6 个阶段：<strong>timers</strong>(setTimeout)→<strong>poll</strong>(I/O 回调)→<strong>check</strong>(setImmediate)→<strong>close callbacks</strong>。每个阶段切换间清空微任务且 <strong>process.nextTick 优先于 Promise</strong>。和浏览器区别：Node 在每阶段间清空微任务浏览器在每个宏任务后清空。"},
+{type:"choice",q:"Node.js 中 Stream 有哪些类型？应用场景？",options:["A) Stream 只有一种类型","B) 四种：Readable(可读) Writable(可写) Duplex(双向) Transform(转换)；应用：大文件读写 HTTP 请求/响应 压缩解压 管道组合 src.pipe(transform).pipe(dest)","C) Stream 不能用于网络请求","D) Stream 会把整个文件加载到内存"],answer:1,explain:"<strong>口答要点</strong>：Stream 流式数据处理避免一次性加载大数据到内存。<strong>四种类型</strong>：Readable/Writable/Duplex/Transform。<strong>pipe</strong>：<code>readStream.pipe(gzip).pipe(writeStream)</code>。应用：大文件上传/下载、视频转码、HTTP 响应压缩。"},
+{type:"choice",q:"什么是中间件？Express 中间件的执行机制？",options:["A) 中间件就是路由","B) 中间件是处理请求-响应循环的函数(req,res,next)；Express 按注册顺序执行调用 next() 传递给下一个；可用于日志/鉴权/CORS/错误处理；错误处理中间件 4 个参数(err,req,res,next)","C) 中间件不能有参数","D) 中间件执行顺序是随机的"],answer:1,explain:"<strong>口答要点</strong>：中间件 <code>(req,res,next)=>{}</code> 可以访问请求和响应对象调用 next() 传递控制权。Express 按<strong>注册顺序</strong>执行。常见：body-parser/morgan/cors/自定义鉴权。错误处理中间件 <code>(err,req,res,next)=>{}</code> 放路由之后。不调 next() 则请求终止。"},
+{type:"choice",q:"CommonJS 和 ES Module 的区别？",options:["A) 没区别都是模块化","B) CommonJS：require/module.exports 同步加载运行时确定依赖值拷贝；ESM：import/export 异步加载编译时确定依赖值引用支持 tree-shaking","C) CommonJS 支持 tree-shaking","D) ESM 是同步加载"],answer:1,explain:"<strong>口答要点</strong>：<strong>CommonJS</strong>：同步加载运行时确定依赖导出<strong>值拷贝</strong>(修改不影响外部)。<strong>ESM</strong>：编译时确定依赖(静态分析)导出<strong>值引用</strong>(修改反映到外部)支持 tree-shaking。现代项目优先用 ESM。"},
+{type:"choice",q:"Vite 为什么比 Webpack 快？",options:["A) Vite 用 Rust 重写了打包工具","B) 开发时利用浏览器原生 ES Module 按需编译(请求到才编译)esbuild 预构建依赖(Go 编写速度极快)；生产用 Rollup 打包。Webpack 需先打包再启动大项目慢","C) Vite 不做任何编译","D) Vite 和 Webpack 速度一样"],answer:1,explain:"<strong>口答要点</strong>：Webpack 开发时需<strong>先打包再启动</strong>(bundle)大项目冷启动慢。Vite 开发时<strong>不打包</strong>——利用浏览器原生 ES Module 浏览器请求哪个文件 Vite 才编译哪个按需编译。第三方依赖用 esbuild(Go 编写)预构建速度比 Webpack 的 babel/tsc 快 10-100 倍。生产用 Rollup。"},
+{type:"choice",q:"Webpack 的 Loader 和 Plugin 的区别？",options:["A) Loader 和 Plugin 没区别","B) Loader 转换文件内容(链式调用后到前执行)：babel-loader/css-loader/ts-loader；Plugin 扩展构建功能(监听编译生命周期 hooks)：HtmlWebpackPlugin/MiniCssExtractPlugin","C) Loader 可以生成 HTML","D) Plugin 用于转换文件内容"],answer:1,explain:"<strong>口答要点</strong>：<strong>Loader</strong>：文件转换器把非 JS 文件转成 JS 能理解的内容。链式调用执行顺序从右到左。<strong>Plugin</strong>：扩展构建功能通过监听 Compiler 生命周期 hooks 介入。HtmlWebpackPlugin 生成 HTML/MiniCssExtractPlugin 抽取 CSS/DefinePlugin 定义环境变量。"},
+{type:"choice",q:"JWT 的原理？和 Session 有什么区别？",options:["A) JWT 就是加密的密码","B) JWT=Header(算法+类型)+Payload(用户数据+过期时间)+Signature(签名)三段 Base64 编码用.拼接；无状态服务端不存储签发后靠签名验证；Session 存服务端有状态","C) JWT 存在服务端","D) JWT 和 Session 完全一样"],answer:1,explain:"<strong>口答要点</strong>：JWT 三部分：Header/Payload/Signature。<strong>优势</strong>：无状态(不存 Session 适合分布式)跨域友好移动端适配。<strong>劣势</strong>：签发后无法撤销(除非黑名单)Payload 是 Base64 不是加密(不放敏感数据)Token 较长。<strong>安全</strong>：HTTPS+短过期+Refresh Token+HttpOnly Cookie。"},
+{type:"choice",q:"前端性能优化有哪些手段？全链路说。",options:["A) 性能优化就是压缩图片","B) 网络：CDN/HTTP2/缓存策略(强缓存+协商缓存)/Gzip 压缩/DNS 预解析；渲染：懒加载/代码分割/虚拟列表/减少重排重绘；资源：WebP 图片/Tree-shaking","C) 性能优化只在服务器端","D) 压缩 JS 就够了"],answer:1,explain:"<strong>口答要点</strong>：<strong>网络</strong>：CDN/HTTP2/缓存策略(Cache-Control 强缓存+ETag 协商缓存)/Gzip 压缩/DNS prefetch。<strong>渲染</strong>：路由懒加载/图片懒加载/虚拟列表/关键 CSS 内联/transform 代替 top/left。<strong>资源</strong>：Tree-shaking/WebP 图片/按需加载第三方库。工具：Lighthouse/Performance 面板。"},
+{type:"truefalse",q:"Node.js 是单线程的意味着不能处理并发请求。",answer:false,explain:"<strong>口答要点</strong>：不对。Node 的<strong>JS 执行是单线程</strong>但 I/O 操作由 libuv 线程池异步处理。靠事件循环+非阻塞 I/O 处理高并发——主线程不被 I/O 阻塞。适合 I/O 密集型不适合 CPU 密集型。可用 cluster/worker_threads 利用多核。"},
+{type:"truefalse",q:"Tree-shaking 依赖 ES Module 的静态分析来移除未使用的代码。",answer:true,explain:"<strong>口答要点</strong>：正确。Tree-shaking 依赖 ESM 静态结构——import/export 编译时就能确定哪些导出被使用打包工具移除未使用的代码。<strong>前提</strong>：必须用 ESM(CommonJS 不支持)；sideEffects:false 告诉打包工具可安全 tree-shake。"},
+{type:"truefalse",q:"PM2 的 cluster 模式可以利用多核 CPU。",answer:true,explain:"<strong>口答要点</strong>：正确。Node 单线程只利用一个 CPU 核心PM2 cluster 模式启动多个进程实例(默认按 CPU 核心数)共享端口实现负载均衡。进程崩溃自动重启。<code>pm2 start app.js -i max</code>。"},
+]},
+{id:6,name:"Node.js 迁移洞",desc:"PHP→Node.js 接口迁移实战",difficulty:"medium",icon:"🔀",questions:[
+{type:"choice",q:"迁移 19 个 PHP 接口到 Node.js/TS 时分层架构怎么设计？",options:["A) 只分 Controller 和数据库查询两层","B) Controller/AO/Util/Middleware 分层：Controller 参数校验和响应封装 AO 业务逻辑调用下游 RPC Util 工具函数 Middleware 鉴权和错误码统一处理","C) 所有逻辑写在路由里","D) 按 MVC 分 Model 负责一切"],answer:1,explain:"<strong>口答要点</strong>：<strong>Controller</strong>只做参数校验和响应封装；<strong>AO(Application Object)</strong>承载业务逻辑调用下游 RPC；<strong>Middleware</strong>统一处理 OA 登录态/错误码转义/监控上报；<strong>Util</strong>纯函数工具。分层让迁移时职责清晰便于补齐测试和监控。"},
+{type:"choice",q:"迁移过程中 protobuf/Long/Buffer 类型转换遇到什么坑？",options:["A) 没遇到问题类型转换很顺利","B) Long 类型在 JSON 序列化时精度丢失(JS Number 最大安全整数 2^53-1)Buffer 编码在 PHP 和 Node 间不一致 protobuf 字段需严格类型匹配；统一封装类型转换工具","C) 只需把 PHP array 换成 TS object","D) protobuf 在 Node.js 不能用"],answer:1,explain:"<strong>口答要点</strong>：<strong>Long 类型</strong>(64 位整数)在 JSON 中精度丢失需用 long 库或 BigInt；<strong>Buffer 编码</strong>PHP 和 Node 间可能不一致(hex/base64/utf8)；<strong>protobuf</strong> RPC 调用时字段类型需严格匹配。统一封装类型转换工具解决。"},
+{type:"choice",q:"6 周完成 9000+ 行迁移零事故上线做了哪些保障？",options:["A) 改完直接上线出问题再修","B) 接口逐一对比 PHP 和 Node 输入输出一致性、灰度切流先小流量验证、补齐监控告警、准备回滚方案、细粒度权限管控和自动化部署","C) 只做了单元测试就够了","D) 让 QA 全手动回归"],answer:1,explain:"<strong>口答要点</strong>：1)接口逐一对比输入输出一致性 2)灰度切流先小流量再全量 3)监控告警确保异常第一时间发现 4)回滚方案准备好 5)补齐细粒度权限管控和自动化部署。"},
+{type:"text",q:"为什么不直接重写而要迁移？",answer:"迁移",explain:"<strong>口答要点</strong>：迁移而非重写——1)业务逻辑经过验证重写有理解偏差风险 2)迁移可以逐接口进行风险可控随时可回滚 3)核心目标是<strong>技术栈统一</strong>和<strong>接入内部基础设施</strong>(监控/部署/权限)不是业务变更。"},
+]},
+{id:7,name:"文件上传峡谷",desc:"大文件分片上传全链路",difficulty:"medium",icon:"📦",questions:[
+{type:"choice",q:"Web Worker 在分片上传中的作用？为什么不在主线程算 Hash？",options:["A) Web Worker 负责网络请求","B) 异步计算文件 Hash 避免 CPU 密集型操作阻塞主线程导致页面卡顿；计算完 Hash 用于秒传判断——服务端已有相同 Hash 直接返回成功","C) Web Worker 负责文件压缩","D) Web Worker 负责分片切割"],answer:1,explain:"<strong>口答要点</strong>：大文件 Hash 计算(MD5/SHA)是 CPU 密集型主线程执行会完全阻塞 UI。Web Worker 移到子线程计算主线程保持流畅。Hash 用于<strong>秒传</strong>——服务端已有相同 Hash 的文件直接返回成功不用再传。"},
+{type:"choice",q:"Redis 分布式锁在分片上传中怎么用？",options:["A) 防止用户误操作","B) 防止多个请求同时合并同一文件分片导致冲突；SET NX EX 实现互斥锁+过期时间防死锁；延迟双删策略解决并发脏数据","C) 限制上传速度","D) 防止黑客攻击"],answer:1,explain:"<strong>口答要点</strong>：多个分片并发到达可能同时触发合并。分布式锁确保<strong>只有一个请求执行合并</strong>。<code>SET key value NX EX 30</code>。延迟双删：合并后先删锁延迟再删一次防止并发场景锁被误删。"},
+{type:"choice",q:"上传成功率从 70% 提升到 99% 做了哪些优化？",options:["A) 换了更快的服务器","B) 分片上传(降低单次失败影响)+断点续传(网络中断可恢复)+动态并发控制(网络好加并发差时减)+秒传+错误重试","C) 只加大了超时时间","D) 用浏览器自带上传"],answer:1,explain:"<strong>口答要点</strong>：组合拳——<strong>分片</strong>降低单次失败影响范围；<strong>断点续传</strong>网络中断可恢复；<strong>动态并发</strong>根据网络状况调整并发数；<strong>秒传</strong>通过 Hash 判断避免重复上传；<strong>重试</strong>对失败分片自动重试。"},
+{type:"truefalse",q:"断点续传的思路是：上传前先请求服务端查询已上传的分片列表只传缺失的分片。",answer:true,explain:"<strong>口答要点</strong>：正确。流程：1)前端计算文件 Hash 2)用 Hash 查询服务端已有分片 3)只上传缺失的分片 4)所有分片就绪后触发合并。还包含上传进度持久化——关页面再回来也能恢复。"},
+]},
+{id:8,name:"权限与架构堡垒",desc:"权限系统+BFF 架构",difficulty:"hard",icon:"🔐",questions:[
+{type:"choice",q:"三级权限模型多角色时权限怎么算？",options:["A) 取第一个角色的权限","B) 多角色权限取并集合并；目录支持继承与显式覆盖(就近原则)；前端 PermissionGuard 组件统一控制菜单/模块/按钮三级渲染","C) 取所有角色权限的交集","D) 每个角色权限独立判断不合并"],answer:1,explain:"<strong>口答要点</strong>：<strong>并集合并</strong>——用户权限是所有角色权限的超集。目录权限支持<strong>继承</strong>(子目录继承父目录)和<strong>显式覆盖</strong>(就近原则)。前端 PermissionGuard 包裹菜单/模块/按钮集中管控。API 层也要校验权限防止 URL 绕过。"},
+{type:"choice",q:"延迟双删策略的具体流程？解决什么问题？",options:["A) 先删缓存再更新数据库再删缓存","B) 先删缓存→更新数据库→延迟 N 毫秒后再删一次缓存；解决并发读写导致的脏数据——步骤 1-2 之间有并发请求把旧数据写回缓存","C) 先更新数据库再删缓存删两次","D) 只删一次就够了"],answer:1,explain:"<strong>口答要点</strong>：1)<strong>先删缓存</strong>(让后续请求走 DB 拿最新值) 2)<strong>更新数据库</strong> 3)<strong>延迟 N 毫秒后再删一次缓存</strong>。第二次删除解决：步骤 1-2 之间有并发请求把旧数据写回了缓存。延迟时间 > 一次 DB 写操作耗时。"},
+{type:"choice",q:"BFF 层的动机是什么？解决了什么问题？",options:["A) BFF 是行业趋势大家都用","B) 前端直连多个异构下游(ERP/SSO/文件存储)导致耦合高鉴权散乱；BFF 统一接口聚合与权限校验后端变更对前端透明","C) 让项目看起来更复杂","D) 前端不能直接调后端接口"],answer:1,explain:"<strong>口答要点</strong>：前端直连多个服务每个有不同鉴权和数据格式导致耦合高+鉴权散乱。BFF 收敛：<strong>接口聚合</strong>(一个页面数据一次性返回)、<strong>统一鉴权</strong>(BFF 统一处理各下游认证)、<strong>数据裁剪</strong>(只返回前端需要的字段)。"},
+{type:"choice",q:"Monorepo 共享 TypeScript 类型定义的好处和代价？",options:["A) 没有代价只有好处","B) 好处：接口契约编译期对齐消除类型漂移；代价：需 pnpm workspace/turborepo 工具链 CI 增量构建配置代码权限控制更难","C) 共享类型定义会让性能变差","D) Monorepo 只能用在大公司"],answer:1,explain:"<strong>口答要点</strong>：<strong>好处</strong>：前后端同一套类型定义改接口定义前端立即编译报错消除联调时类型漂移。<strong>代价</strong>：需要 pnpm workspace 等工具链；CI/CD 需要增量构建；代码权限控制更难。"},
+{type:"text",q:"BFF 层会不会成为单点瓶颈？怎么保证可用性？",answer:"可用性",explain:"<strong>口答要点</strong>：1)BFF <strong>无状态</strong>可水平扩展多实例 2)Nginx 负载均衡+PM2 进程管理 3)<strong>熔断降级</strong>——下游不可用时返回降级数据 4)监控响应时间和错误率 5)Docker+GitLab CI 保证快速回滚。"},
+{type:"text",q:"权限变更后缓存没更新用户看到不该看的菜单怎么办？",answer:"缓存",explain:"<strong>口答要点</strong>：1)权限变更时<strong>定向清除对应用户的权限缓存</strong>(按用户 ID) 2)设置合理 TTL 兜底(如 5 分钟) 3)前端 PermissionGuard 做双重校验——隐藏菜单+<strong>API 层也要校验权限</strong>防止 URL 绕过 4)后端接口权限校验是最后防线。"},
+]},
+{id:9,name:"终极面试 BOSS",desc:"自我介绍+开放性问题",difficulty:"boss",icon:"👑",questions:[
+{type:"text",q:"请做一个自我介绍（1分钟）。",answer:"自我介绍",explain:"<strong>口答模板</strong>：「我叫叶正雄5 年前端经验目前在腾讯驻场做微信支付资金业务平台。擅长 Vue3 和 React 全栈开发在当前项目独立承担了 10+ 个资金运营后台的前后端全链路交付主导了 19 个 PHP 接口向 Node.js/TS 的迁移。之前在企业级文档协同平台服务过 10000+ 日活用户从零搭建了大文件分片上传、三级权限系统和 CI/CD 流水线。对工程化和全栈交付比较有经验也对 AI 工程化有实践积累。」<strong>要点</strong>：名字+经验年限+核心项目一句话+技术亮点+收尾。不要念简历。"},
+{type:"text",q:"迁移 19 个 PHP 接口时遇到的最大挑战？怎么解决？(STAR 法则)",answer:"STAR",explain:"<strong>S</strong>：微信支付资金平台 19 个 PHP 接口 9000+ 行需迁移到 Node.js/TS。<strong>T</strong>：6 周内完成零事故上线。<strong>A</strong>：按 Controller/AO/Util/Middleware 分层重构；统一封装 Svrkit RPC 和 protobuf 类型转换；补齐监控权限自动化部署；逐接口对比验证+灰度切流。<strong>R</strong>：6 周完成零事故上线系统可观测性和交付规范对齐内部标准。"},
+{type:"text",q:"你觉得自己最大的不足是什么？",answer:"不足",explain:"<strong>策略</strong>：说真实但正在改进且不影响核心岗位匹配的不足。<strong>参考</strong>：「学历是大专早期找工作遇到过门槛但通过持续学习和项目实战弥补——从 Python 转型前端 5 年做到高级前端工程师独立承担支付级业务全栈交付。另一个是在系统设计层面经验还在积累目前通过研究 BFF 架构和分布式系统在主动学习。」<strong>切忌</strong>：假缺点(太追求完美)；影响核心能力的真缺点。"},
+{type:"text",q:"你对 AI 工程化有实践能具体说说吗？",answer:"AI",explain:"<strong>口答要点</strong>：「1)LLM API 集成——SSE 流式输出 Function Calling/Tool Use 多轮上下文管理 2)Prompt Engineering——Few-shot 调优 3)MCP 协议——Model Context Protocol 工具集成 4)Claude Code 工程化——AI 辅助开发 Skill 模块设计。」加分点：聊对 AI 编程工具的理解和实际提效数据。"},
+{type:"text",q:"你还有什么想问我们的？(反向提问)",answer:"提问",explain:"<strong>好问题</strong>：1)团队技术栈和架构？前端在研发流程中的定位？2)这个岗位主要承接什么业务？最大的技术挑战是什么？3)团队在 AI 工程化方面有什么规划？<strong>不要问</strong>：薪资(等 HR 面)、加班多不多、「没什么问题了」。"},
+{type:"text",q:"为什么从上一家公司离职？",answer:"离职",explain:"<strong>口答要点</strong>：说客观原因(个人发展/技术成长)不说前公司/领导坏话。<strong>参考</strong>：「在皓峰通讯积累了企业级项目从 0 到 1 的全栈经验但想挑战更大规模和更高复杂度的业务。微信支付的驻场机会能接触支付级的风控、合规和高并发场景是对技术深度的提升。」"},
+]}
 ];
 
-// ============ 游戏状态 ============
-let gameState = {
-  hearts: 5,
-  xp: 0,
-  streak: 0,
-  currentLevel: null,
-  currentQuestion: 0,
-  selectedAnswer: null,
-  answered: false,
-  levelStars: {},
-  achievements: [],
-  comboCount: 0
-};
+// ===================== 游戏逻辑 =====================
+let gameState={hearts:5,xp:0,streak:0,currentLevel:null,currentQuestion:0,selectedAnswer:null,answered:false,levelStars:{},achievements:[],comboCount:0};
 
-// ============ 初始化 ============
-function startGame() {
-  document.getElementById('startScreen').style.display = 'none';
-  document.getElementById('mapContainer').style.display = 'block';
-  renderMap();
-  updateStats();
-}
+function startGame(){document.getElementById('startScreen').style.display='none';document.getElementById('mapContainer').style.display='block';renderMap();updateStats()}
 
-function renderMap() {
-  const path = document.getElementById('mapPath');
-  path.innerHTML = '';
+function renderMap(){const path=document.getElementById('mapPath');path.innerHTML='';LEVELS.forEach((level,idx)=>{const prevDone=idx===0||gameState.levelStars[idx-1]!==undefined;const done=gameState.levelStars[idx]!==undefined;if(idx>0){const conn=document.createElement('div');conn.className='connector'+(done?' done':'');path.appendChild(conn)}const node=document.createElement('div');node.className='level-node';const btn=document.createElement('button');btn.className='level-btn';if(done){btn.classList.add('completed');btn.innerHTML=level.icon;const stars=document.createElement('div');stars.className='star-badge';stars.textContent='★ '+gameState.levelStars[idx];btn.appendChild(stars)}else if(prevDone){btn.classList.add('current');btn.textContent=idx+1}else{btn.classList.add('locked');btn.innerHTML='<span class="lock-icon">🔒</span>'}if(prevDone&&!done){btn.onclick=()=>startLevel(idx)}node.appendChild(btn);const label=document.createElement('div');label.className='level-label';const tagClass=level.difficulty==='easy'?'tag-easy':level.difficulty==='medium'?'tag-medium':level.difficulty==='hard'?'tag-hard':'tag-boss';const tagText=level.difficulty==='easy'?'入门':level.difficulty==='medium'?'进阶':level.difficulty==='hard'?'困难':'BOSS';label.innerHTML='<div class="name">'+level.icon+' '+level.name+'</div><div class="desc">'+level.desc+'</div><div class="tag '+tagClass+'">'+tagText+' · '+level.questions.length+'题</div>';node.appendChild(label);path.appendChild(node)})}
 
-  LEVELS.forEach((level, idx) => {
-    const prevDone = idx === 0 || gameState.levelStars[idx - 1] !== undefined;
-    const done = gameState.levelStars[idx] !== undefined;
+function updateStats(){document.getElementById('hearts').textContent=gameState.hearts;document.getElementById('xp').textContent=gameState.xp;document.getElementById('streak').textContent=gameState.streak}
 
-    // 连接线
-    if (idx > 0) {
-      const conn = document.createElement('div');
-      conn.className = 'connector' + (done ? ' done' : '');
-      path.appendChild(conn);
-    }
+function startLevel(levelIdx){if(gameState.hearts<=0){alert('心碎了！刷新页面重新挑战 ❤️‍🩹');return}gameState.currentLevel=levelIdx;gameState.currentQuestion=0;gameState.selectedAnswer=null;gameState.answered=false;gameState.comboCount=0;document.getElementById('quizOverlay').classList.add('active');renderQuestion()}
 
-    // 关卡节点
-    const node = document.createElement('div');
-    node.className = 'level-node';
+function renderQuestion(){const level=LEVELS[gameState.currentLevel];const q=level.questions[gameState.currentQuestion];const progress=(gameState.currentQuestion/level.questions.length)*100;document.getElementById('progressFill').style.width=progress+'%';const body=document.getElementById('quizBody');const typeLabel=q.type==='choice'?'选择题':q.type==='truefalse'?'判断题':'简答题';let html='<div class="question-type">'+typeLabel+' · 第 '+(gameState.currentQuestion+1)+'/'+level.questions.length+' 题</div><div class="question-text">'+q.q+'</div>';if(q.type==='choice'){html+='<div class="options">';q.options.forEach((opt,i)=>{const key=String.fromCharCode(65+i);html+='<button class="option-btn" data-idx="'+i+'" onclick="selectOption('+i+')"><span class="opt-key">'+key+'</span><span>'+opt.substring(3)+'</span></button>'});html+='</div>'}else if(q.type==='truefalse'){html+='<div class="options true-false">';html+='<button class="option-btn" data-idx="1" onclick="selectOption(1)"><span class="opt-key">✓</span><span>正确</span></button>';html+='<button class="option-btn" data-idx="0" onclick="selectOption(0)"><span class="opt-key">✗</span><span>错误</span></button>';html+='</div>'}else if(q.type==='text'){html+='<div class="options"><textarea class="text-input" id="textAnswer" placeholder="在这里输入你的答案...（写完点击确认查看参考答案）"></textarea></div>'}html+='<div class="feedback" id="feedback"></div>';body.innerHTML=html;gameState.selectedAnswer=null;gameState.answered=false;const checkBtn=document.getElementById('checkBtn');const hint=document.getElementById('quizHint');if(q.type==='text'){checkBtn.textContent='查看参考答案';checkBtn.disabled=false;hint.textContent='简答题没有标准答案写完点击查看参考思路'}else{checkBtn.textContent='确认';checkBtn.disabled=true;hint.textContent='选择你认为正确的答案'}document.getElementById('feedback').classList.remove('show')}
 
-    const btn = document.createElement('button');
-    btn.className = 'level-btn';
-    if (done) {
-      btn.classList.add('completed');
-      btn.innerHTML = level.icon;
-      const stars = document.createElement('div');
-      stars.className = 'star-badge';
-      stars.textContent = '★ ' + gameState.levelStars[idx];
-      btn.appendChild(stars);
-    } else if (prevDone) {
-      btn.classList.add('current');
-      btn.textContent = idx + 1;
-    } else {
-      btn.classList.add('locked');
-      btn.innerHTML = '<span class="lock-icon">🔒</span>';
-    }
+function selectOption(idx){if(gameState.answered)return;const btns=document.querySelectorAll('.option-btn');btns.forEach(b=>b.classList.remove('selected'));btns[idx].classList.add('selected');gameState.selectedAnswer=idx;document.getElementById('checkBtn').disabled=false}
 
-    if (prevDone && !done) {
-      btn.onclick = () => startLevel(idx);
-    }
+function checkAnswer(){const level=LEVELS[gameState.currentLevel];const q=level.questions[gameState.currentQuestion];const feedback=document.getElementById('feedback');if(q.type==='text'){feedback.className='feedback show correct';feedback.innerHTML='<div class="result-icon">💡 参考思路</div><div class="explanation">'+q.explain+'</div>';gameState.answered=true;document.getElementById('checkBtn').textContent='继续';document.getElementById('quizHint').textContent='参考思路不是唯一答案结合自己理解发挥';return}if(gameState.selectedAnswer===null)return;gameState.answered=true;const correct=gameState.selectedAnswer===q.answer;const btns=document.querySelectorAll('.option-btn');btns.forEach((b,i)=>{b.style.pointerEvents='none';if(i===q.answer)b.classList.add('correct');if(i===gameState.selectedAnswer&&!correct)b.classList.add('wrong')});if(correct){gameState.comboCount++;const baseXp=level.difficulty==='easy'?10:level.difficulty==='medium'?15:level.difficulty==='hard'?20:30;const comboBonus=gameState.comboCount>1?gameState.comboCount*5:0;const totalXp=baseXp+comboBonus;gameState.xp+=totalXp;gameState.streak++;let comboText='';if(gameState.comboCount>=3)comboText=' 🔥 '+gameState.comboCount+'连击！+'+comboBonus+'XP';feedback.className='feedback show correct';feedback.innerHTML='<div class="result-icon">✅ 答对了！+'+totalXp+' XP'+comboText+'</div><div class="explanation">'+q.explain+'</div>'}else{gameState.comboCount=0;gameState.hearts--;gameState.streak=0;feedback.className='feedback show wrong';const correctText=q.type==='truefalse'?(q.answer?'正确':'错误'):q.options[q.answer].substring(3);feedback.innerHTML='<div class="result-icon">❌ 答错了！-1 ❤️</div><div class="explanation"><strong>正确答案：'+correctText+'</strong><br><br>'+q.explain+'</div>';if(gameState.hearts<=0){setTimeout(()=>{alert('💔 心碎了！知识点都在解析里刷新页面重新挑战！');quitQuiz()},2000)}}updateStats();checkAchievements();document.getElementById('checkBtn').textContent=gameState.currentQuestion<level.questions.length-1?'下一题':'完成关卡';document.getElementById('quizHint').textContent=''}
 
-    node.appendChild(btn);
+document.getElementById('checkBtn').onclick=function(){const level=LEVELS[gameState.currentLevel];if(!gameState.answered){checkAnswer();return}gameState.currentQuestion++;if(gameState.currentQuestion<level.questions.length){renderQuestion()}else{completeLevel()}};
 
-    // 标签
-    const label = document.createElement('div');
-    label.className = 'level-label';
+function completeLevel(){const level=LEVELS[gameState.currentLevel];let stars=3;if(gameState.hearts<=2)stars=2;if(gameState.hearts<=1)stars=1;gameState.levelStars[gameState.currentLevel]=stars;const levelXp=level.difficulty==='easy'?50:level.difficulty==='medium'?80:level.difficulty==='hard'?120:200;gameState.xp+=levelXp;const overlay=document.getElementById('victoryOverlay');const isLast=gameState.currentLevel===LEVELS.length-1;document.getElementById('trophyIcon').textContent=isLast?'👑':'🏆';document.getElementById('victoryTitle').textContent=isLast?'面试 BOSS 已通关！':level.name+' 通关！';document.getElementById('victorySubtitle').textContent=isLast?'你已准备好迎接周一的面试了！':'你离面试成功又近了一步';document.getElementById('rewardXp').textContent='+'+levelXp;document.getElementById('rewardStars').textContent=stars+' / 3';overlay.classList.add('active');document.getElementById('quizOverlay').classList.remove('active');updateStats();checkAchievements()}
 
-    const tagClass = level.difficulty === 'easy' ? 'tag-easy' :
-                     level.difficulty === 'medium' ? 'tag-medium' :
-                     level.difficulty === 'hard' ? 'tag-hard' : 'tag-boss';
-    const tagText = level.difficulty === 'easy' ? '入门' :
-                    level.difficulty === 'medium' ? '进阶' :
-                    level.difficulty === 'hard' ? '困难' : 'BOSS';
+function closeVictory(){document.getElementById('victoryOverlay').classList.remove('active');renderMap()}
+function quitQuiz(){document.getElementById('quizOverlay').classList.remove('active')}
 
-    label.innerHTML = `
-      <div class="name">${level.icon} ${level.name}</div>
-      <div class="desc">${level.desc}</div>
-      <div class="tag ${tagClass}">${tagText} · ${level.questions.length}题</div>
-    `;
+function checkAchievements(){const achievements=[{id:'first_blood',cond:()=>gameState.xp>0,icon:'🎯',text:'初出茅庐：获得第一笔经验值'},{id:'combo3',cond:()=>gameState.comboCount>=3,icon:'🔥',text:'三连击！答对3题不间断'},{id:'level3',cond:()=>Object.keys(gameState.levelStars).length>=3,icon:'🗺️',text:'探险家：通关3个关卡'},{id:'all_clear',cond:()=>Object.keys(gameState.levelStars).length===LEVELS.length,icon:'👑',text:'面试大师：全部通关！'},{id:'xp500',cond:()=>gameState.xp>=500,icon:'⭐',text:'经验丰富：累计500 XP'}];achievements.forEach(a=>{if(!gameState.achievements.includes(a.id)&&a.cond()){gameState.achievements.push(a.id);showAchievement(a.icon,a.text)}})}
 
-    node.appendChild(label);
-    path.appendChild(node);
-  });
-}
-
-function updateStats() {
-  document.getElementById('hearts').textContent = gameState.hearts;
-  document.getElementById('xp').textContent = gameState.xp;
-  document.getElementById('streak').textContent = gameState.streak;
-}
-
-// ============ 开始关卡 ============
-function startLevel(levelIdx) {
-  if (gameState.hearts <= 0) {
-    alert('心碎了！休息一下再来吧 ❤️‍🩹（刷新页面恢复）');
-    return;
-  }
-
-  gameState.currentLevel = levelIdx;
-  gameState.currentQuestion = 0;
-  gameState.selectedAnswer = null;
-  gameState.answered = false;
-  gameState.comboCount = 0;
-
-  document.getElementById('quizOverlay').classList.add('active');
-  renderQuestion();
-}
-
-function renderQuestion() {
-  const level = LEVELS[gameState.currentLevel];
-  const q = level.questions[gameState.currentQuestion];
-
-  // 进度条
-  const progress = (gameState.currentQuestion / level.questions.length) * 100;
-  document.getElementById('progressFill').style.width = progress + '%';
-
-  // 题目区域
-  const body = document.getElementById('quizBody');
-  const typeLabel = q.type === 'choice' ? '选择题' :
-                    q.type === 'truefalse' ? '判断题' : '简答题';
-
-  let html = `
-    <div class="question-type">${typeLabel} · 第 ${gameState.currentQuestion + 1}/${level.questions.length} 题</div>
-    <div class="question-text">${q.question}</div>
-  `;
-
-  if (q.type === 'choice') {
-    html += '<div class="options">';
-    q.options.forEach((opt, i) => {
-      const key = String.fromCharCode(65 + i);
-      html += `
-        <button class="option-btn" data-idx="${i}" onclick="selectOption(${i})">
-          <span class="opt-key">${key}</span>
-          <span>${opt.substring(3)}</span>
-        </button>
-      `;
-    });
-    html += '</div>';
-  } else if (q.type === 'truefalse') {
-    html += `
-      <div class="options true-false">
-        <button class="option-btn" data-idx="1" onclick="selectOption(1)">
-          <span class="opt-key">✓</span>
-          <span>正确</span>
-        </button>
-        <button class="option-btn" data-idx="0" onclick="selectOption(0)">
-          <span class="opt-key">✗</span>
-          <span>错误</span>
-        </button>
-      </div>
-    `;
-  } else if (q.type === 'text') {
-    html += `
-      <div class="options">
-        <textarea class="text-input" id="textAnswer" placeholder="在这里输入你的答案...（写完点击确认查看参考答案）"></textarea>
-      </div>
-    `;
-  }
-
-  html += `<div class="feedback" id="feedback"></div>`;
-
-  body.innerHTML = html;
-
-  // 重置状态
-  gameState.selectedAnswer = null;
-  gameState.answered = false;
-
-  // 底部按钮
-  const checkBtn = document.getElementById('checkBtn');
-  const hint = document.getElementById('quizHint');
-
-  if (q.type === 'text') {
-    checkBtn.textContent = '查看参考答案';
-    checkBtn.disabled = false;
-    hint.textContent = '简答题没有标准答案，写完点击查看参考思路';
-  } else {
-    checkBtn.textContent = '确认';
-    checkBtn.disabled = true;
-    hint.textContent = '选择你认为正确的答案';
-  }
-
-  document.getElementById('feedback').classList.remove('show');
-}
-
-function selectOption(idx) {
-  if (gameState.answered) return;
-
-  const btns = document.querySelectorAll('.option-btn');
-  btns.forEach(b => b.classList.remove('selected'));
-  btns[idx].classList.add('selected');
-
-  gameState.selectedAnswer = idx;
-  document.getElementById('checkBtn').disabled = false;
-}
-
-function checkAnswer() {
-  const level = LEVELS[gameState.currentLevel];
-  const q = level.questions[gameState.currentQuestion];
-  const feedback = document.getElementById('feedback');
-
-  if (q.type === 'text') {
-    // 简答题：直接展示参考答案
-    feedback.className = 'feedback show correct';
-    feedback.innerHTML = `
-      <div class="result-icon">💡 参考思路</div>
-      <div class="explanation">${q.explanation}</div>
-    `;
-    gameState.answered = true;
-    document.getElementById('checkBtn').textContent = '继续';
-    document.getElementById('quizHint').textContent = '参考思路不是唯一答案，结合自己理解发挥';
-    return;
-  }
-
-  if (gameState.selectedAnswer === null) return;
-
-  gameState.answered = true;
-  const correct = gameState.selectedAnswer === q.answer;
-
-  // 标记选项
-  const btns = document.querySelectorAll('.option-btn');
-  btns.forEach((b, i) => {
-    b.style.pointerEvents = 'none';
-    if (i === q.answer) b.classList.add('correct');
-    if (i === gameState.selectedAnswer && !correct) b.classList.add('wrong');
-  });
-
-  if (correct) {
-    gameState.comboCount++;
-    const baseXp = level.difficulty === 'easy' ? 10 : level.difficulty === 'medium' ? 15 : level.difficulty === 'hard' ? 20 : 30;
-    const comboBonus = gameState.comboCount > 1 ? gameState.comboCount * 5 : 0;
-    const totalXp = baseXp + comboBonus;
-
-    gameState.xp += totalXp;
-    gameState.streak++;
-
-    let comboText = '';
-    if (gameState.comboCount >= 3) {
-      comboText = ` 🔥 ${gameState.comboCount}连击！+${comboBonus}XP`;
-    }
-
-    feedback.className = 'feedback show correct';
-    feedback.innerHTML = `
-      <div class="result-icon">✅ 答对了！+${totalXp} XP${comboText}</div>
-      <div class="explanation">${q.explanation}</div>
-    `;
-  } else {
-    gameState.comboCount = 0;
-    gameState.hearts--;
-    gameState.streak = 0;
-
-    feedback.className = 'feedback show wrong';
-    const correctText = q.type === 'truefalse'
-      ? (q.answer ? '正确' : '错误')
-      : q.options[q.answer].substring(3);
-    feedback.innerHTML = `
-      <div class="result-icon">❌ 答错了！-1 ❤️</div>
-      <div class="explanation"><strong>正确答案：${correctText}</strong><br><br>${q.explanation}</div>
-    `;
-
-    if (gameState.hearts <= 0) {
-      setTimeout(() => {
-        alert('💔 心碎了！没关系，知识点都在解析里，刷新页面重新挑战！');
-        quitQuiz();
-      }, 2000);
-    }
-  }
-
-  updateStats();
-  checkAchievements();
-
-  document.getElementById('checkBtn').textContent = gameState.currentQuestion < level.questions.length - 1 ? '下一题' : '完成关卡';
-  document.getElementById('checkBtn').disabled = false;
-  document.getElementById('quizHint').textContent = '';
-}
-
-// 点击确认/继续/下一题
-document.getElementById('checkBtn').onclick = function() {
-  const level = LEVELS[gameState.currentLevel];
-
-  if (!gameState.answered) {
-    checkAnswer();
-    return;
-  }
-
-  // 已回答，进入下一题或完成
-  gameState.currentQuestion++;
-
-  if (gameState.currentQuestion < level.questions.length) {
-    renderQuestion();
-  } else {
-    // 关卡完成
-    completeLevel();
-  }
-};
-
-function completeLevel() {
-  const level = LEVELS[gameState.currentLevel];
-
-  // 计算星数
-  let stars = 3;
-  const totalQ = level.questions.length;
-  if (gameState.hearts <= 2) stars = 2;
-  if (gameState.hearts <= 1) stars = 1;
-
-  gameState.levelStars[gameState.currentLevel] = stars;
-
-  // 奖励 XP
-  const levelXp = level.difficulty === 'easy' ? 50 : level.difficulty === 'medium' ? 80 : level.difficulty === 'hard' ? 120 : 200;
-  gameState.xp += levelXp;
-
-  // 显示通关画面
-  const overlay = document.getElementById('victoryOverlay');
-  const isLast = gameState.currentLevel === LEVELS.length - 1;
-
-  document.getElementById('trophyIcon').textContent = isLast ? '👑' : '🏆';
-  document.getElementById('victoryTitle').textContent = isLast ? '面试 BOSS 已通关！' : `${level.name} 通关！`;
-  document.getElementById('victorySubtitle').textContent = isLast ? '你已准备好迎接周一的面试了！' : '你离面试成功又近了一步';
-  document.getElementById('rewardXp').textContent = '+' + levelXp;
-  document.getElementById('rewardStars').textContent = stars + ' / 3';
-
-  overlay.classList.add('active');
-  document.getElementById('quizOverlay').classList.remove('active');
-
-  updateStats();
-  checkAchievements();
-}
-
-function closeVictory() {
-  document.getElementById('victoryOverlay').classList.remove('active');
-  renderMap();
-}
-
-function quitQuiz() {
-  document.getElementById('quizOverlay').classList.remove('active');
-}
-
-// ============ 成就系统 ============
-function checkAchievements() {
-  const achievements = [
-    { id: 'first_blood', cond: () => gameState.xp > 0, icon: '🎯', text: '初出茅庐：获得第一笔经验值' },
-    { id: 'combo3', cond: () => gameState.comboCount >= 3, icon: '🔥', text: '三连击！答对3题不间断' },
-    { id: 'level3', cond: () => Object.keys(gameState.levelStars).length >= 3, icon: '🗺️', text: '探险家：通关3个关卡' },
-    { id: 'all_clear', cond: () => Object.keys(gameState.levelStars).length === LEVELS.length, icon: '👑', text: '面试大师：全部通关！' },
-    { id: 'xp500', cond: () => gameState.xp >= 500, icon: '⭐', text: '经验丰富的战士：累计500 XP' },
-  ];
-
-  achievements.forEach(a => {
-    if (!gameState.achievements.includes(a.id) && a.cond()) {
-      gameState.achievements.push(a.id);
-      showAchievement(a.icon, a.text);
-    }
-  });
-}
-
-function showAchievement(icon, text) {
-  const toast = document.getElementById('achievementToast');
-  toast.querySelector('span').textContent = icon;
-  document.getElementById('achievementText').textContent = text;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 3000);
-}
+function showAchievement(icon,text){const toast=document.getElementById('achievementToast');toast.querySelector('span').textContent=icon;document.getElementById('achievementText').textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),3000)}
 </script>
 </body>
 </html>
