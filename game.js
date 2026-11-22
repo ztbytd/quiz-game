@@ -35,6 +35,9 @@ const topics = {
   22: 'track-framework',
   23: 'track-platform',
   24: 'track-system',
+  25: 'track-runtime',
+  26: 'track-media',
+  27: 'track-quality',
 };
 let state = {hearts: 5, xp: 0, streak: 0, stars: {}, mistakes: {}, badges: [], run: null, returnTo: 'home'};
 try {

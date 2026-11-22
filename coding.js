@@ -3,6 +3,123 @@
 // Fixture data is copied into the worker. Each run has a new global scope and time budget.
 const CodingExercises = (() => {
   const specs = {
+    lru: {
+      name: 'lru',
+      args: 'cap',
+      kind: 'lru',
+      hint: '返回包含 get(key)、set(key, value) 的对象，未命中返回 undefined。容量须为正整数，否则抛 RangeError。用例会连续调用同一实例。',
+      cases: [
+        [
+          '读取刷新淘汰顺序',
+          [
+            2,
+            [
+              ['set', 'A', 1],
+              ['set', 'B', 2],
+              ['get', 'A'],
+              ['set', 'C', 3],
+              ['get', 'B'],
+              ['get', 'C'],
+            ],
+          ],
+          [{value: 1}, {missing: true}, {value: 3}],
+        ],
+        [
+          '零值、布尔值与覆盖',
+          [
+            2,
+            [
+              ['set', 'A', 0],
+              ['set', 'B', false],
+              ['get', 'A'],
+              ['get', 'B'],
+              ['set', 'A', 9],
+              ['set', 'C', 3],
+              ['get', 'B'],
+              ['get', 'A'],
+            ],
+          ],
+          [{value: 0}, {value: false}, {missing: true}, {value: 9}],
+        ],
+        [
+          '容量为一',
+          [
+            1,
+            [
+              ['set', 'A', 1],
+              ['set', 'A', 2],
+              ['get', 'A'],
+              ['set', 'B', 3],
+              ['get', 'A'],
+            ],
+          ],
+          [{value: 2}, {missing: true}],
+        ],
+        ['拒绝零容量', [0, []], null, 'RangeError'],
+        ['拒绝非整数容量', [1.5, []], null, 'RangeError'],
+      ],
+    },
+    tree: {
+      name: 'moveCheck',
+      args: 'id, target, nodes',
+      kind: 'tree',
+      hint: 'nodes 是 Map<ID, {parentId}>，根的 parentId 为 null。沿目标祖先链遇到源或已有环返回 invalid，缺失节点返回 unknown，走到根返回 valid。这里只判断结构，源目录存在且权限由调用方另行校验。',
+      cases: [
+        [
+          '不能移入自己的后代',
+          [
+            'A',
+            'C',
+            [
+              ['A', {parentId: null}],
+              ['B', {parentId: 'A'}],
+              ['C', {parentId: 'B'}],
+            ],
+          ],
+          'invalid',
+        ],
+        [
+          '移入其他分支',
+          [
+            'B',
+            'D',
+            [
+              ['A', {parentId: null}],
+              ['B', {parentId: 'A'}],
+              ['D', {parentId: 'A'}],
+            ],
+          ],
+          'valid',
+        ],
+        ['自身与缺失节点的判断顺序', ['A', 'A', []], 'invalid'],
+        ['祖先未加载', ['A', 'T', [['T', {parentId: 'missing'}]]], 'unknown'],
+        [
+          '零也是有效 ID',
+          [
+            0,
+            2,
+            [
+              [0, {parentId: null}],
+              [2, {parentId: 0}],
+            ],
+          ],
+          'invalid',
+        ],
+        [
+          '历史环需要终止',
+          [
+            'A',
+            'X',
+            [
+              ['X', {parentId: 'Y'}],
+              ['Y', {parentId: 'X'}],
+            ],
+          ],
+          'invalid',
+        ],
+        ['移动到根', ['A', null, []], 'valid'],
+      ],
+    },
     window: {
       name: 'longestUnique',
       args: 'text',
@@ -73,23 +190,42 @@ const CodingExercises = (() => {
   };
   function workerMain() {
     self.onmessage = async function (event) {
-      const {code, name, cases} = event.data;
+      const {code, name, cases, kind} = event.data;
       try {
         const solution = new Function('"use strict";\n' + code + '\nreturn ' + name + ';')();
         if (typeof solution !== 'function') throw TypeError('请保留题目给定的函数名');
         const rows = [];
-        for (const [label, args, expected] of cases) {
+        for (const [label, args, expected, expectedError] of cases) {
           try {
-            const actual = await solution(...args);
+            let actual;
+            if (kind === 'lru') {
+              const cache = solution(args[0]);
+              actual = [];
+              for (const [method, key, value] of args[1]) {
+                if (method === 'set') cache.set(key, value);
+                else {
+                  const result = cache.get(key);
+                  actual.push(result === undefined ? {missing: true} : {value: result});
+                }
+              }
+            } else if (kind === 'tree') {
+              actual = await solution(args[0], args[1], new Map(args[2]));
+            } else actual = await solution(...args);
             const received = JSON.stringify(actual) ?? String(actual);
             const want = JSON.stringify(expected);
             rows.push({
               label,
-              pass: received === want,
-              detail: '期望 ' + want + '，实际 ' + received.slice(0, 160),
+              pass: !expectedError && received === want,
+              detail: expectedError
+                ? '期望抛出 ' + expectedError + '，实际正常返回'
+                : '期望 ' + want + '，实际 ' + received.slice(0, 160),
             });
           } catch (e) {
-            rows.push({label, pass: false, detail: String(e.message || e).slice(0, 180)});
+            rows.push({
+              label,
+              pass: !!expectedError && e?.name === expectedError,
+              detail: String(e?.name || 'Error') + ': ' + String(e?.message || e).slice(0, 180),
+            });
           }
         }
         self.postMessage({rows});
@@ -114,7 +250,12 @@ const CodingExercises = (() => {
       timer = setTimeout(() => finish({error: '运行超过 3 秒，已停止。检查循环终止条件。'}), 3000);
       worker.onmessage = (e) => finish(e.data);
       worker.onerror = (e) => finish({error: e.message || '执行失败'});
-      worker.postMessage({code: source, name: specs[card].name, cases: specs[card].cases});
+      worker.postMessage({
+        code: source,
+        name: specs[card].name,
+        cases: specs[card].cases,
+        kind: specs[card].kind,
+      });
     } catch (e) {
       finish({error: e.message});
     }

@@ -17,6 +17,9 @@ const Practice = (() => {
   const groupNames = Object.fromEntries(groups.map((g) => [g.id, g.name]));
   const inGroup = (id) => groups.find((g) => g.id === id).cards;
   const tracks = {
+    runtime: {name: 'Node 运行机制', ids: inGroup('runtime-deep')},
+    media: {name: '视频与移动端', ids: inGroup('media-deep')},
+    quality: {name: '测试与国际化', ids: inGroup('quality-deep')},
     language: {name: 'JS / TS 深入', ids: inGroup('language-deep')},
     framework: {name: '框架进阶', ids: inGroup('framework-deep')},
     platform: {name: '浏览器与工程化', ids: inGroup('platform-deep')},
@@ -55,6 +58,10 @@ const Practice = (() => {
     hydrate: ['React · hydrateRoot', 'https://react.dev/reference/react-dom/client/hydrateRoot'],
   };
   const selectionSources = [
+    [
+      'Atlassian · Frontend Engineering Interview Guide',
+      'https://wac-cdn.atlassian.com/dam/jcr:c0aa929a-3391-4e9c-9202-3f3ba0eeb859/P30-P50-Frontend-Interview-Guide.pdf',
+    ],
     [
       'Front End Interview Handbook · 复习方向目录',
       'https://github.com/yangshun/front-end-interview-handbook',
@@ -380,7 +387,9 @@ const Practice = (() => {
             output.append(el('p', '', (row.pass ? '通过 · ' : '待修正 · ') + row.label + '　' + row.detail));
         });
       });
-      editor.append(summary, code, run, output);
+      editor.append(summary);
+      if (spec.hint) editor.append(el('p', 'meta', spec.hint));
+      editor.append(code, run, output);
       panel.append(editor);
     }
     if (!s.reveal) {
@@ -508,9 +517,20 @@ const Practice = (() => {
           ...inGroup('ai'),
           ...inGroup('framework-deep'),
           ...inGroup('platform-deep'),
+          ...inGroup('runtime-deep'),
+          ...inGroup('quality-deep'),
         ]),
         draw(['pool', 'debounce', 'window', 'binary', 'lru', ...inGroup('language-deep')]),
-        draw(['split', 'merge', 'parity', 'rate', 'control', ...inGroup('field'), ...inGroup('system-deep')]),
+        draw([
+          'split',
+          'merge',
+          'parity',
+          'rate',
+          'control',
+          ...inGroup('field'),
+          ...inGroup('system-deep'),
+          ...inGroup('media-deep'),
+        ]),
       ];
     const queue = interview.flatMap((id) => [0, 1, 2].map((i) => id + ':' + i));
     saved.session = {
