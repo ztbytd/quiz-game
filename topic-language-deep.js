@@ -308,6 +308,14 @@
         answer: 1,
         explain:
           'then 回调里调用 load，回调抛错会让返回的 Promise 拒绝，返回 Promise 也会被采用。直接先计算 load() 的写法，可能在建立 Promise 链前就抛错。',
+        detail: {
+          example:
+            'load() 在返回 Promise 之前就同步抛错时，Promise.resolve(load()) 里 load() 先被求值，异常在 Promise.resolve 执行之前就飞出去了，.catch 根本来不及接。换成 Promise.resolve().then(() => load()) 后，load 在 then 回调里调用，同步抛错会变成这个回调的拒绝，和“返回一个被拒绝的 Promise”走同一条路径，两种失败都进同一个 catch。',
+          code:
+            '// 失败：load() 在建立链之前就求值\nPromise.resolve(load()).catch(report);\n\n// 成功：load 在 then 回调内执行，同步抛错也变成拒绝\nPromise.resolve().then(() => load()).catch(report);\n\nfunction load() {\n  if (bad) throw new Error(\'sync\');   // → 走 catch\n  return fetch(url);                   // → 拒绝也走 catch\n}',
+          pitfalls:
+            'Promise.resolve(load) 传的是函数本身，它会被当成普通值直接兑现，根本不会调用。Promise.all([load]) 同理，函数作为值进结果数组，不会执行。以为 try/catch 能包住异步拒绝也不对，catch 只接同步部分。这个模式只统一两类失败，不改变 thenable 的解析规则。',
+        },
       },
       {
         type: 'choice',
@@ -317,6 +325,14 @@
         answer: 2,
         explain:
           '数组迭代器会把空位作为 undefined 产生。手写版若用跳过空位的 forEach 加计数器，需要额外处理这个边界。',
+        detail: {
+          example:
+            'Array(2) 创建的是两个空位，不是两个 undefined。原生 Promise.all 用迭代器消费它，数组迭代器会把空位当成 undefined 吐出来，所以结果是 [undefined, undefined]。手写版如果先用 forEach 遍历，forEach 会跳过空位，完成计数器永远凑不满 2，Promise 就一直 pending——这是最典型的实现差异。',
+          code:
+            '// 原生\nawait Promise.all(Array(2));   // [undefined, undefined]\n\n// 手写错误版：forEach 跳过空位，计数器到不了总数\narr.forEach((v, i) => { v.then(() => { done[i] = v; if (++count === arr.length) resolve(done); }); });',
+          pitfalls:
+            '空位和 undefined 不是一回事，for...of 和 forEach 对空位的处理不同。输入为空数组时要立即兑现，否则完成计数条件永远不成立。Promise.all 只聚合结果，不会去调用数组里的函数——如果传的是函数，它会原样出现在结果里。',
+        },
       },
       {
         type: 'choice',
@@ -326,6 +342,14 @@
         answer: 0,
         explain:
           'finally 等待回调返回的 Promise 兑现，再继续传递原值 3。若收尾 Promise 拒绝，则最终链转为该拒绝。',
+        detail: {
+          example:
+            'finally 的回调不接收原值，返回的值也不参与结果，它只负责“等收尾做完再继续”。Promise.resolve(3).finally(() => Promise.resolve(9)) 里，9 是收尾自己的兑现值，被丢弃，原值 3 继续往后传。只有收尾阶段自己失败时，才会把这个拒绝顶替掉原结果。',
+          code:
+            'await Promise.resolve(3).finally(() => Promise.resolve(9));  // 3\n\n// 收尾拒绝会覆盖原结果\nPromise.resolve(3)\n  .finally(() => Promise.reject(new Error(\'cleanup failed\')))\n  .catch((e) => e.message);   // "cleanup failed"',
+          pitfalls:
+            '以为 finally 能把值改成 9 是最常见的误解，它的返回值一律被忽略。原请求失败、finally 又抛错时，catch 收到的是清理阶段的错误，原始错误就丢了，重要任务要分别记录两者。finally 返回的 Promise 没有超时，会让主流程一直等一个卡住的上报任务。',
+        },
       },
       {
         type: 'truefalse',
@@ -334,6 +358,14 @@
         answer: false,
         explain:
           '构造调用使用新实例作为 this，预置参数仍然生效。只用普通 apply 包装的简化 bind 未必支持这一构造语义。',
+        detail: {
+          example:
+            'function Item(x) { this.x = x } const Bound = Item.bind({x: 0}, 5); new Bound(8) 拿到的实例 x 是 5，不是 8，也不是 0。new 抢先用新创建的对象当 this，绑定的 {x: 0} 被忽略；但 bind 预置的参数 5 仍然排在调用实参 8 前面，所以 Item 收到的第一个参数是 5。',
+          code:
+            'function Item(x) { this.x = x; }\nconst Bound = Item.bind({ x: 0 }, 5);\n\nnew Bound(8).x;        // 5  ← new 的 this 优先于 bind 的 this\nItem.bind({ x: 0 })(5).x;  // 0  ← 普通调用时 bind 的 this 生效',
+          pitfalls:
+            '把 bind 简写成返回箭头函数（(...a) => fn.apply(ctx, a)），箭头函数本身不能被 new，构造场景直接失败。还要区分：构造函数显式 return 一个对象时，new 采用那个对象；返回原始值时仍用新实例。只测普通调用发现不了这些差异。',
+        },
       },
       {
         type: 'choice',
@@ -348,6 +380,14 @@
         answer: 3,
         explain:
           '读取 Object.getOwnPropertyDescriptors(obj)，再用 Object.defineProperties(target, descriptors)。若还需保留原型，可用 Object.create(Object.getPrototypeOf(obj), descriptors)。这样保留自身访问器及可写/可枚举/可配置规则；展开语法会读取 getter 并把结果变成普通数据属性。描述符中的对象值仍共享引用，Map 内部槽和 class 私有字段不在这个复制契约内。',
+        detail: {
+          example:
+            '源对象上有个可枚举的 getter，展开 {...obj} 会真的调用它，把当时的值复制成普通数据属性，之后源值变了副本不会跟着变；不可枚举属性和 writable 标志也被丢掉了。要保留这些规则，得直接复制描述符本身，而不是复制读出来的值。',
+          code:
+            '// 保留自身访问器、不可枚举属性、writable/enumerable/configurable\nconst copy = Object.create(\n  Object.getPrototypeOf(src),\n  Object.getOwnPropertyDescriptors(src),\n);\n\n// 不需要原型时\nconst copy2 = Object.defineProperties({}, Object.getOwnPropertyDescriptors(src));',
+          pitfalls:
+            '展开和 Object.assign 都会触发 getter，且丢掉不可枚举属性与属性标志。JSON 往返更糟，除了丢标志还会丢函数、undefined 和 Date 类型。即使复制了描述符，属性值里的对象仍然共享同一引用，是浅复制。Map、Date 的内部槽和 class 私有字段不会被复制，要按类型各自的契约处理。源对象是 Proxy 时，读描述符本身也可能触发陷阱。',
+        },
       },
       {
         type: 'choice',
@@ -356,6 +396,14 @@
         options: ['true', 'true | false', 'false', 'never'],
         answer: 2,
         explain: '元组包装抑制了对裸类型参数的分配。string | number 整体不能赋给 string，所以结果为 false。',
+        detail: {
+          example:
+            '如果写成 T extends string ? true : false，T 是裸类型参数，传入联合类型会被分发成 true | false 两支。包成 [T] extends [string] 之后，判断的对象变成整个元组，string | number 整体不能赋给 string，所以直接走 false 分支。这个差别在判断“是否全部成员满足条件”时是决定性的。',
+          code:
+            '// 裸参数：联合被分配，结果 true | false\ntype A<T> = T extends string ? true : false;\ntype A1 = A<string | number>;   // true | false\n\n// 元组包装：整体判断，结果 false\ntype IsString<T> = [T] extends [string] ? true : false;\ntype B1 = IsString<string | number>;  // false',
+          pitfalls:
+            '把分配律忘掉，是这里最容易出的错：裸类型参数遇到联合会自动逐支展开。另一种常见误判是以为结果是 never，never 只在特定条件类型组合里出现。元组包装要两边都包，只包左边在部分场景下不成立。',
+        },
       },
       {
         type: 'truefalse',
@@ -364,6 +412,14 @@
         answer: true,
         explain:
           '导入使用实时绑定，导出方更新该绑定时可以被观察。导入方不能给它重新赋值；循环依赖还需考虑读取时绑定是否已初始化。',
+        detail: {
+          example:
+            'a.mjs 导出 let count = 0 并提供 increment()，b.mjs 写 import { count, increment } from "./a.mjs" 后调用 increment() 再读 count，看到的是更新后的值。命名导入拿到的不是一份拷贝，而是指向同一个绑定的实时引用；这和 CommonJS 那个“当时值的快照”有本质区别。',
+          code:
+            '// a.mjs\nexport let count = 0;\nexport function increment() { count++; }\n\n// b.mjs\nimport { count, increment } from \'./a.mjs\';\nincrement();\nconsole.log(count);   // 1，能看到更新\n// count = 5;         // SyntaxError：导入方不能赋值',
+          pitfalls:
+            '把 ES 命名导入当成值拷贝是最常见的误解。导入方可以读、不能写，运行时会报 TypeError 或语法错误。循环依赖时，绑定虽然存在但可能还没初始化，顶层读取会踩暂时性死区。导出的是对象时，“能否修改内部”由对象自身约束决定，和绑定是否实时无关。',
+        },
       },
       {
         type: 'text',
@@ -371,6 +427,14 @@
         q: '分页生成器在第三页读取前，消费者已经 break。你会用哪三项断言验证资源收尾？',
         explain:
           '注入 fetchPage 和 close 的计数桩：①前两页取完并 break 后，close 次数应为 1；②fetchPage 的调用记录只能含第 1、2 页，不能再请求第 3 页；③随后主动调用 iterator.return()，close 仍为 1且不再拉取。前提是生成器已进入 try/finally、没有预取。再测正常耗尽与消费方抛错；若有后台预取，契约应改为取消并等待在途请求收尾。',
+        detail: {
+          example:
+            '用计数器桩替换 fetchPage 和 close，消费前两页后 break。三项断言分别是：close 被调用恰好 1 次；fetchPage 的调用记录里只有第 1、2 页，没有第 3 页；之后再手动调 iterator.return()，close 仍然是 1、也不会再拉取。三条合起来证明“提前退出时资源确实释放了，而且没有多余的预取”。',
+          code:
+            'function* rows(fetchPage, close) {\n  try {\n    for (let p = 1; ; p++) yield fetchPage(p);   // 不预取\n  } finally {\n    close();                                     // 幂等清理\n  }\n}\n\nfor (const row of rows(fetchPage, close)) { break; }\n// close 调用 1 次；fetchPage 只被调了 1 次（第 1 页）',
+          pitfalls:
+            '生成器体还没开始执行就直接 return，未进入的 try/finally 不会凭空运行。finally 里再 yield，单次 return 未必做完所有清理。如果实现里有后台预取，break 只取消了取数，在途请求还在跑，契约要改成“取消并等待在途请求收尾”才能断言。只测正常读完，永远测不出提前退出的问题。',
+        },
       },
     ],
   });
