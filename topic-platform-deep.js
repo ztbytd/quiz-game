@@ -47,7 +47,7 @@
         ],
         [
           '如果容器宽度变化时希望自动变成两列或一列，怎样让最小卡片宽度参与决定？',
-          '用 repeat(auto-fit, minmax(..., 1fr)) 等规则让可容纳列数随容器变化。最小值需要兼顾窄屏，若比容器还宽会溢出；先确定产品接受的最小宽度和降列条件。',
+          '例如最小卡片宽度定为 16rem，可用 repeat(auto-fit, minmax(min(100%, 16rem), 1fr))：容器放得下几列就生成几列，剩余空间按 fr 分配；内部 min(100%,16rem) 让窄于 16rem 的容器降为一列而不被固定最小值撑出横向滚动。auto-fit 会折叠完全空的轨道；若需要宽容器里只有一张卡时也保留空槽，应改为 auto-fill。↵.cards {↵  display: grid;↵  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));↵  gap: 1rem;↵}↵.card { min-width: 0; overflow-wrap: anywhere; }',
         ],
         [
           'auto-fit 与 auto-fill 在只有一张卡片的宽容器上有何差别？',
@@ -71,7 +71,7 @@
       steps: [
         [
           '列表只在容器绑定 click，点击删除按钮里的图标时，event.target 不是 button。如何确定用户点了什么？',
-          'target 指向事件起点，currentTarget 是当前监听所在容器。可从 Element 类型的 target 向上 closest 查找带动作标识的按钮，再确认它属于当前列表的操作范围，读取稳定资源 ID。',
+          "event.target 是点击起点，可能是按钮里的图标；event.currentTarget 是绑定监听的列表。先确认 target 是 Element，再 closest 找 data-action 按钮，并检查它仍在当前容器内、没有属于嵌套的另一份列表，最后读 data-id。下面约定每个列表有 data-list，删除函数由业务注入；卸载时执行返回的清理函数。↵function bindActions(list, removeById) {↵  function click(e) {↵    if (!(e.target instanceof Element)) return;↵    const button = e.target.closest('button[data-action=\"delete\"]');↵    if (!button || !list.contains(button) || button.closest('[data-list]') !== list) return;↵    if (button.disabled || !button.dataset.id) return;↵    removeById(button.dataset.id);↵  }↵  list.addEventListener('click', click);↵  return () => list.removeEventListener('click', click);↵}",
         ],
         [
           '为了阻止点击删除后进入详情，只调用 preventDefault 足够吗？',
@@ -124,7 +124,7 @@
       steps: [
         [
           '卡片在手机里宽 320 CSS 像素，却下载 2400 像素封面。srcset 和 sizes 各提供什么信息？',
-          '宽度描述符的 srcset 列出候选资源及其固有宽度，sizes 告诉浏览器不同条件下图像预期占用的布局宽度。浏览器再结合像素密度等因素选择候选，sizes 要与真实 CSS 布局一致。',
+          'srcset 的 w 描述符声明每张候选图实际有多少像素宽，sizes 描述当前布局准备给图像多宽的 CSS 槽位。浏览器结合槽位、DPR 和资源等选择候选：槽位 320 CSS px、DPR=2 时，640 像素候选通常更合适，但浏览器不承诺固定选择。srcset 中的宽度必须与文件固有宽度相符；sizes 不负责设置 CSS 宽度。下面示例给 320px 槽位提供三档等比例图片，并以 width/height 预留比例。↵<img src="cover-640.jpg"↵     srcset="cover-320.jpg 320w, cover-640.jpg 640w, cover-960.jpg 960w"↵     sizes="(max-width: 352px) calc(100vw - 32px), 320px"↵     width="640" height="400" alt="文档封面"↵     style="display:block; width:320px; max-width:100%; height:auto">',
         ],
         [
           '写了 sizes="320px"，就能让图像按 320px 宽度显示吗？',
@@ -293,7 +293,7 @@
         ],
         answer: 1,
         explain:
-          '子元素的层级在所在上下文内部比较。先确认祖先上下文如何参与外层排序，再决定整体层级或浮层容器。',
+          '先画出祖先层叠上下文：内容区及后代整体在外层以 z-index:1 排序，内部的 999999 只能赢过该内容区内部兄弟，无法越过外层的导航 2。可调整公共祖先层级、把浮层挂到合适的公共容器，或按需求使用进入顶层的原生模态 dialog。还需排查 transform、opacity 等建立的新上下文及 overflow 裁切。',
       },
       {
         type: 'choice',
@@ -302,14 +302,15 @@
         options: ['auto-fill', 'auto-fit', '所有项目设 position:absolute', '给唯一卡片设置 flex-grow:1'],
         answer: 0,
         explain:
-          'auto-fill 保留按规则生成的空轨道；auto-fit 会折叠空轨道，常让现有项目获得更多空间。实际列宽仍取决于轨道尺寸规则。',
+          'auto-fill 会保留按容器宽度计算出的空轨道；auto-fit 在布局后折叠空轨道，剩余 1fr 轨道可能扩宽。示例 grid-template-columns:repeat(auto-fill,minmax(200px,1fr)) 在宽容器只有一个项目时仍保留其他列槽位。容器窄于最小轨道时还需调整最小值，避免水平溢出。',
       },
       {
         type: 'truefalse',
         chain: 'platform-delegation',
         q: '点击按钮图标时调用 preventDefault，会自动阻止该 click 事件传播到列表容器。',
         answer: false,
-        explain: '取消默认动作与停止传播是不同操作。委托逻辑应识别有效操作区域，按需要处理冒泡。',
+        explain:
+          '错误。preventDefault 取消可取消的默认行为，如链接跳转；stopPropagation 才停止继续传播，但也会影响上层委托和埋点。图标点击可用 target.closest 找按钮，并验证它属于当前列表。行点击与操作按钮最好在入口识别目标范围，避免所有子元素无差别停止传播。',
       },
       {
         type: 'choice',
@@ -322,7 +323,8 @@
           '自动打开另一个弹窗',
         ],
         answer: 2,
-        explain: '恢复位置应让键盘用户继续原工作流。通常回到触发元素，触发元素消失时需要可预测的替代目标。',
+        explain:
+          '先尝试恢复到仍存在的触发按钮；该行已删除时，选择下一项、上一项或列表标题等符合后续操作的位置，并确保目标可聚焦。不要继续 focus 已移除节点。弹窗打开时还应移入焦点、保持键盘操作在模态范围内，并让背景不可交互，关闭后解除这些约束。',
       },
       {
         type: 'choice',
@@ -335,14 +337,16 @@
           '资源选择所参考的预期布局槽位宽度',
         ],
         answer: 3,
-        explain: 'sizes 提供资源选择提示；实际布局由 CSS 等决定，浏览器还会结合设备和候选资源作选择。',
+        explain:
+          'sizes="320px" 声明用于选图的预期槽位为 320 CSS px；实际显示宽度仍由 CSS 和元素约束决定。浏览器结合 DPR、候选固有宽度等选择文件，例如 DPR=2 时通常需要接近 640 像素候选。用 currentSrc、实际布局宽度和网络面板核对，不应断言一定下载 320 像素文件。',
       },
       {
         type: 'truefalse',
         chain: 'platform-idb',
         q: '同一 IndexedDB 事务中第一条写请求触发 success，就可以确认三条写入全部持久保存成功。',
         answer: false,
-        explain: '请求成功与事务完成不同。后续失败可能中止事务，应以事务完成事件作为这次批量保存成功的依据。',
+        explain:
+          '错误。单条请求 success 只说明该请求成功；后续写失败仍可能令整个事务 abort，前面的写入也回滚。批量保存成功应在 transaction.complete 后确认，并处理 abort/error。事务完成与断电时数据一定已刷到物理介质也不是同一保证，需按浏览器与 durability 约定区分。',
       },
       {
         type: 'choice',
@@ -355,14 +359,15 @@
           '改写已提交历史让测试通过',
         ],
         answer: 1,
-        explain: '无法测试与目标缺陷发生不同。skip 保留这种不确定性，避免把环境问题错误当成回归证据。',
+        explain:
+          '执行 git bisect skip，表示该提交无法判断目标缺陷。good 表示已经验证目标行为正常，bad 表示已经复现目标缺陷，二者都不能由构建环境失败推导。若关键区间存在多个 skip，最终可能只能得到候选集合；恢复可运行环境后继续缩小，避免把候选说成已确认根因。',
       },
       {
         type: 'text',
         chain: 'platform-sourcemap',
         q: '错误平台已经收到 source map，但还原的文件行号明显错误。请给出两项具体核对。',
         explain:
-          '核对事件中的资源 URL、构建版本及行列号，是否与上传映射的那次构建一致；再核对流水线的重建、压缩或 CDN 转换是否改变产物。用最终线上构建触发已知位置的受控异常验证。',
+          '第一，核对错误事件的资源 URL、release/build ID、行列号与上传的 JavaScript 及 map 是否属于同一次构建，排除客户端旧缓存与同名覆盖。第二，核对 map 生成后是否又经过压缩、拼接或 CDN 改写，产物一旦变化旧映射就不匹配。用最终线上产物触发已知源码位置的受控异常，验证还原的文件、行列与版本都正确。',
       },
     ],
   });

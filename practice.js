@@ -3,7 +3,7 @@ const Practice = (() => {
   const root = document.getElementById('practiceHost').attachShadow({mode: 'open'});
   const sheet = document.createElement('link');
   sheet.rel = 'stylesheet';
-  sheet.href = new URL('practice.css?v=3', document.baseURI).href;
+  sheet.href = new URL('practice.css?v=6', document.baseURI).href;
   root.append(sheet);
   const layout = document.createElement('template');
   layout.innerHTML =

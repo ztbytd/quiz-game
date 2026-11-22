@@ -67,33 +67,8 @@ function action(label, fn, cls = 'tool-button') {
   button.onclick = fn;
   return button;
 }
-const relatedTopics = [
-  [/手写 Promise.all/, 'lang-all-boundaries'],
-  [/call\/apply\/bind/, 'lang-bind-new'],
-  [/Generator 函数/, 'lang-generator-close'],
-  [/防抖/, 'debounce'],
-  [/分布式锁|重复合并/, 'merge'],
-  [/上传成功率/, 'rate'],
-  [/Web Worker|动态并发/, 'throughput'],
-  [/断点续传/, 'resume'],
-  [/protobuf|Long\/Buffer/, 'long'],
-  [/三级权限|角色权限/, 'permission'],
-  [/双删/, 'revoke'],
-  [/Monorepo/, 'contract'],
-  [/BFF/, 'aggregate'],
-  [/跨域|CORS|同源/, 'origin'],
-  [/虚拟滚动/, 'virtual'],
-  [/WebSocket/, 'socket'],
-  [/缓存策略|HTTP 缓存/, 'network'],
-  [/自我介绍/, 'intro'],
-  [/CI\/CD/, 'pipeline'],
-  [/React.memo|useMemo|useCallback|Hooks/, 'react'],
-  [/ref 和 reactive|Vue3 响应式/, 'vue'],
-  [/事件循环/, 'loop'],
-];
 function topicFor(level, q) {
-  if (q?.chain) return q.chain;
-  return relatedTopics.find(([pattern]) => pattern.test(q.q))?.[1] || topics[level.id];
+  return q?.chain && PRACTICE_BANK.cards[q.chain] ? q.chain : '';
 }
 function entryKey(level, index) {
   return level.id + ':' + index;
@@ -204,7 +179,7 @@ function renderMap() {
       make('div', 'name', level.icon + ' ' + level.name),
       make('div', 'desc', level.desc),
       make('div', 'tag tag-' + level.difficulty, difficulty + ' · ' + level.questions.length + '题'),
-      action('练本关追问 →', () => openPractice(topics[level.id]), 'topic-link'),
+      action('相关口答练习 →', () => openPractice(topics[level.id]), 'topic-link'),
     );
     node.append(button, label);
     path.append(node);
@@ -263,6 +238,61 @@ function appendExplanation(parent, source) {
           part.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&'),
         ),
       );
+  }
+}
+function appendAnswerDetail(parent, detail) {
+  if (!detail) return;
+  for (const [key, label] of [
+    ['principle', '原理与过程'],
+    ['example', '例子与推演'],
+    ['code', '实现代码'],
+    ['pitfalls', '边界与易错点'],
+  ]) {
+    if (!detail[key]) continue;
+    const section = make('section', 'answer-section');
+    section.append(make('h3', '', label));
+    if (key === 'code') {
+      section.append(make('p', 'answer-code-hint', '长代码可左右滚动查看'));
+      const pre = make('pre');
+      pre.tabIndex = 0;
+      pre.setAttribute('aria-label', '参考实现代码');
+      pre.append(make('code', '', detail[key]));
+      section.append(pre);
+    } else section.append(make('p', '', detail[key]));
+    parent.append(section);
+  }
+  if (detail.followups?.length) {
+    const section = make('section', 'answer-section');
+    section.append(make('h3', '', '继续追问'));
+    for (const [question, answer] of detail.followups) {
+      const item = make('details', 'answer-followup');
+      item.append(make('summary', '', question), make('p', '', answer));
+      section.append(item);
+    }
+    parent.append(section);
+  }
+  if (detail.sources?.length) {
+    const section = make('section', 'answer-section answer-sources');
+    section.append(make('h3', '', '核对资料'));
+    const list = make('ul');
+    for (const [title, href] of detail.sources) {
+      let url;
+      try {
+        url = new URL(href);
+      } catch {
+        continue;
+      }
+      if (url.protocol !== 'https:') continue;
+      const item = make('li'),
+        link = make('a', '', title);
+      link.href = url.href;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      item.append(link);
+      list.append(item);
+    }
+    section.append(list);
+    parent.append(section);
   }
 }
 function renderQuestion() {
@@ -351,10 +381,17 @@ function renderQuestion() {
   );
   const explanation = make('div', 'explanation');
   if (!correct) explanation.append(make('strong', '', '正确答案：' + optionLabel(q, q.answer)), make('br'));
+  if (q.detail) explanation.append(make('h3', 'answer-heading', '直接回答'));
   appendExplanation(explanation, q.explain);
+  appendAnswerDetail(explanation, q.detail);
+  const related = topicFor(level, q);
   feedback.append(
     explanation,
-    action('继续追问这个方向 →', () => openPractice(topicFor(level, q)), 'topic-link'),
+    action(
+      related ? '相关追问：' + PRACTICE_BANK.cards[related].title + ' →' : '进入专项口答目录 →',
+      () => openPractice(related),
+      'topic-link',
+    ),
   );
   body.append(feedback);
   hint.textContent = '';

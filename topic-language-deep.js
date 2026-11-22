@@ -22,7 +22,7 @@
         ],
         [
           '如果 thenable 先调用 resolve(7)，随后 reject(error)，最后又抛错，结果是什么？',
-          '第一次有效的 resolve 已锁定采用值 7，后续 reject 和抛错不会把它改成失败。若先抛错且尚未解决，会拒绝。手写实现需保证 resolve 与 reject 共享一次性状态。',
+          '第一次有效的 resolve 已锁定采用值 7，后续 reject 和抛错不会把它改成失败。若先抛错且尚未解决，会拒绝。手写实现需保证 resolve 与 reject 共享一次性状态。若第一次 resolve 的是仍 pending 的 Promise，则锁定的是采用它的命运，当前 Promise 还不一定 fulfilled。resolved 表示已决定如何结算，不能与 fulfilled 同义使用。',
         ],
         [
           '怎么测试一个 Promise 兼容封装，而不是只测成功值？',
@@ -130,7 +130,7 @@
         ],
         [
           '希望复制 getter、setter、可写性与不可枚举属性，如何表达？',
-          '读取 Object.getOwnPropertyDescriptors(source)，再用 Object.defineProperties 或 Object.create 传入描述符。若也要保留原型，可把 Object.getPrototypeOf(source) 作为 Object.create 的第一个参数。',
+          '读取 Object.getOwnPropertyDescriptors(source)，再用 Object.defineProperties 或 Object.create 传入描述符。若也要保留原型，可把 Object.getPrototypeOf(source) 作为 Object.create 的第一个参数。最小表达式是 Object.create(Object.getPrototypeOf(source), Object.getOwnPropertyDescriptors(source))。这一步不主动调用普通 getter；若 source 自己是 Proxy，读取描述符或原型仍可能触发其陷阱。',
         ],
         [
           '这样是不是就得到了任何对象的完整副本？',
@@ -186,7 +186,7 @@
         ],
         [
           'B 在顶层读取 A 导出的 const，A 还在等待 B 求值，会发生什么？',
-          '可能触发暂时性死区的 ReferenceError。导入声明能建立绑定，并不意味着对应的 const 已完成初始化。把读取延后可能改变行为，但也应评估依赖方向是否合理。',
+          '可能触发暂时性死区的 ReferenceError。导入声明能建立绑定，并不意味着对应的 const 已完成初始化。把读取延后可能改变行为，但也应评估依赖方向是否合理。可用两个文件复现：a.mjs 先 import "./b.mjs" 再 export const a=1；b.mjs 从 a.mjs 导入 a 并在顶层 console.log(a)。从 a.mjs 启动时，b 求值读取尚未初始化的 a，报 ReferenceError。将 console.log 延后到两模块初始化完成后调用的函数中才能避免这一读取时机。',
         ],
         [
           'A 导出 let count 并提供 increment，B 的命名导入会看到后续变化吗？',
@@ -263,7 +263,7 @@
       steps: [
         [
           '用 generator 按页读记录，for...of 中途 break 时 finally 会执行吗？',
-          '生成器已经进入 try 且仍暂停在 yield 时，循环提前退出通常会调用迭代器 return()，使生成器执行 finally 中的清理。把资源释放放在 try/finally 中，并验证提前退出路径。',
+          '生成器已经进入 try 且仍暂停在 yield 时，循环提前退出通常会调用迭代器 return()，使生成器执行 finally 中的清理。把资源释放放在 try/finally 中，并验证提前退出路径。例如 function* rows(){try{yield 1;yield 2;}finally{close();}}，for(const x of rows()){break;} 会执行 close。若尚未开始执行生成器体就直接 return，尚未进入的 try/finally 不会凭空执行；若 finally 自己又 yield，单次 return 也未必完成所有清理。',
         ],
         [
           '手写迭代器只有 next，没有 return，会有什么遗漏？',
@@ -347,7 +347,7 @@
         ],
         answer: 3,
         explain:
-          '描述符可保留访问器和属性规则。复制结果里的嵌套对象仍可能共享引用，内部槽和私有字段需要相应类型的重建方式。',
+          '读取 Object.getOwnPropertyDescriptors(obj)，再用 Object.defineProperties(target, descriptors)。若还需保留原型，可用 Object.create(Object.getPrototypeOf(obj), descriptors)。这样保留自身访问器及可写/可枚举/可配置规则；展开语法会读取 getter 并把结果变成普通数据属性。描述符中的对象值仍共享引用，Map 内部槽和 class 私有字段不在这个复制契约内。',
       },
       {
         type: 'choice',
@@ -370,7 +370,7 @@
         chain: 'lang-generator-close',
         q: '分页生成器在第三页读取前，消费者已经 break。你会用哪三项断言验证资源收尾？',
         explain:
-          '检查清理回调恰当执行、停止后没有额外拉取下一页、重复关闭不会造成副作用。再补正常耗尽与处理函数抛错两个路径，确认契约一致。',
+          '注入 fetchPage 和 close 的计数桩：①前两页取完并 break 后，close 次数应为 1；②fetchPage 的调用记录只能含第 1、2 页，不能再请求第 3 页；③随后主动调用 iterator.return()，close 仍为 1且不再拉取。前提是生成器已进入 try/finally、没有预取。再测正常耗尽与消费方抛错；若有后台预取，契约应改为取消并等待在途请求收尾。',
       },
     ],
   });

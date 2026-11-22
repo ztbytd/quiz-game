@@ -17,7 +17,7 @@
         ],
         [
           '如果 Promise 回调里又安排 nextTick 和另一个 Promise 回调，还能直接回答 nextTick 永远先执行吗？',
-          '不能。新安排的 nextTick 不会打断当前正在清空的微任务队列。先画出当前调用栈与两个队列，再逐次记录入队；用最小独立文件复现，避免测试框架本身改变调用上下文。',
+          '不能。当前已经在清空 Promise 微任务队列时，新安排的 nextTick 不会插队打断它。下面在现代 Node 独立文件中输出 P1、P2、N：P1 回调安排 N 和 P2，P2 仍属于正在处理的微任务队列，清空后才处理新 nextTick。应说明版本与执行位置，不要套用“nextTick 永远优先”。↵Promise.resolve().then(() => {\n  console.log("P1");\n  process.nextTick(() => console.log("N"));\n  Promise.resolve().then(() => console.log("P2"));\n});',
         ],
         [
           '递归调用 queueMicrotask 分批计算，为什么 HTTP 请求仍然迟迟没有回调？',
@@ -109,7 +109,7 @@
       steps: [
         [
           '收到 SIGTERM 后立即 process.exit(0)，为什么健康检查都正常仍会丢请求？',
-          '进程退出会打断已有请求和异步收尾。进入排空状态后先从流量入口摘除实例，并让服务停止接收新连接；跟踪在途请求完成，再关闭依赖。为入口传播延迟和清理设置整体截止时间，明确超时后的处理。',
+          '立即 exit 会截断在途响应、日志和数据库收尾。收到 SIGTERM 后先用标志位保证停机逻辑只执行一次，readiness 返回不可接流量，再让入口摘流并停止接受新连接；入口传播期间的新请求需明确拒绝或转移。在统一截止时间内等待在途 HTTP 请求结束，对 WebSocket 发关闭通知，停止定时任务和订阅，最后关闭连接池。到期后按协议取消剩余任务并强制清理。需单独登记升级连接；健康检查“曾经正常”并不能保证停机瞬间没有在途请求。',
         ],
         [
           '只调用 server.close()，会立即切断正在返回数据的 HTTP 请求吗？',
@@ -140,7 +140,7 @@
         ],
         [
           '服务运行三天，今天发布后只卡了一分钟，直接读累计 ELU 为什么可能看不出来？',
-          '长期累计平均会稀释短时变化。保存上一个由 API 返回的采样值，通过差值计算同一短窗口的利用率，与该窗口 CPU、吞吐和延迟对齐。不要拿不同起止时间的指标互相解释。',
+          '累计值把三天内的空闲与活跃混在一起，发布后一分钟的尖峰容易被稀释。保存前一份原始采样，使用 API 计算窗口差值，并与相同时间窗的 CPU、吞吐及尾延迟对齐。不要把两个 utilization 百分数直接相减。下面每秒输出一个窗口指标；旧采样应更新成当前原始值，而不是 delta。↵const { performance } = require("node:perf_hooks");\nlet previous = performance.eventLoopUtilization();\nconst timer = setInterval(() => {\n  const current = performance.eventLoopUtilization();\n  const delta = performance.eventLoopUtilization(current, previous);\n  previous = current;\n  console.log(delta.utilization);\n}, 1000);\ntimer.unref();',
         ],
         [
           'monitorEventLoopDelay 的 p99 输出 20000000，面板显示延迟两千万毫秒，哪里错了？',
@@ -174,7 +174,7 @@
         ],
         answer: 1,
         explain:
-          'ESM 顶层求值本身处于微任务执行过程。要按调用栈、入队时机和检查点推演，不能把 CommonJS 顶层例子的顺序泛化。',
+          '先确认模块格式和当前检查点。比如顶层依次安排 Promise、queueMicrotask、nextTick 时，常见 CJS 入口会先处理 nextTick，而 ESM 顶层求值已处于微任务过程，Promise/queueMicrotask 可以先执行。Promise 回调里新增 nextTick 也不会立刻打断当前微任务队列；应逐次记录入队并在目标 Node 版本验证。',
       },
       {
         type: 'choice',
@@ -231,7 +231,7 @@
         ],
         answer: 3,
         explain:
-          'ELU 不是 CPU 使用率；同步等待也可计入事件循环活跃时间。对齐时间窗口，结合调用栈和请求延迟验证。',
+          '同步等待子进程可能让主线程不能推进循环，但主线程并未持续计算，因此可以出现 ELU 高而 CPU 低。ELU 与 CPU 口径不同，还需确认 CPU 是单进程还是整机指标。对齐短窗口采样，结合调用栈和轻请求尾延迟检验该假设，不应只看累计利用率。',
       },
     ],
   });

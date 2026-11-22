@@ -67,7 +67,7 @@
       steps: [
         [
           '同一文件同时出现在目录、搜索结果和详情里，Redux 各存了一份对象。改名后有一处没更新，怎样调整状态模型？',
-          '将共享文件实体按 ID 归一化，目录与搜索结果保存 ID 顺序、分页状态和各自查询条件。实体更新集中处理；未提交的编辑草稿独立保存，避免输入中途直接改动其他视图。归一化减少重复副本，还要定义接口版本和更新动作的语义。',
+          "将共享文件按 ID 归一化，目录与搜索保存各自 ID 顺序、查询和分页，详情只保存 selectedId；三处都从 entities 读取当前已提交版本。编辑草稿按 ID 单独放，不能每个输入键都覆盖已提交实体。例如下面的 f1 改名只更新 filesById.f1.name，三个展示入口就读取同一份名称。还需用服务器版本拒绝迟到旧响应，归一化本身不解决请求乱序。↵const state = {↵  filesById: { f1: { id: 'f1', name: '合同', version: 3 } },↵  directory: { ids: ['f1'], cursor: null },↵  search: { query: '合同', ids: ['f1'], cursor: null },↵  selectedId: 'f1',↵  draftsById: { f1: { baseVersion: 3, name: '合同草稿' } }↵};",
         ],
         [
           '把列表 selector 写成 ids.map(id => entities[id])，为什么不相关的通知更新也可能让列表重渲染？',
@@ -126,7 +126,7 @@
         ],
         [
           '用 fetch 提交 FormData 时，手工设置 multipart/form-data，却被后端报解析失败，为什么？',
-          '浏览器需要为请求体生成分隔 boundary，并在 Content-Type 中声明。直接提交 FormData 时通常交给浏览器设置该头。普通值会转成字符串，文件使用 File 或 Blob；数组、嵌套对象、重复字段名需按服务端明确约定序列化。',
+          "multipart 的 Content-Type 必须带与请求体一致的 boundary；只写 multipart/form-data 会丢失这个分隔信息。fetch 的 body 直接传 FormData 时，删掉手工设置的该头，让浏览器配对生成。普通值会被转成字符串；文件用 File/Blob；对象或数组需按后端契约转 JSON 或重复字段。以下约定 metadata 是 JSON 字符串、attachment 是文件，接口返回 JSON。↵async function submit(form, file) {↵  const dto = { merchantId: form.merchantId, type: form.type };↵  if (form.type === 'serviceProvider') dto.serviceProviderId = form.serviceProviderId;↵  const body = new FormData();↵  body.append('metadata', JSON.stringify(dto));↵  if (file) body.append('attachment', file, file.name);↵  const r = await fetch('/api/applications', { method: 'POST', body });↵  if (!r.ok) throw new Error('HTTP ' + r.status);↵  return r.json();↵}",
         ],
         [
           '怎样测试批量商户输入与附件提交，避免只检查按钮能点？',
@@ -174,7 +174,7 @@
         ],
         [
           '修改配置时反复绑定 chart.on，后来点击一次发出五次请求，如何修复？',
-          '检查每次重建或更新是否重复注册。保存处理器引用，按实例生命周期配对绑定与解绑；销毁实例时清理应用自己的订阅。事件处理读取当前配置或版本，避免长期闭包捕获旧字段映射。',
+          "将监听绑定到图表实例生命周期，而不是每次 setOption 后重新 on。保留同一个 handler 引用，重新绑定前或卸载时用 off(event, handler) 移除自己注册的监听；不能为了去重无差别清掉别的模块监听。处理器通过函数读取当前配置，避免抓住旧映射。以下示例约定每个柱子的 data 含 businessId，updateFilter 自身按业务值幂等。↵function bindChart(chart, getCurrentConfig, updateFilter) {↵  function onClick(params) {↵    const id = params.data?.businessId;↵    if (id == null) return;↵    updateFilter({ field: getCurrentConfig().field, id });↵  }↵  chart.on('click', onClick);↵  return () => chart.off('click', onClick);↵}",
         ],
         [
           '联动配置可以保存并回显，怎样设计一次有说服力的回归？',
@@ -190,11 +190,11 @@
       steps: [
         [
           '同一弹窗展示 video.js 教学视频或监控 SDK 画面，切换时只替换容器 HTML，为什么可能残留声音与连接？',
-          '播放器持有的监听、内部节点和网络资源需要按 SDK 生命周期释放。video.js 使用 dispose 结束实例；监控 SDK 则按所用版本的销毁 API 处理。定义初始化、更新媒体、暂停与销毁的统一适配接口，记录当前实例，先清理再创建。',
+          '只替换 DOM 不会自动执行 SDK 的释放流程，旧播放器可能仍持有定时器、事件、连接或媒体资源。以 Video.js 8 的生命周期为例，先调用 player.dispose()，再清理应用自建的订阅和当前实例引用；监控 SDK 按实际版本的销毁接口处理。把 create、setSource、pause、dispose 适配成统一领域接口，并明确实例归属，切换时先释放再创建。Video.js 不同大版本的 API 不能靠名字类推。',
         ],
         [
           '监控 SDK 尚在加载，用户关闭弹窗后又打开另一台设备，旧初始化完成时该怎么处理？',
-          '初始化绑定弹窗实例、设备和操作代际。完成时重新核对所有权，过期结果不挂入新容器，并释放已创建的旧资源。销毁设计为可重复调用，不能让迟到回调重新注册监听或复活已关闭画面。',
+          '每次打开或关闭都推进代际，初始化完成时对比代际；不是当前所有者的实例立即 dispose，不能挂进新画面。下面约定 create 返回统一适配实例，dispose 可重复调用且会释放全部 SDK 资源。真实组件还应把容器所有权与设备 ID 绑定，并由 UI 接住 open 抛出的当前错误。↵function createPlayerSlot(create) {↵  let generation = 0, current = null;↵  function close() {↵    generation++;↵    current?.dispose();↵    current = null;↵  }↵  return {↵    close,↵    async open(device) {↵      close();↵      const mine = generation;↵      let player;↵      try { player = await create(device); }↵      catch (e) { if (mine === generation) throw e; return; }↵      if (mine !== generation) { player.dispose(); return; }↵      current = player;↵    }↵  };↵}',
         ],
         [
           '监控播放凭据过期时，能把长期密钥放进前端并无限重试刷新吗？',
@@ -228,7 +228,7 @@
         ],
         answer: 2,
         explain:
-          '恢复涉及资源状态、目标目录和名称冲突，必须核对当前条件；已进入永久清理的资源不能仅凭旧快照恢复。',
+          '先确认资源仍可恢复，再按产品策略要求恢复原父目录或选择有写权限的新目录；同名时明确提示改名或生成新名称，不能静默覆盖。服务端在提交时重新核对资源版本、删除状态、目标权限和名称约束，防止预检查后发生并发永久删除或同名恢复。成功后以服务端最终位置与名称更新界面。',
       },
       {
         type: 'truefalse',
@@ -236,7 +236,7 @@
         q: '搜索索引返回一页 20 项，回查后有 7 项已删除，直接把索引总数减 7 就得到可见文档总数。',
         answer: false,
         explain:
-          '一页失效数量不能推断整个结果集。需要明确总数口径，并将候选扫描、当前状态和分页契约一起设计。',
+          '错误。这一页失效 7 项不代表其他页没有失效项，不能用索引总数减 7 推出当前用户可见总数。必须区分索引命中数、经权限和删除状态过滤的可见数以及估算值。可在扫描预算内继续取候选补页，并使用明确的游标与排序契约；无法给精确总数时显示还有更多，不能泄露不可见资源的计数。',
       },
       {
         type: 'choice',
@@ -249,7 +249,8 @@
           '是否删除列表的 key',
         ],
         answer: 1,
-        explain: '共享实体解决副本一致性；订阅和派生结果的引用决定额外渲染是否仍发生。优化需要测量。',
+        explain:
+          'React-Redux 默认比较 selector 结果引用，ids.map 每次生成新数组，即使内容未变也可能触发更新。先检查 ids/entities 输入是否稳定，再用记忆化 selector 或让列表只订阅 IDs、每行按 ID 订阅实体。归一化解决副本一致性，不自动保证无重渲染；用无关动作前后的提交次数验证优化。',
       },
       {
         type: 'choice',
@@ -262,7 +263,8 @@
           '编辑器会自动保存到数据库',
         ],
         answer: 2,
-        explain: '要区分外部载入与用户编辑，避免将每次输入当作外部重置；按实际版本验证编辑行为。',
+        explain:
+          'onChange→更新状态→setHtml 的回路可能把用户每次输入重新解释为外部文档载入，造成重复变更、选择区跳动或撤销历史受影响。保持编辑器到正文状态的一条数据流，只在文档切换或明确外部版本到达时回写内容；必要时比较版本与内容，避免同值重置。具体回调与历史行为按所用 wangEditor 版本验证。',
       },
       {
         type: 'truefalse',
@@ -270,7 +272,7 @@
         q: '直接用 fetch 发送 FormData 时，手工固定 Content-Type 为 multipart/form-data 就足够描述请求体。',
         answer: false,
         explain:
-          '请求还需要匹配请求体的 boundary。直接提交 FormData 时通常让浏览器生成 Content-Type；字段与文件的序列化契约仍需单独核对。',
+          '错误。multipart 请求头必须包含与请求体分隔符一致的 boundary；只设置 multipart/form-data 会让服务端缺少解析信息。直接用 fetch 的 body 传 FormData 时，应让浏览器生成该头。对象、数组和文件各按接口契约编码，例如 JSON.stringify 元数据、File/Blob 作为附件，并检查服务端实际解析结果。',
       },
       {
         type: 'choice',
@@ -283,7 +285,8 @@
           '真机记录跨层更新频率、载荷与节点数，并核对目标端渲染模式',
         ],
         answer: 3,
-        explain: '目标端的数据传递和渲染成本需要单独观察，不能用 H5 测试替代。',
+        explain:
+          '在目标小程序真机记录拖动时的跨层更新频率、每次数据大小、变化路径和渲染节点数量，同时核实 uni-app 版本与渲染模式。高频整表更新会放大逻辑层到视图层的传递与渲染成本。将纯计算数据留在非展示状态，合并中间更新、缩小变化范围，结束事件提交最终值；使用同设备同数据对比响应时延与最终位置正确性。',
       },
       {
         type: 'choice',
@@ -291,15 +294,16 @@
         q: 'ECharts 数据排序后，点击第 3 根柱子应提交哪个筛选标识？',
         options: ['该项关联的稳定业务 ID', '永远提交数字 3', 'series 数组长度', '图表容器的 DOM 下标'],
         answer: 0,
-        explain: '显示位置可能随排序、过滤而改变，事件需映射到稳定的业务数据身份。',
+        explain:
+          '提交该柱子关联的稳定业务 ID。dataIndex 是当前展示数据中的位置，排序、过滤或转换后第 3 项可能已不是原来的项目。数据项保留 businessId 等领域标识，在 click 回调中从 params.data 或明确映射读取，再生成筛选条件；标题和序号都不能代替稳定身份。',
       },
       {
         type: 'truefalse',
         chain: 'resume-player-sdk',
-        q: '移除 video.js 播放器的容器 DOM，就等价于完整调用播放器销毁流程。',
+        q: '移除 Video.js 8 播放器的容器 DOM，就等价于完整调用播放器销毁流程。',
         answer: false,
         explain:
-          'video.js 提供 dispose 管理播放器生命周期。应用自建订阅及其他监控 SDK 也要按各自所有权清理。',
+          '错误。以 Video.js 8 为例，先调用 player.dispose() 让播放器释放其事件、内部节点和资源，再清理应用自己注册的订阅与实例引用；删除容器 DOM 不等价于该流程。监控 SDK 按其实际版本的销毁 API 处理。快速切换或初始化未完成就关闭时，还要使旧任务失效，释放迟到创建的旧实例。',
       },
     ],
   });

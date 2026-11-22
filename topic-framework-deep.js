@@ -38,7 +38,7 @@
       steps: [
         [
           '搜索框下面有昂贵列表。如何让当前输入立即显示，列表稍后跟上？',
-          '让输入直接使用即时状态，将 useDeferredValue 得到的值交给昂贵列表，并确保列表可跳过即时状态引发的无效工作。旧列表保留期间显示其正在更新，避免把旧结果当作新结果。',
+          "输入框绑定即时 query；把 useDeferredValue(query) 交给 memo 包装的昂贵列表。query 变化时 deferredQuery 暂时仍是旧值，且其他 props 引用稳定，列表可以跳过紧急渲染，之后再用新查询渲染。用 query !== deferredQuery 显示旧结果状态；它没有固定等待时长，也不等于请求防抖。下面把 SlowList 当作已实现的昂贵列表组件。↵import { memo, useDeferredValue, useState } from 'react';↵const DeferredList = memo(SlowList);↵function Search({ items }) {↵  const [query, setQuery] = useState('');↵  const deferredQuery = useDeferredValue(query);↵  const stale = query !== deferredQuery;↵  return <>↵    <input value={query} onChange={e => setQuery(e.target.value)} />↵    <section aria-busy={stale}>↵      {stale && <p>正在更新结果</p>}↵      <DeferredList items={items} query={deferredQuery} />↵    </section>↵  </>;↵}",
         ],
         [
           '使用 deferred value 后，每输入一字仍发一次请求，是否说明 Hook 失效？',
@@ -62,7 +62,7 @@
       steps: [
         [
           'getSnapshot 每次返回 { items: store.items }，为什么可能出现重复更新？',
-          '即使内容相同，新对象的引用也每次不同。底层数据未变时应返回同一不可变快照，数据变化后才产生新快照；直接暴露随后原地修改的对象也会破坏这个约定。',
+          'React 通过 Object.is 比较快照。每次都返回新包装对象，会使“底层没变”的两次读取也被识别成不同状态，可能触发持续重渲染及快照缓存警告。底层没变时返回同一不可变快照，变化时替换快照并通知订阅者；也不能原地修改旧快照。以下计数 Store 展示读取、变更和退订的最小闭环，可将其 subscribe/getSnapshot 传给 useSyncExternalStore。↵function createCounterStore() {↵  let snapshot = Object.freeze({ count: 0 });↵  const listeners = new Set();↵  return {↵    getSnapshot: () => snapshot,↵    subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },↵    increment() {↵      snapshot = Object.freeze({ count: snapshot.count + 1 });↵      for (const fn of [...listeners]) fn();↵    }↵  };↵}',
         ],
         [
           'subscribe 写在组件内部，每次都创建新函数，会有什么额外工作？',
@@ -89,7 +89,7 @@
       steps: [
         [
           '子表格渲染字段时报错，与普通 onClick 导出回调抛错，最近的 Error Boundary 会同样处理吗？',
-          '错误边界处理后代渲染等 React 管理阶段的错误。普通事件回调的异常需要在事件流程中处理，并设置导出失败状态，不能仅依靠外围边界。',
+          "不会。后代在渲染、构造函数和生命周期中抛出的错误由最近的错误边界处理；普通 onClick 运行在事件流程里，不会因为外面有边界就自动显示 fallback。异步导出应在事件回调中 await 并 try/catch，失败后显示可重试错误并在 finally 恢复按钮。fetch 的 HTTP 4xx/5xx 不会自动 reject，还需检查 response.ok。下面是组件内部处理器，setError/setBusy 是组件状态 setter。↵async function onExport() {↵  setBusy(true); setError('');↵  try {↵    const response = await fetch('/api/export');↵    if (!response.ok) throw new Error('导出失败：HTTP ' + response.status);↵    const blob = await response.blob();↵    downloadBlob(blob); // 项目注入的下载函数↵  } catch (e) {↵    setError(e instanceof Error ? e.message : '导出失败');↵  } finally { setBusy(false); }↵}",
         ],
         [
           '给整个页面套 try/catch，为什么捕获不到稍后发生的子组件渲染异常？',
@@ -244,7 +244,7 @@
         ],
         [
           'A 的请求在切到 B 后才返回，需要做哪两件事？',
-          '取消可取消的旧请求，并在回写前比较当前请求身份。切换期间清楚显示加载或旧数据状态，避免将 A 的错误、结果和 finally 收尾应用到 B。',
+          "同时做“停止旧工作”和“拒绝旧提交”：旧监听失效时 abort；每次加载捕获自己的请求代际，成功、catch 和 finally 都只有当前代际才能回写。仅比较 ID 不够，因为 A→B→A 时第一个 A 仍可能迟到。以下片段放在 Vue setup 中，且让新请求开始时清空旧数据显示明确加载态；草稿另按资源 ID 保存。↵import { ref, watch } from 'vue';↵import { useRoute } from 'vue-router';↵const route = useRoute();↵const user = ref(null), error = ref(''), loading = ref(false);↵let generation = 0;↵watch(() => route.params.id, async (id, _, onCleanup) => {↵  const mine = ++generation;↵  const controller = new AbortController();↵  let active = true;↵  onCleanup(() => { active = false; controller.abort(); });↵  user.value = null; error.value = ''; loading.value = true;↵  const current = () => active && mine === generation && id === route.params.id;↵  try {↵    const r = await fetch('/api/users/' + encodeURIComponent(String(id)), { signal: controller.signal });↵    if (!r.ok) throw new Error('HTTP ' + r.status);↵    const result = await r.json();↵    if (current()) user.value = result;↵  } catch (e) {↵    if (current() && e.name !== 'AbortError') error.value = e.message;↵  } finally { if (current()) loading.value = false; }↵}, { immediate: true });",
         ],
         [
           '用户在 B 留了草稿，然后浏览器后退到 A，怎么设计状态恢复？',
@@ -273,14 +273,16 @@
           '让每个子组件保存自己的结果副本',
         ],
         answer: 1,
-        explain: '确定性派生结果可以从当前输入计算，减少状态同步和额外提交。',
+        explain:
+          '直接在渲染时计算 visible = products.filter(...)，使结果始终对应这次 props/state。把它另存 state 再用 Effect 同步，会先提交旧结果、再额外提交新结果，还增加遗漏依赖的风险。实测过滤昂贵时用 useMemo 缓存纯计算，依赖必须包括 products 与 keyword；缓存不是正确性的前提。',
       },
       {
         type: 'truefalse',
         chain: 'frame-transition',
         q: '使用 useDeferredValue 后，可以据此认定搜索接口请求次数一定会减少。',
         answer: false,
-        explain: '它处理 UI 更新的延后。网络调用频率需要结合请求层的防抖、缓存或去重单独设计。',
+        explain:
+          '错误。useDeferredValue 让部分渲染使用稍旧的值，优先让输入反馈完成，没有固定延迟也不承诺合并网络请求。若每次 query 变化都发 fetch，请求数仍可能相同。按产品要求在请求层做防抖、缓存或去重，并用请求身份阻止旧结果覆盖新结果。',
       },
       {
         type: 'choice',
@@ -293,7 +295,8 @@
           '返回一个每次重新创建的 Promise',
         ],
         answer: 2,
-        explain: '相同状态需要稳定快照身份。数据改变时返回新快照，让订阅者能够识别更新。',
+        explain:
+          '未改变时返回同一份不可变快照，改变时创建新快照并通知订阅者。React 用 Object.is 比较；每次重新包装对象会被视为变化，原地修改同一对象又可能漏掉变化。getSnapshot 应只读取状态，不应在读取时顺手修改 Store。',
       },
       {
         type: 'choice',
@@ -306,14 +309,16 @@
           '把失败永久显示成 loading',
         ],
         answer: 0,
-        explain: '普通事件和 Promise 流程需要明确处理失败。外围错误边界主要保护后代渲染等阶段。',
+        explain:
+          '在 async onClick 中 await 导出请求，用 try/catch 更新错误提示，finally 恢复按钮；使用 fetch 还需检查 response.ok，HTTP 500 不会自动 reject。Error Boundary 处理后代渲染等 React 管理阶段，不能代替普通事件或 Promise 的错误处理。重试前区分只读导出与可能已执行的写操作。',
       },
       {
         type: 'truefalse',
         chain: 'frame-suspense',
         q: '子组件在普通 useEffect 中执行 fetch，会自动激活父级 Suspense 的 fallback。',
         answer: false,
-        explain: '普通 Effect 请求不自动触发挂起。需要显式 loading 状态或支持 Suspense 的数据加载集成。',
+        explain:
+          '错误。普通 Effect 在提交后执行，其中的 fetch 不会自动告诉 Suspense 当前渲染正在挂起。此路径需自己维护 loading/error，或使用明确支持 Suspense 的数据框架；React.lazy 加载组件代码也是常见的挂起来源。把任意请求包在 Suspense 外面不会自动接管其状态。',
       },
       {
         type: 'choice',
@@ -326,7 +331,8 @@
           '自动依赖跟踪只覆盖同步执行阶段的读取',
         ],
         answer: 3,
-        explain: '应在同步阶段读取所需依赖，或用 watch 显式声明监听源，并安排旧请求清理。',
+        explain:
+          'watchEffect 只跟踪同步执行期间读取的响应式依赖；首次 await 后才读取的 ref 不在这次自动收集范围内。可在 await 前读取所需值，或用 watch(() => id.value, ...) 显式声明依赖。异步任务变化时还要清理旧请求，并防止迟到结果回写。',
       },
       {
         type: 'choice',
@@ -339,14 +345,15 @@
           '等待浏览器关闭才处理',
         ],
         answer: 1,
-        explain: 'KeepAlive 可能只使实例失活。轮询应随可见业务生命周期暂停与恢复，避免依赖尚未发生的卸载。',
+        explain:
+          '在 onDeactivated 中清除轮询，在 onActivated 中按需要恢复，并在最终卸载时清理。缓存切走通常只是失活，实例没有卸载，所以仅用 onUnmounted 会继续后台轮询。启动函数应先清旧定时器，避免多次激活叠加；失活还要取消或忽略正在执行的旧请求。',
       },
       {
         type: 'text',
         chain: 'frame-route',
         q: '详情组件从 A 复用到 B，A 的慢请求随后才返回。请描述结果、错误和 loading 如何避免串到 B。',
         explain:
-          '监听真正影响数据的路由参数，为请求绑定资源身份或代际。取消旧请求，并在成功、失败、收尾各路径校验当前身份；确认 A 的草稿也不会覆盖 B。',
+          '监听 route.params.id 并 immediate 加载；每次请求记录递增代际与资源 ID，监听清理时 abort 旧请求。成功时仅当前代际写 data，catch 仅当前代际写 error，finally 也仅当前代际置 loading=false。只比 ID 不够覆盖 A→B→A；卸载时使当前任务失效。新页面明确显示加载态，草稿按资源 ID 独立存储。',
       },
     ],
   });
