@@ -184,6 +184,14 @@
         answer: 2,
         explain:
           '先停止继续预取，并把本片保留为待重试项；确认 SourceBuffer 不在 updating 后，按策略删除离播放点足够远的旧缓冲，等待删除结束，再追加一次。保留当前播放与关键帧解码需要的范围，避免每次清空全部缓冲导致重播。若回收后仍失败，应降低缓冲目标或停止并报告错误，不能无限重试占用线程。追加和删除都进入同一操作队列，防止状态冲突。',
+        detail: {
+          example:
+            '播放到第 18 分钟报 QuotaExceededError：先把缓冲目标从 30 秒降到 15 秒并暂停新预取，本片留在待重试队列；删除播放点前 60 秒以外的旧区间，等 updateend 后再 append 一次。成功则继续，失败则停止预取、上报错误码给播放器降档。全程不重建 MediaSource，观众位置不回退。',
+          code:
+            'async function appendWithReclaim(sb, chunk) {\n  while (sb.updating) await waitUpdateEnd(sb);\n  try {\n    sb.appendBuffer(chunk);\n  } catch (err) {\n    if (err.name !== \'QuotaExceededError\') throw err;\n    const keepFrom = video.currentTime - 30;\n    if (keepFrom > sb.buffered.start(0)) {\n      sb.remove(sb.buffered.start(0), keepFrom);\n      await waitUpdateEnd(sb);\n    }\n    sb.appendBuffer(chunk); // 只重试一次，失败交由上层降档\n  }\n}',
+          pitfalls:
+            '无限重试会持续占用解码线程，播放器表现成整页卡死而不是报错。清空整个 SourceBuffer 能解除报错，但会把观众退回起点重下。删除区间如果切断了正在解码的 GOP，画面会先黑一帧再恢复。音轨和视频轨要一起回收，否则只回收一条仍会触顶。',
+        },
       },
       {
         type: 'truefalse',
@@ -192,6 +200,14 @@
         answer: false,
         explain:
           '不成立。canPlayType 的 probably 主要表达对所声明媒体类型/编解码器的支持判断，未证明 4K、60fps、指定码率能实时解码。可用 MediaCapabilities.decodingInfo 传入编码、分辨率、帧率和码率，参考 supported、smooth、powerEfficient，再在真实设备上测首帧、丢帧和缓冲。能力结果仍需运行数据验证；解码跟不上时降分辨率或帧率，网络跟不上时调整码率，两者不能混为一因。',
+        detail: {
+          example:
+            '同一段 1080p 60fps 在 Wi-Fi 下已缓冲十秒仍掉帧：先用 getVideoPlaybackQuality 看 droppedVideoFrames 的增量，确认是解码跟不上而不是网络等待，再分别做“只降帧率到 30”和“只降分辨率到 720p”两组对照。若只有降帧率有效，瓶颈更可能在解码预算；若两者都无效，回头看主线程渲染压力。',
+          code:
+            'const q = video.getVideoPlaybackQuality();\n// 间隔采样看增量，单次累计值不能说明卡顿发生的时间点\nconst dropped = q.droppedVideoFrames;\n\nconst info = await navigator.mediaCapabilities.decodingInfo({\n  type: \'file\',\n  video: { contentType: \'video/mp4; codecs="avc1.640033"\', width: 3840, height: 2160, bitrate: 2e7, framerate: 60 },\n});\n// info.supported / info.smooth / info.powerEfficient 只是预测，仍需真机实测',
+          pitfalls:
+            '把 probably 当成“一定能播”是常见误读，它只描述格式支持程度。丢帧计数要按间隔取增量，累计值会把早期卡顿和当前卡顿混在一起。降码率没改善就断定是页面问题也不对，分辨率和帧率同样吃解码预算，要分开做对照实验。',
+        },
       },
       {
         type: 'choice',
@@ -206,6 +222,14 @@
         answer: 0,
         explain:
           '最接近“播放点距可寻址边缘的媒体时间差”。例如最新 seekable 区间终点 120 秒、currentTime 为 114 秒，差为 6 秒；计算前要检查 seekable.length>0，并选最后一个区间。可寻址边缘本身可能已落后采集现场，因此 6 秒不包含完整采集、编码和分发延迟。端到端时延要关联采集时间与播放呈现时间并处理时钟同步；该差值更适合控制追帧策略。',
+        detail: {
+          example:
+            '观众暂停半分钟再继续，画面流畅但明显落后于主播。用 seekable 区间终点减 currentTime 得到 6 秒的边缘差距，说明缓冲本身健康、落后的是播放位置；这个 6 秒不含采集端到分发的延迟，所以不能直接向用户承诺“延迟 6 秒”。据此决定是小幅调速追赶还是提示跳到安全位置。',
+          code:
+            'function liveEdgeGap(video) {\n  const r = video.seekable;\n  if (!r.length) return null;          // 清单未就绪时没有可寻址区间\n  const edge = r.end(r.length - 1);    // 必须取最后一个区间\n  return edge - video.currentTime;\n}',
+          pitfalls:
+            '不检查 seekable.length 就直接取 end(-1) 会抛错。把边缘差距当成端到端延迟是常见误读，它不包含采集、编码和分发。每秒把 currentTime 钉到 seekable.end 会反复取片解码，反而更卡；贴边播放也失去抗抖动缓冲。暂停太久后旧时间点可能已滑出窗口，无限重试只会白等。',
+        },
       },
       {
         type: 'choice',
@@ -220,6 +244,14 @@
         answer: 3,
         explain:
           '同时核对 requestId、页面会话代际和业务对象 ID，且请求必须仍处于 pending。例如在订单 A 发起选择文件，切到订单 B 后 A 的回调成功，也不能给 B 填入该文件。导航、取消和超时使原请求失效；成功/失败/取消只能结算一次，重复或迟到回调忽略并清理监听。通过归属校验后还需验证结果字段和文件权限，单看 success:true 不够。',
+        detail: {
+          example:
+            '在订单 A 调起原生选图，用户切到订单 B 才返回。回调携带的是 A 的 requestId 和 A 的对象 ID，与当前页面会话不符，于是判定为迟到结果：不入表单，只做日志记录并清理登记。用户看到的仍是 B 的空白上传区，不会莫名多出一张 A 的图。',
+          code:
+            'const pending = new Map(); // requestId -> { sessionId, objectId, settle }\n\nfunction onNativeResult(msg) {\n  const req = pending.get(msg.requestId);\n  if (!req) return;                                    // 未知或已结算\n  if (req.sessionId !== currentSession || req.objectId !== currentObject) return; // 迟到结果\n  pending.delete(msg.requestId);                       // 只结算一次\n  req.settle(msg);\n}',
+          pitfalls:
+            '只判断 success:true 会让 A 的结果写进 B。用入栈顺序而不是 requestId 匹配，在多标签或快速切换时会串。导航、取消、超时都要显式注销登记，否则监听表只增不减。来源可信不等于参数可信，桥接层仍要校验业务参数和文件权限。',
+        },
       },
       {
         type: 'choice',
@@ -234,6 +266,14 @@
         answer: 1,
         explain:
           '在 keydown 中先检查 event.isComposing 或通过 compositionstart/compositionend 维护的组合状态；组合期间的 Enter 用于确认候选字，不触发搜索。组合结束后再对正常 Enter 执行提交，并验证目标浏览器/输入法在 compositionend 与 keydown 边界的实际顺序，避免同次选词又触发提交。防抖只减少请求次数；请求还要带查询代际，避免旧关键字的响应覆盖新结果。',
+        detail: {
+          example:
+            '输入“快手”时，拼音阶段发出 kuai 的请求并不算错，错在这次请求的响应晚于最终“快手”的结果还去覆盖它。组合期间只维护输入框显示、不触发最终查询；选词结束按最终值走一次统一调度，并带上递增的查询序号，回写前核对序号。',
+          code:
+            'let composing = false;\n\ninput.addEventListener(\'compositionstart\', () => { composing = true; });\ninput.addEventListener(\'compositionend\', () => { composing = false; schedule(); });\n\ninput.addEventListener(\'keydown\', (e) => {\n  if (e.key !== \'Enter\') return;\n  if (composing || e.isComposing || e.keyCode === 229) return; // 选词确认，不提交\n  submit();\n});',
+          pitfalls:
+            '只拦 compositionstart 不够，部分输入法在选词时先触发 keydown 再触发 compositionend，顺序因平台而异，必须用真实事件日志核对。禁用全部键盘提交会让用户失去回车搜索。防抖只降低请求频率，不保证响应顺序，仍需要查询序号。',
+        },
       },
       {
         type: 'truefalse',
@@ -242,6 +282,14 @@
         answer: false,
         explain:
           '不成立。bfcache 可能恢复原 DOM、JavaScript 和页面状态，组件不会因此重新 mounted。监听 pageshow，当 event.persisted 为 true 时复核库存、登录态等动态数据，按需要重新订阅，并避免重复注册已有监听。例如恢复后显示旧库存时先刷新权威值，再开放依赖库存的提交动作；提交服务端仍需校验库存。普通首次展示和 SPA 路由返回也需各自定义刷新入口，不能只依赖 bfcache 分支。',
+        detail: {
+          example:
+            '从商品列表进详情再后退，筛选条件和滚动位置瞬间恢复，但库存是几小时前的。因为命中 bfcache 时组件没有重新挂载，mounted 里的拉取根本没跑。正确做法是监听 pageshow 并检查 persisted，命中时复核库存和登录态，在复核完成前禁用依赖库存的下单按钮。',
+          code:
+            'window.addEventListener(\'pageshow\', (e) => {\n  if (!e.persisted) return;        // 首次加载不是 bfcache 恢复\n  refreshAuthoritativeState();     // 库存、登录态等动态数据\n});\n// SPA 内部路由返回不经过 bfcache，需要单独定义刷新入口',
+          pitfalls:
+            '把刷新逻辑挂到 pageshow 上却不做幂等，每次后退都会多注册一份监听或多起一个轮询。devtools 里点刷新不算测过 bfcache，要真实前进后退并记录 persisted。恢复的是原有运行状态，旧的定时器和订阅可能还活着。客户端复核之后，服务端仍必须做最终校验。',
+        },
       },
     ],
   });
