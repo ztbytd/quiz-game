@@ -229,6 +229,12 @@
         answer: 2,
         explain:
           '先确认资源仍可恢复，再按产品策略要求恢复原父目录或选择有写权限的新目录；同名时明确提示改名或生成新名称，不能静默覆盖。服务端在提交时重新核对资源版本、删除状态、目标权限和名称约束，防止预检查后发生并发永久删除或同名恢复。成功后以服务端最终位置与名称更新界面。',
+        detail: {
+          example:
+            '用户从回收站恢复一份文件，可原目录已经被删了，选中的新目录里又正好有同名文件。静默覆盖会直接毁掉现有那份；只改前端列表，后端根本没恢复。正确顺序是：确认资源仍处于可恢复状态，按产品规则要求先恢复父目录或让用户选一个有写权限的目标；同名时提示改名或按规则生成新名称。服务端在提交那一刻重新核对版本、删除状态、目标权限和命名约束——因为预检查之后，别人可能已经永久删除了它。',
+          pitfalls:
+            '静默覆盖是最危险的默认行为。只在操作前查一次状态，中间别人把文件永久删了，恢复就会“成功”得莫名其妙。文件已被清理到不可恢复阶段，不能假装恢复成功。旧分享链接是否随恢复继续有效是独立的产品决策，需要重新核对授权。',
+        },
       },
       {
         type: 'truefalse',
@@ -237,6 +243,12 @@
         answer: false,
         explain:
           '错误。这一页失效 7 项不代表其他页没有失效项，不能用索引总数减 7 推出当前用户可见总数。必须区分索引命中数、经权限和删除状态过滤的可见数以及估算值。可在扫描预算内继续取候选补页，并使用明确的游标与排序契约；无法给精确总数时显示还有更多，不能泄露不可见资源的计数。',
+        detail: {
+          example:
+            '搜索返回一页 20 项，回查后 7 项已删除，剩 13 项能显示。这时候把索引总数 1000 减 7 得出 993，是错的——其他页同样可能有失效项，而且权限过滤的丢失量根本没法从这一页推算。要分开三个数：索引命中数、过滤后的可见数、以及估算值。给不出精确总数就显示“还有更多”，别把不可见资源的数量泄露出去。',
+          pitfalls:
+            '用一页的失效率去推全局，是这里最典型的错误。把索引当作权威数据源，其实它是派生视图，改名、删除、权限变更都可能滞后。用总数减失效数，还可能泄露用户本来无权看到的资源规模。分页游标没有绑定查询条件和稳定排序，翻页会出现重复或遗漏。',
+        },
       },
       {
         type: 'choice',
@@ -251,6 +263,14 @@
         answer: 1,
         explain:
           'React-Redux 默认比较 selector 结果引用，ids.map 每次生成新数组，即使内容未变也可能触发更新。先检查 ids/entities 输入是否稳定，再用记忆化 selector 或让列表只订阅 IDs、每行按 ID 订阅实体。归一化解决副本一致性，不自动保证无重渲染；用无关动作前后的提交次数验证优化。',
+        detail: {
+          example:
+            '文件改了个名，详情更新了，搜索列表却还是旧名字——因为同一个文件在目录、搜索结果、详情里各存了一份对象，有一处没跟上。先按 ID 归一化：filesById 只存一份，目录和搜索只存各自的 ID 顺序，详情只存 selectedId，三处都从 entities 读。改完名只更新 filesById.f1.name，三个入口就自动一致了。但归一化不解决重渲染：ids.map 每次返回新数组，React-Redux 按引用比较，内容没变也可能触发更新。',
+          code:
+            'const ids = state.directory.ids;\n// 每次都是新数组 → 引用变化 → 可能重渲染\nconst rows = ids.map((id) => state.filesById[id]);\n\n// 方案一：记忆化，输入只取真正依赖的\nconst rows = useSelector(selectDirectoryRows);   // 内部 createSelector\n\n// 方案二：列表只传 ID，每行自己订阅实体\n// <Row id={id} />  → useSelector(s => s.filesById[id])',
+          pitfalls:
+            '以为归一化就等于优化了渲染，是这里的关键误区，它只解决数据一致性。整个 entities 引用一变，记忆化 selector 也会重算。只给列表加 memo 却传入新对象或新回调，照样重渲染。草稿如果直接覆盖已提交实体，归一化后会让所有入口都显示未保存内容。',
+        },
       },
       {
         type: 'choice',
@@ -265,6 +285,14 @@
         answer: 2,
         explain:
           'onChange→更新状态→setHtml 的回路可能把用户每次输入重新解释为外部文档载入，造成重复变更、选择区跳动或撤销历史受影响。保持编辑器到正文状态的一条数据流，只在文档切换或明确外部版本到达时回写内容；必要时比较版本与内容，避免同值重置。具体回调与历史行为按所用 wangEditor 版本验证。',
+        detail: {
+          example:
+            'onChange 把内容写进状态，另一个 effect 监听到状态变化又调用 setHtml 写回编辑器——用户每敲一个字，都被当成一次“外部文档载入”。结果是光标跳到末尾、撤销历史被冲掉，甚至绕成回写循环。正确的数据流是单向的：编辑器 → 状态，只在切换文档或明确收到外部新版本时才往编辑器里写。',
+          code:
+            '// 危险：每次状态变化都全量回写\nwatch(body, (v) => editor.setHtml(v));\n\n// 安全：只在文档切换/外部版本到达时写入\nwatch(() => docId.value, async (id) => {\n  const html = await loadDoc(id);\n  editor.setHtml(html);\n});',
+          pitfalls:
+            '把用户输入再当成外部重置，是这里最典型的回路。写回前不比较版本和内容，同值重置也会打断撤销。把编辑器实例和正文一起深度响应化，会把命令式对象也纳入响应式追踪。只移除容器 DOM 不调用 destroy，编辑器内部监听和上传回调都还活着。具体回调行为要按 wangEditor 版本核实。',
+        },
       },
       {
         type: 'truefalse',
@@ -273,6 +301,14 @@
         answer: false,
         explain:
           '错误。multipart 请求头必须包含与请求体分隔符一致的 boundary；只设置 multipart/form-data 会让服务端缺少解析信息。直接用 fetch 的 body 传 FormData 时，应让浏览器生成该头。对象、数组和文件各按接口契约编码，例如 JSON.stringify 元数据、File/Blob 作为附件，并检查服务端实际解析结果。',
+        detail: {
+          example:
+            '用 fetch 发 FormData，却手工把 Content-Type 固定成 multipart/form-data，后端报解析失败。因为 multipart 的请求头必须带上和请求体一致的分隔符 boundary，只写类型等于丢了解析信息。正确做法是直接把 FormData 塞进 body，让浏览器自己生成带 boundary 的头，你不要手写这一行。',
+          code:
+            'const body = new FormData();\nbody.append(\'metadata\', JSON.stringify(dto));\nif (file) body.append(\'attachment\', file, file.name);\n\n// 正确：不设置 Content-Type，浏览器补 boundary\nawait fetch(\'/api/applications\', { method: \'POST\', body });\n\n// 错误：手工固定后 boundary 丢失\n// headers: { \'Content-Type\': \'multipart/form-data\' }',
+          pitfalls:
+            '手写 multipart/form-data 是最常见的错误，boundary 是请求体里随机生成的，没法手写对。普通值会被转成字符串，对象和数组必须按后端契约转 JSON 或重复字段，否则后端收到 [object Object]。切换业务类型后隐藏字段还留在状态里一起提交，也是这类表单的常见问题——隐藏控件不等于自动从请求中移除。',
+        },
       },
       {
         type: 'choice',
@@ -287,6 +323,12 @@
         answer: 3,
         explain:
           '在目标小程序真机记录拖动时的跨层更新频率、每次数据大小、变化路径和渲染节点数量，同时核实 uni-app 版本与渲染模式。高频整表更新会放大逻辑层到视图层的传递与渲染成本。将纯计算数据留在非展示状态，合并中间更新、缩小变化范围，结束事件提交最终值；使用同设备同数据对比响应时延与最终位置正确性。',
+        detail: {
+          example:
+            '同一个列表在 H5 里顺滑，编译成小程序后一拖动就卡。小程序有逻辑层到视图层的数据传递成本，每次拖动都更新整份列表，代价会被放大。下一步最有用的不是读 JS 代码，而是在目标真机上记录：提交频率、每次数据大小、更新了哪些路径、渲染了多少节点，再核对 uni-app 版本和渲染模式。把纯计算用的数据留在非展示状态，合并中间更新，拖动结束时才提交最终值。',
+          pitfalls:
+            '拿 H5 或桌面浏览器的表现代替真机证据，是这类问题最常见的判断错误。以为 uni-app 会自动差量更新就高枕无忧，数据量一大、频率一高照样有代价。把桌面拖拽库直接搬过来，它访问的 window 和 document 在小程序宿主里根本不存在，构建通过但运行时失败。各端优化手段（renderjs、WXS）都有版本和范围限制，不能假定通用。',
+        },
       },
       {
         type: 'choice',
@@ -296,6 +338,14 @@
         answer: 0,
         explain:
           '提交该柱子关联的稳定业务 ID。dataIndex 是当前展示数据中的位置，排序、过滤或转换后第 3 项可能已不是原来的项目。数据项保留 businessId 等领域标识，在 click 回调中从 params.data 或明确映射读取，再生成筛选条件；标题和序号都不能代替稳定身份。',
+        detail: {
+          example:
+            '驾驶舱按销售排序后，用户点了第 3 根柱子。如果提交的是 dataIndex=3，排序一变，第 3 根可能已经是另一个项目，筛选结果就错了。数据项里保留 businessId，点击时从 params.data 取这个稳定 ID 再生成筛选条件。顺带一个常见坑：每次 setOption 后重新 chart.on，监听就会累积，点一次发出五次请求。',
+          code:
+            'function bindChart(chart, getConfig, updateFilter) {\n  function onClick(params) {\n    const id = params.data?.businessId;   // 稳定业务 ID\n    if (id == null) return;\n    updateFilter({ field: getConfig().field, id });\n  }\n  chart.on(\'click\', onClick);\n  return () => chart.off(\'click\', onClick);   // 卸载时移除自己注册的\n}',
+          pitfalls:
+            '把 dataIndex 或数组下标当作稳定身份，排序、过滤、切换图表类型后必然错位。把显示标签当主键，改名就断。重复绑定 chart.on 而从不 off，监听会越积越多。图表 A 的 dispatchAction 回显又触发订阅改回全局筛选，会形成多张图互相刷新的循环。',
+        },
       },
       {
         type: 'truefalse',
@@ -304,6 +354,14 @@
         answer: false,
         explain:
           '错误。以 Video.js 8 为例，先调用 player.dispose() 让播放器释放其事件、内部节点和资源，再清理应用自己注册的订阅与实例引用；删除容器 DOM 不等价于该流程。监控 SDK 按其实际版本的销毁 API 处理。快速切换或初始化未完成就关闭时，还要使旧任务失效，释放迟到创建的旧实例。',
+        detail: {
+          example:
+            '教学视频和监控画面在同一个弹窗里来回切换，只替换了容器的 HTML，结果声音还在响、连接还挂着、资源越积越多。因为移除 DOM 不会执行播放器的释放流程。Video.js 要先调 player.dispose()，再清掉自己注册的订阅和实例引用；监控 SDK 有各自的销毁接口。正确做法是把创建、切源、暂停、销毁封装成统一接口，切换时先释放旧的再建新的。',
+          code:
+            'function createPlayerSlot(create) {\n  let generation = 0, current = null;\n  function close() { generation++; current?.dispose(); current = null; }\n  return {\n    close,\n    async open(device) {\n      close();\n      const mine = generation;\n      let p; try { p = await create(device); } catch (e) { if (mine === generation) throw e; return; }\n      if (mine !== generation) { p.dispose(); return; }  // 迟到实例立即释放\n      current = p;\n    },\n  };\n}',
+          pitfalls:
+            '以为删掉 DOM 就是销毁，是这里最核心的错误，事件、定时器、连接和媒体资源都还活着。初始化没完成就关闭、之后旧实例才创建成功，不做代际判断就会挂进新画面。为了保住教学视频进度而留着已经没有所有权的播放器实例，是另一种常见错法，进度应该单独存。Video.js 不同大版本的 API 不能靠名字类推。',
+        },
       },
     ],
   });
