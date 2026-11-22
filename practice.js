@@ -17,6 +17,9 @@ const Practice = (() => {
   const groupNames = Object.fromEntries(groups.map((g) => [g.id, g.name]));
   const inGroup = (id) => groups.find((g) => g.id === id).cards;
   const tracks = {
+    'resume-data': {name: '简历：数据与部署', ids: inGroup('resume-data')},
+    'resume-ui': {name: '简历：前端与跨端', ids: inGroup('resume-ui')},
+    'resume-integration': {name: '简历：AI 与集成', ids: inGroup('resume-integration')},
     runtime: {name: 'Node 运行机制', ids: inGroup('runtime-deep')},
     media: {name: '视频与移动端', ids: inGroup('media-deep')},
     quality: {name: '测试与国际化', ids: inGroup('quality-deep')},
@@ -191,6 +194,7 @@ const Practice = (() => {
       shortcuts.append(btn(track.name, () => openPractice('track-' + key)));
     }
     app.append(shortcuts);
+    app.append(btn('查看简历逐项对照', () => openPractice('resume-audit'), 'jump'));
     app.append(btn('查看选题参考与答案资料', () => openPractice('sources'), 'jump'));
     const section = el('section'),
       head = el('div', 'sectionhead');
@@ -296,6 +300,91 @@ const Practice = (() => {
       }
       panel.append(section);
     }
+    wrap.append(
+      btn('← 全部专题', () => openPractice(), 'jump back'),
+      panel,
+    );
+    app.append(wrap);
+  }
+  function showResumeCoverage() {
+    topView();
+    const wrap = el('section', 'practice'),
+      panel = el('article', 'recap');
+    panel.append(
+      el('h1', '', '简历逐项对照'),
+      el(
+        'p',
+        'meta',
+        '按已提供的三页简历核对。每项列出核对前的缺口、当前练习入口和需要你准备的项目证据。掌握程度通过独立作答与代码验证判断。',
+      ),
+      el('p', 'meta', RESUME_COVERAGE.length + ' 项核对 · 新题为场景练习，个人经历按真实实现补充。'),
+      el('p', 'meta', '个人证据笔记保存在当前浏览器。'),
+    );
+    const label = el('label', 'note', '筛选核对项目');
+    const filter = el('select', 'search');
+    filter.id = 'coverage-filter';
+    label.htmlFor = filter.id;
+    for (const [value, text] of [
+      ['all', '全部条目'],
+      ['added', '本轮补充了追问'],
+      ['verify', '需要补充项目事实'],
+    ]) {
+      const option = el('option', '', text);
+      option.value = value;
+      filter.append(option);
+    }
+    const list = el('div', 'coverage-list');
+    panel.append(label, filter, list);
+    function drawCoverage() {
+      list.replaceChildren();
+      const visible = RESUME_COVERAGE.filter(
+        (item) => filter.value === 'all' || (filter.value === 'added' ? item.added.length : item.verify),
+      );
+      let section;
+      for (const item of visible) {
+        if (section !== item.section) {
+          section = item.section;
+          list.append(el('h2', '', section));
+        }
+        const detail = el('details', 'topic'),
+          summary = el('summary', '', item.title),
+          body = el('div', 'mock-detail');
+        detail.dataset.coverageId = item.id;
+        summary.append(
+          el('span', '', item.verify ? '待补项目事实' : item.added.length ? '本轮已补充' : '已有追问'),
+        );
+        body.append(el('p', 'meta', '简历依据：' + item.basis), el('p', '', '核对前：' + item.before));
+        const related = [...new Set([...item.existing, ...item.added])];
+        for (const id of related) {
+          const row = btn(cards[id].title, () => openPractice(id), 'row');
+          row.append(
+            el(
+              'small',
+              '',
+              (item.added.includes(id) ? '本轮新增 · ' : '') + cards[id].steps.length + ' 问 →',
+            ),
+          );
+          body.append(row);
+        }
+        body.append(el('p', 'note', '准备证据：' + item.evidence));
+        const noteLabel = el('label', 'note', '我的实际实现与证据'),
+          input = el('textarea', 'answerbox');
+        input.id = 'evidence-' + item.id;
+        noteLabel.htmlFor = input.id;
+        input.placeholder = '写下你实际负责的范围、实现取舍、版本和可核实结果';
+        input.value = saved.resumeEvidence?.[item.id] || '';
+        input.oninput = () => {
+          saved.resumeEvidence ||= {};
+          saved.resumeEvidence[item.id] = input.value;
+          persist();
+        };
+        body.append(noteLabel, input);
+        detail.append(summary, body);
+        list.append(detail);
+      }
+    }
+    filter.onchange = drawCoverage;
+    drawCoverage();
     wrap.append(
       btn('← 全部专题', () => openPractice(), 'jump back'),
       panel,
@@ -519,6 +608,9 @@ const Practice = (() => {
           ...inGroup('platform-deep'),
           ...inGroup('runtime-deep'),
           ...inGroup('quality-deep'),
+          ...inGroup('resume-data'),
+          ...inGroup('resume-ui'),
+          ...inGroup('resume-integration'),
         ]),
         draw(['pool', 'debounce', 'window', 'binary', 'lru', ...inGroup('language-deep')]),
         draw([
@@ -641,6 +733,7 @@ const Practice = (() => {
   root.querySelector('#back-game').onclick = () => leavePractice();
   return {
     open(route, restoring = false) {
+      if (route === 'resume-audit') return showResumeCoverage();
       if (route === 'sources') return showSources();
       if (route === 'weak') return listWeak();
       if (route?.startsWith('track-')) {

@@ -38,6 +38,9 @@ const topics = {
   25: 'track-runtime',
   26: 'track-media',
   27: 'track-quality',
+  28: 'track-resume-data',
+  29: 'track-resume-ui',
+  30: 'track-resume-integration',
 };
 let state = {hearts: 5, xp: 0, streak: 0, stars: {}, mistakes: {}, badges: [], run: null, returnTo: 'home'};
 try {
