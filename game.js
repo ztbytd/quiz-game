@@ -31,6 +31,10 @@ const topics = {
   18: 'track-ai',
   19: 'track-network',
   20: 'track-security',
+  21: 'track-language',
+  22: 'track-framework',
+  23: 'track-platform',
+  24: 'track-system',
 };
 let state = {hearts: 5, xp: 0, streak: 0, stars: {}, mistakes: {}, badges: [], run: null, returnTo: 'home'};
 try {
@@ -58,6 +62,9 @@ function action(label, fn, cls = 'tool-button') {
   return button;
 }
 const relatedTopics = [
+  [/手写 Promise.all/, 'lang-all-boundaries'],
+  [/call\/apply\/bind/, 'lang-bind-new'],
+  [/Generator 函数/, 'lang-generator-close'],
   [/防抖/, 'debounce'],
   [/分布式锁|重复合并/, 'merge'],
   [/上传成功率/, 'rate'],

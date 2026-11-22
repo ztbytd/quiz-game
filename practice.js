@@ -3,7 +3,7 @@ const Practice = (() => {
   const root = document.getElementById('practiceHost').attachShadow({mode: 'open'});
   const sheet = document.createElement('link');
   sheet.rel = 'stylesheet';
-  sheet.href = new URL('practice.css?v=1', document.baseURI).href;
+  sheet.href = new URL('practice.css?v=3', document.baseURI).href;
   root.append(sheet);
   const layout = document.createElement('template');
   layout.innerHTML =
@@ -17,6 +17,10 @@ const Practice = (() => {
   const groupNames = Object.fromEntries(groups.map((g) => [g.id, g.name]));
   const inGroup = (id) => groups.find((g) => g.id === id).cards;
   const tracks = {
+    language: {name: 'JS / TS 深入', ids: inGroup('language-deep')},
+    framework: {name: '框架进阶', ids: inGroup('framework-deep')},
+    platform: {name: '浏览器与工程化', ids: inGroup('platform-deep')},
+    system: {name: '系统设计', ids: inGroup('system-deep')},
     ai: {name: 'AI 应用', ids: inGroup('ai')},
     network: {name: '计算机网络', ids: [...inGroup('netcases'), 'network', 'origin', 'socket', 'range']},
     security: {name: 'Web 安全', ids: [...inGroup('security'), 'revoke', 'preview']},
@@ -50,6 +54,20 @@ const Practice = (() => {
     range: ['MDN · HTTP 范围请求', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Range_requests'],
     hydrate: ['React · hydrateRoot', 'https://react.dev/reference/react-dom/client/hydrateRoot'],
   };
+  const selectionSources = [
+    [
+      'Front End Interview Handbook · 复习方向目录',
+      'https://github.com/yangshun/front-end-interview-handbook',
+    ],
+    [
+      'H5BP · Front-end Developer Interview Questions',
+      'https://github.com/h5bp/Front-end-Developer-Interview-Questions',
+    ],
+    [
+      'Front End Interview Handbook · 系统设计',
+      'https://www.frontendinterviewhandbook.com/front-end-system-design',
+    ],
+  ];
   const diagnostics = ['loop:0', 'react:0', 'pool:0', 'parity:2', 'split:2', 'window:0'];
   const total = Object.values(cards).reduce((n, c) => n + c.steps.length, 0);
   let saved = {grades: {}, notes: {}, session: null};
@@ -166,6 +184,7 @@ const Practice = (() => {
       shortcuts.append(btn(track.name, () => openPractice('track-' + key)));
     }
     app.append(shortcuts);
+    app.append(btn('查看选题参考与答案资料', () => openPractice('sources'), 'jump'));
     const section = el('section'),
       head = el('div', 'sectionhead');
     head.append(
@@ -233,6 +252,42 @@ const Practice = (() => {
         row = btn(c.title, () => openPractice('track-' + key + '/' + id), 'row');
       row.append(el('small', '', c.steps.length + ' 问 →'));
       panel.append(row);
+    }
+    wrap.append(
+      btn('← 全部专题', () => openPractice(), 'jump back'),
+      panel,
+    );
+    app.append(wrap);
+  }
+  function showSources() {
+    topView();
+    const wrap = el('section', 'practice'),
+      panel = el('article', 'recap');
+    panel.append(
+      el('h1', '', '选题参考与答案资料'),
+      el('p', 'meta', '收集日期 2026-11-22。题目结合公开目录和项目场景编写，答案按对应文档核对。'),
+      el('h2', '', '公开题目目录'),
+    );
+    for (const [name, url] of selectionSources) {
+      const link = el('a', 'source-link', name);
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      panel.append(link);
+    }
+    panel.append(el('h2', '', '按题目查看核对资料'));
+    for (const group of groups) {
+      const withSource = group.cards.filter((id) => cards[id].source || refs[id]);
+      if (!withSource.length) continue;
+      const section = el('details', 'topic');
+      section.append(el('summary', '', group.name + ' · ' + withSource.length + ' 组'));
+      for (const id of withSource) {
+        const item = el('div', 'source-item');
+        item.append(btn(cards[id].title, () => openPractice(id), 'jump'));
+        appendSource(item, cards[id]);
+        section.append(item);
+      }
+      panel.append(section);
     }
     wrap.append(
       btn('← 全部专题', () => openPractice(), 'jump back'),
@@ -451,9 +506,11 @@ const Practice = (() => {
           ...inGroup('netcases'),
           ...inGroup('security'),
           ...inGroup('ai'),
+          ...inGroup('framework-deep'),
+          ...inGroup('platform-deep'),
         ]),
-        draw(['pool', 'debounce', 'window', 'binary', 'lru']),
-        draw(['split', 'merge', 'parity', 'rate', 'control', ...inGroup('field')]),
+        draw(['pool', 'debounce', 'window', 'binary', 'lru', ...inGroup('language-deep')]),
+        draw(['split', 'merge', 'parity', 'rate', 'control', ...inGroup('field'), ...inGroup('system-deep')]),
       ];
     const queue = interview.flatMap((id) => [0, 1, 2].map((i) => id + ':' + i));
     saved.session = {
@@ -564,6 +621,7 @@ const Practice = (() => {
   root.querySelector('#back-game').onclick = () => leavePractice();
   return {
     open(route, restoring = false) {
+      if (route === 'sources') return showSources();
       if (route === 'weak') return listWeak();
       if (route?.startsWith('track-')) {
         const [track, id] = route.slice(6).split('/');

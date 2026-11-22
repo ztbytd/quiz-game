@@ -427,3 +427,26 @@ pre {
   font-size: 14px;
   overflow-wrap: anywhere;
 }
+.source-link {
+  display: block;
+  margin: 8px 0;
+  color: #12604e;
+  overflow-wrap: anywhere;
+}
+.source-item {
+  padding: 10px 15px;
+  border-bottom: 1px solid #cbd6cd;
+}
+.source-item > a {
+  display: block;
+  color: #12604e;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.source-item .jump {
+  text-align: left;
+}
+.recap h2 {
+  font-size: 20px;
+  margin-top: 20px;
+}
