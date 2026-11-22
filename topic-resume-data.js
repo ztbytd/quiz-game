@@ -236,6 +236,14 @@
         answer: 2,
         explain:
           '死锁牺牲事务会整体回滚，不能假定前面语句仍生效。普通锁等待超时的回滚范围还需另查错误与配置。',
+        detail: {
+          example:
+            '事务 A 先改目录 1 再改目录 2，事务 B 顺序相反，两边撞上互相等待，InnoDB 选了 B 作为牺牲者整体回滚。如果应用只重试最后一条 UPDATE，前面那些已经被回滚的改动就全丢了。正确做法是带退避上限地重试整个业务事务，并重新读取必要状态；如果事务里还调过发通知的接口，那个副作用不会跟着回滚，得单独做幂等。',
+          code:
+            'for (let attempt = 0; attempt < MAX; attempt++) {\n  try {\n    await db.transaction(async (tx) => { /* 完整业务事务 */ });\n    return;\n  } catch (e) {\n    if (!isDeadlock(e) || attempt === MAX - 1) throw e;\n    await sleep(backoff(attempt));\n  }\n}',
+          pitfalls:
+            '只重试最后一条语句，是最常见的错误，死锁回滚的是整个事务。把锁等待超时和死锁混为一谈也不行，超时的回滚范围默认可能只到语句，要按错误码和配置确认。统一资源访问顺序、缩短事务能减少冲突。外部副作用不在事务内，重试可能重复发送通知。',
+        },
       },
       {
         type: 'choice',
@@ -250,6 +258,12 @@
         answer: 0,
         explain:
           'EMFILE 指向进程级文件描述符限制。应排查未关闭资源与并发规模，容量调整后仍要验证资源是否持续增长。',
+        detail: {
+          example:
+            '上传突然写不进去，磁盘块空间和 inode 都还有剩余，错误却是 EMFILE。这和磁盘无关：EMFILE 是该进程打开的文件描述符达到了上限，文件、套接字、管道全都算在内。先比 /proc/PID/fd 的数量和 /proc/PID/limits 的上限，再按描述符类型找出是谁在增长——多半是哪里没关。ENFILE 是系统级的上限，两者要分开看。',
+          pitfalls:
+            '看到“磁盘还有空间”就排除存储问题，方向直接偏了。EMFILE 和 ENOSPC 是两种完全不同的资源，前者查描述符、后者查块空间和 inode。直接调高上限只是把失败往后推，泄漏不修早晚还会到顶。删日志释放不了描述符，被进程占着的已删除文件空间也不会自动回来。',
+        },
       },
       {
         type: 'choice',
@@ -264,6 +278,14 @@
         answer: 1,
         explain:
           'possible_keys 只列出候选，实际选择看 key，并结合访问方式、估计扫描行数和排序判断。再用有代表性的数据与参数比较实际行数、循环次数和耗时；EXPLAIN ANALYZE 会执行查询，不能只把它当不运行 SQL 的静态检查。用了索引也不等于覆盖查询或没有大量扫描。',
+        detail: {
+          example:
+            '文件列表有联合索引，查询却仍然扫了几十万行。EXPLAIN 的 possible_keys 里确实有这个索引，但那只是“候选”，不代表选了它。要看 key 实际选的哪一个、访问方式是 ref 还是 range、估计扫描多少行、有没有额外的 Using filesort。再用有代表性的数据跑 EXPLAIN ANALYZE 对比实际行数和耗时——注意它会真执行查询，得在受控环境里跑。',
+          code:
+            'EXPLAIN SELECT * FROM files\n WHERE tenant_id=? AND parent_id=? AND deleted=0\n ORDER BY created_at DESC, id DESC LIMIT 50;\n\n-- 索引候选\nCREATE INDEX idx_file_list ON files(tenant_id, parent_id, deleted, created_at DESC, id DESC);',
+          pitfalls:
+            'possible_keys 有值就当命中，是这里最典型的误读。只看估计行数不看实际行数，统计信息陈旧时判断会失真。用了索引也不等于覆盖查询，二级索引还要按主键回表。测试目录只有十条记录、查询都在一毫秒内，这个结论放到线上毫无意义。',
+        },
       },
       {
         type: 'truefalse',
@@ -271,6 +293,14 @@
         q: 'MongoDB 单文档更新是原子的，因此先读文件版本再无条件写回，也不会覆盖别人的并发修改。',
         answer: false,
         explain: '单次写的原子性不包含此前应用层读取。需要预期版本等条件，并检查更新是否匹配，处理冲突。',
+        detail: {
+          example:
+            '两个运营同时读到 version=7，各自改完再无条件写回。MongoDB 的原子性只保证“这一次写”本身不会写一半，管不住“你读到 7 之后别人已经改成 8”。要带上预期版本做条件更新：updateOne({_id, tenantId, version: 7}, {...})，然后检查 matchedCount——1 才算成功，0 说明版本变了或对象不存在，得重读并提示冲突，不能继续当保存成功。',
+          code:
+            'const r = await col.updateOne(\n  { _id, tenantId, version: 7 },\n  { $set: { name, currentVersionId }, $inc: { version: 1 } },\n);\nif (r.matchedCount !== 1) throw new ConflictError();   // 版本已变',
+          pitfalls:
+            '把单文档原子性理解成“并发安全”，是这道题要拆开的点，原子性覆盖的是单次写，不覆盖之前的读取。检查更新结果却继续上报成功，等于把冲突吞掉了。把目录下所有文件和历史版本都塞进一个文档，数组无界增长会撞上 BSON 大小限制。外部的文件存储动作不在数据库事务里。',
+        },
       },
       {
         type: 'choice',
@@ -285,6 +315,12 @@
         answer: 2,
         explain:
           '具体顺序是：第一次删除后 R 读到数据库旧值并暂停；W 提交新值并完成第二次删除；R 恢复后把手里的旧值回填。两次删除都成功仍出现旧缓存，说明固定延迟不是一致性保证。可靠失效任务只能解决任务丢失，还需单独处理旧读回填与关键授权时效。',
+        detail: {
+          example:
+            '时间线是这样的：第一次删除后，读请求 R 从数据库读到旧值，但在回填之前卡住了；写请求 W 提交新值，并完成了延迟后的第二次删除；随后 R 恢复，把手里那份旧值写回空的缓存。两次删除都成功了，旧值还是回来了。这说明固定延迟不是一致性保证，它只是缩小了竞争窗口。把延迟从 500ms 改成 5 秒也只是换了个窗口。',
+          pitfalls:
+            '以为“删了两次就不会有旧值”，忽略了已经读过旧数据、只是还没回填的请求。延长延迟时间治标不治本，暂停、慢查询、副本延迟都能突破它。第一次删完、数据库也提交了，进程却在 setTimeout 之前重启，失效任务就丢了，需要持久化失效意图。权限撤销这类要求立即生效的场景，不能靠经验延迟来承诺。',
+        },
       },
       {
         type: 'truefalse',
@@ -292,6 +328,14 @@
         q: 'Vite 静态产物已构建完毕，只修改 Nginx 容器里的 VITE_API_URL 就能自动改变已有 JS 的请求地址。',
         answer: false,
         explain: '相关值已在构建时替换。要改变已有产物行为，需预先设计运行期配置读取，或重新构建对应产物。',
+        detail: {
+          example:
+            '同一个前端镜像换了容器环境变量，页面还是请求测试地址。因为 import.meta.env 里的值在构建时就已经被替换进产物了，已经生成的浏览器脚本不会去读容器进程的环境变量。想让同一个不可变镜像跑不同环境，得让页面启动时去请求 /runtime-config.json，拿到地址后再创建 API 客户端。',
+          code:
+            '// 构建时替换，改了容器 ENV 不会变\nconst base = import.meta.env.VITE_API_URL;\n\n// 运行期读取：同一镜像可跑不同环境\nconst cfg = await fetch(\'/runtime-config.json\').then((r) => r.json());\ncreateApiClient(cfg.apiBase);',
+          pitfalls:
+            '把构建期变量当成运行期配置，是这里最核心的误解。以为把密钥放进 VITE_ 变量安全，其实它会原样进入浏览器产物，谁都能看到。Docker ARG/ENV 也不是存密钥的通道，可能留在镜像历史里。配置接口加载失败时不提示、悄悄回落到测试地址，会让问题更难发现。',
+        },
       },
       {
         type: 'choice',
@@ -301,6 +345,14 @@
         answer: 0,
         explain:
           'proxy_pass 带 URI /，会替换匹配的 /api/ 前缀。带变量、正则 location 或 rewrite 时需要另行分析。',
+        detail: {
+          example:
+            '代理配置里少写或多写一个斜杠，API 就全 404 了。在普通前缀 location /api/ 下：proxy_pass http://backend;（不带 URI）通常保留 /api/files 原样转发；proxy_pass http://backend/;（带 URI /）会用它替换掉匹配的 /api/ 前缀，上游收到 /files。所以请求 /api/files 到上游变成了 /files。',
+          code:
+            'location /api/ {\n  proxy_pass http://backend;    # 上游收到 /api/files\n}\n\nlocation /api/ {\n  proxy_pass http://backend/;   # 上游收到 /files\n}',
+          pitfalls:
+            '只知道“加斜杠会去掉前缀”却不看清楚 location、rewrite 和变量的组合，换个配置就不成立。用户看到 404 时分不清是前端路由、Nginx 还是 Node 返回的，要用同一请求对齐访问日志和上游状态。SPA 回退把 API 的 404 兜底成 HTML 200，会让问题伪装成“接口总是成功”。',
+        },
       },
       {
         type: 'choice',
@@ -314,6 +366,12 @@
         ],
         answer: 1,
         explain: '多进程可分担流量，但状态共享、持久化和任务唯一执行需要应用及存储协议提供。',
+        detail: {
+          example:
+            '从单进程扩到四个实例后，同一用户查上传进度有时查不到、登录态偶尔丢失。因为会话和进度存在某个进程的内存 Map 里，请求落到别的实例自然就没了。PM2 只负责把流量分给多个进程，不会把这些数据变成共享的。迁移到 Redis 后还得处理过期策略、持久化配置和缓存丢失后的重建。',
+          pitfalls:
+            '以为 PM2 cluster 会自动共享内存，是最常见的误解，每个实例是独立的进程。粘性会话能缓解，但重启后状态照样丢，也挡不住别的实例需要协调。每个实例都启动一个清理定时器，任务会被重复执行。迁到 Redis 也不等于永久可靠，过期、持久化和丢缓存后的恢复都要单独定义。',
+        },
       },
     ],
   });
