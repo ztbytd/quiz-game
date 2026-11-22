@@ -111,9 +111,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .tip-bubble::before{content:'\1F4A1';margin-right:6px}
 @media(max-width:480px){.level-label .desc{display:none}.level-btn{width:60px;height:60px;font-size:22px}.question-text{font-size:17px}.top-bar .title{font-size:15px}.stat-pill{font-size:12px;padding:4px 10px}}
 </style>
+<link rel="stylesheet" href="game.css?v=1">
 </head>
 <body>
-<div class="top-bar">
+<div class="top-bar" id="gameBar">
   <div class="title">⚔️ 前端勇士的面试冒险</div>
   <div class="stats">
     <div class="stat-pill hearts"><span class="icon">❤️</span><span id="hearts">5</span></div>
@@ -124,29 +125,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 <div id="startScreen" class="start-screen">
   <div class="hero-icon">🛡️</div>
   <h1>前端勇士的面试冒险</h1>
-  <p class="subtitle">168 道八股文 · 16个关卡 · 闯关式面试模拟</p>
-  <div class="player-card">
-    <div class="row"><span class="label">玩家</span><span class="value">叶正雄</span></div>
-    <div class="row"><span class="label">职业</span><span class="value">高级前端工程师（5年）</span></div>
-    <div class="row"><span class="label">待解锁关卡</span><span class="value">16 个</span></div>
-    <div class="row"><span class="label">题目总数</span><span class="value">168 道</span></div>
-    <div class="row"><span class="label">目标</span><span class="value">下周一面试 · 满状态出战</span></div>
+  <p class="subtitle" id="homeCount"></p>
+  <div class="entry-grid">
+    <button class="entry" onclick="startGame()"><strong>基础闯关</strong><span>选择、判断与简答 · 挑战关卡</span></button>
+    <button class="entry" onclick="openPractice()"><strong>专项追问</strong><span>从项目场景连续追问 4～6 层</span></button>
+    <button class="entry" onclick="openPractice('mock')"><strong>模拟面试</strong><span>跨专题盲答，结束后逐题复盘</span></button>
+    <button class="entry" onclick="openReview()"><strong>复习错题</strong><span>闯关错题和口答薄弱题</span></button>
   </div>
-  <div class="tip-bubble">覆盖 JS / CSS / 网络 / Vue / React / Node.js / 设计模式 / 手写代码 / ES6+TS / 浏览器渲染 / Redis / 算法 / 项目实战 / 面试BOSS，168道题答案适合直接口答！</div>
-  <button class="btn btn-primary" onclick="startGame()">开始冒险</button>
 </div>
-<div id="mapContainer" class="map-container" style="display:none;"><div class="map-path" id="mapPath"></div></div>
+<section id="practiceHost" hidden></section>
+<p id="gameNotice" role="status"></p>
+<div id="mapContainer" class="map-container" style="display:none;">
+  <nav class="map-actions" aria-label="练习模式">
+    <button onclick="showHome()">返回首页</button><button onclick="openPractice()">专项追问</button>
+    <button onclick="openPractice('mock')">模拟面试</button><button onclick="openReview()">复习错题</button>
+  </nav>
+  <div class="map-path" id="mapPath"></div>
+</div>
+<section id="reviewPage" class="review-page" hidden></section>
 <div id="quizOverlay" class="quiz-overlay"><div class="quiz-card">
-  <div class="quiz-header"><div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div><button class="close-btn" onclick="quitQuiz()">✕</button></div>
+  <div class="quiz-header"><div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div><button class="close-btn" aria-label="退出本题" onclick="quitQuiz()">✕</button></div>
   <div class="quiz-body" id="quizBody"></div>
-  <div class="quiz-footer"><span style="color:var(--text-light);font-size:13px" id="quizHint">选择你认为正确的答案</span><button class="btn btn-primary" id="checkBtn" disabled>确认</button></div>
+  <div id="quizFooter" class="quiz-footer"><span style="color:var(--text-light);font-size:13px" id="quizHint">选择你认为正确的答案</span><button class="btn btn-primary" id="checkBtn" disabled>确认</button></div>
 </div></div>
 <div id="victoryOverlay" class="victory-overlay"><div class="victory-card">
   <div class="trophy" id="trophyIcon">🏆</div>
   <h2 id="victoryTitle">关卡通过！</h2>
   <p class="subtitle" id="victorySubtitle">你离面试成功又近了一步</p>
   <div class="rewards"><div class="reward-item"><div class="reward-icon">⭐</div><div class="reward-val" id="rewardXp">+50</div><div class="reward-label">经验值</div></div><div class="reward-item"><div class="reward-icon">🌟</div><div class="reward-val" id="rewardStars">3</div><div class="reward-label">星数</div></div></div>
-  <button class="btn btn-primary" onclick="closeVictory()">继续冒险</button>
+  <button class="btn btn-primary" onclick="closeVictory()">返回关卡</button>
 </div></div>
 <div id="achievementToast" class="achievement-toast"><span>🏅</span><span id="achievementText">成就解锁</span></div>
 <script>
@@ -342,7 +349,7 @@ const LEVELS=[
 ]},
 {id:7,name:"文件上传峡谷",desc:"大文件分片上传全链路",difficulty:"medium",icon:"📦",questions:[
 {type:"choice",q:"Web Worker 在分片上传中的作用？为什么不在主线程算 Hash？",options:["A) Web Worker 负责网络请求","B) 异步计算文件 Hash 避免 CPU 密集型操作阻塞主线程导致页面卡顿；计算完 Hash 用于秒传判断——服务端已有相同 Hash 直接返回成功","C) Web Worker 负责文件压缩","D) Web Worker 负责分片切割"],answer:1,explain:"<strong>口答要点</strong>：大文件 Hash 计算(MD5/SHA)是 CPU 密集型主线程执行会完全阻塞 UI。Web Worker 移到子线程计算主线程保持流畅。Hash 用于<strong>秒传</strong>——服务端已有相同 Hash 的文件直接返回成功不用再传。"},
-{type:"choice",q:"Redis 分布式锁在分片上传中怎么用？",options:["A) 防止用户误操作","B) 防止多个请求同时合并同一文件分片导致冲突；SET NX EX 实现互斥锁+过期时间防死锁；延迟双删策略解决并发脏数据","C) 限制上传速度","D) 防止黑客攻击"],answer:1,explain:"<strong>口答要点</strong>：多个分片并发到达可能同时触发合并。分布式锁确保<strong>只有一个请求执行合并</strong>。<code>SET key value NX EX 30</code>。延迟双删：合并后先删锁延迟再删一次防止并发场景锁被误删。"},
+{type:"choice",q:"Redis 分布式锁在分片上传中怎么用？",options:["A) 防止用户误操作","B) 用带唯一标识和租期的锁减少重复合并；原子校验持有者后释放，最终提交用持久化状态约束","C) 限制上传速度","D) 防止黑客攻击"],answer:1,explain:"<strong>口答要点</strong>：锁可降低重复工作。每次获取生成唯一 token，释放时原子比较并删除。旧任务可能在租约过期后恢复；用独立的临时对象和带版本的条件提交保护最终文件。"},
 {type:"choice",q:"上传成功率从 70% 提升到 99% 做了哪些优化？",options:["A) 换了更快的服务器","B) 分片上传(降低单次失败影响)+断点续传(网络中断可恢复)+动态并发控制(网络好加并发差时减)+秒传+错误重试","C) 只加大了超时时间","D) 用浏览器自带上传"],answer:1,explain:"<strong>口答要点</strong>：组合拳——<strong>分片</strong>降低单次失败影响范围；<strong>断点续传</strong>网络中断可恢复；<strong>动态并发</strong>根据网络状况调整并发数；<strong>秒传</strong>通过 Hash 判断避免重复上传；<strong>重试</strong>对失败分片自动重试。"},
 {type:"truefalse",q:"断点续传的思路是：上传前先请求服务端查询已上传的分片列表只传缺失的分片。",answer:true,explain:"<strong>口答要点</strong>：正确。流程：1)前端计算文件 Hash 2)用 Hash 查询服务端已有分片 3)只上传缺失的分片 4)所有分片就绪后触发合并。还包含上传进度持久化——关页面再回来也能恢复。"},
 ]},
@@ -355,7 +362,7 @@ const LEVELS=[
 {type:"text",q:"权限变更后缓存没更新用户看到不该看的菜单怎么办？",answer:"缓存",explain:"<strong>口答要点</strong>：1)权限变更时<strong>定向清除对应用户的权限缓存</strong>(按用户 ID) 2)设置合理 TTL 兜底(如 5 分钟) 3)前端 PermissionGuard 做双重校验——隐藏菜单+<strong>API 层也要校验权限</strong>防止 URL 绕过 4)后端接口权限校验是最后防线。"},
 ]},
 {id:9,name:"终极面试 BOSS",desc:"自我介绍+开放性问题",difficulty:"boss",icon:"👑",questions:[
-{type:"text",q:"请做一个自我介绍（1分钟）。",answer:"自我介绍",explain:"<strong>口答模板</strong>：「我叫叶正雄5 年前端经验目前在腾讯驻场做微信支付资金业务平台。擅长 Vue3 和 React 全栈开发在当前项目独立承担了 10+ 个资金运营后台的前后端全链路交付主导了 19 个 PHP 接口向 Node.js/TS 的迁移。之前在企业级文档协同平台服务过 10000+ 日活用户从零搭建了大文件分片上传、三级权限系统和 CI/CD 流水线。对工程化和全栈交付比较有经验也对 AI 工程化有实践积累。」<strong>要点</strong>：名字+经验年限+核心项目一句话+技术亮点+收尾。不要念简历。"},
+{type:"text",q:"请做一个自我介绍（1分钟）。",answer:"自我介绍",explain:"<strong>口答模板</strong>：「我叫叶正雄，有约五年研发经验，其中约三年半从事前端开发，曾在中软国际驻场腾讯做微信支付运营平台。擅长 Vue3 和 React 全栈开发团队迁移了 19 个 PHP 接口，我会选一个自己负责的接口说明契约、异常处理和上线验证。之前在企业级文档协同平台服务过 10000+ 日活用户从零搭建了大文件分片上传、三级权限系统和 CI/CD 流水线。对工程化和全栈交付比较有经验也对 AI 工程化有实践积累。」<strong>要点</strong>：名字+经验年限+核心项目一句话+技术亮点+收尾。不要念简历。"},
 {type:"text",q:"迁移 19 个 PHP 接口时遇到的最大挑战？怎么解决？(STAR 法则)",answer:"STAR",explain:"<strong>S</strong>：微信支付资金平台 19 个 PHP 接口 9000+ 行需迁移到 Node.js/TS。<strong>T</strong>：6 周内完成零事故上线。<strong>A</strong>：按 Controller/AO/Util/Middleware 分层重构；统一封装 Svrkit RPC 和 protobuf 类型转换；补齐监控权限自动化部署；逐接口对比验证+灰度切流。<strong>R</strong>：6 周完成零事故上线系统可观测性和交付规范对齐内部标准。"},
 {type:"text",q:"你觉得自己最大的不足是什么？",answer:"不足",explain:"<strong>策略</strong>：说真实但正在改进且不影响核心岗位匹配的不足。<strong>参考</strong>：「学历是大专早期找工作遇到过门槛但通过持续学习和项目实战弥补——从 Python 转型前端 5 年做到高级前端工程师独立承担支付级业务全栈交付。另一个是在系统设计层面经验还在积累目前通过研究 BFF 架构和分布式系统在主动学习。」<strong>切忌</strong>：假缺点(太追求完美)；影响核心能力的真缺点。"},
 {type:"text",q:"你对 AI 工程化有实践能具体说说吗？",answer:"AI",explain:"<strong>口答要点</strong>：「1)LLM API 集成——SSE 流式输出 Function Calling/Tool Use 多轮上下文管理 2)Prompt Engineering——Few-shot 调优 3)MCP 协议——Model Context Protocol 工具集成 4)Claude Code 工程化——AI 辅助开发 Skill 模块设计。」加分点：聊对 AI 编程工具的理解和实际提效数据。"},
@@ -365,32 +372,11 @@ const LEVELS=[
 ];
 
 // ===================== 游戏逻辑 =====================
-let gameState={hearts:5,xp:0,streak:0,currentLevel:null,currentQuestion:0,selectedAnswer:null,answered:false,levelStars:{},achievements:[],comboCount:0};
-
-function startGame(){document.getElementById('startScreen').style.display='none';document.getElementById('mapContainer').style.display='block';renderMap();updateStats()}
-
-function renderMap(){const path=document.getElementById('mapPath');path.innerHTML='';LEVELS.forEach((level,idx)=>{const prevDone=idx===0||gameState.levelStars[idx-1]!==undefined;const done=gameState.levelStars[idx]!==undefined;if(idx>0){const conn=document.createElement('div');conn.className='connector'+(done?' done':'');path.appendChild(conn)}const node=document.createElement('div');node.className='level-node';const btn=document.createElement('button');btn.className='level-btn';if(done){btn.classList.add('completed');btn.innerHTML=level.icon;const stars=document.createElement('div');stars.className='star-badge';stars.textContent='★ '+gameState.levelStars[idx];btn.appendChild(stars)}else if(prevDone){btn.classList.add('current');btn.textContent=idx+1}else{btn.classList.add('locked');btn.innerHTML='<span class="lock-icon">🔒</span>'}if(prevDone&&!done){btn.onclick=()=>startLevel(idx)}node.appendChild(btn);const label=document.createElement('div');label.className='level-label';const tagClass=level.difficulty==='easy'?'tag-easy':level.difficulty==='medium'?'tag-medium':level.difficulty==='hard'?'tag-hard':'tag-boss';const tagText=level.difficulty==='easy'?'入门':level.difficulty==='medium'?'进阶':level.difficulty==='hard'?'困难':'BOSS';label.innerHTML='<div class="name">'+level.icon+' '+level.name+'</div><div class="desc">'+level.desc+'</div><div class="tag '+tagClass+'">'+tagText+' · '+level.questions.length+'题</div>';node.appendChild(label);path.appendChild(node)})}
-
-function updateStats(){document.getElementById('hearts').textContent=gameState.hearts;document.getElementById('xp').textContent=gameState.xp;document.getElementById('streak').textContent=gameState.streak}
-
-function startLevel(levelIdx){if(gameState.hearts<=0){alert('心碎了！刷新页面重新挑战 ❤️‍🩹');return}gameState.currentLevel=levelIdx;gameState.currentQuestion=0;gameState.selectedAnswer=null;gameState.answered=false;gameState.comboCount=0;document.getElementById('quizOverlay').classList.add('active');renderQuestion()}
-
-function renderQuestion(){const level=LEVELS[gameState.currentLevel];const q=level.questions[gameState.currentQuestion];const progress=(gameState.currentQuestion/level.questions.length)*100;document.getElementById('progressFill').style.width=progress+'%';const body=document.getElementById('quizBody');const typeLabel=q.type==='choice'?'选择题':q.type==='truefalse'?'判断题':'简答题';let html='<div class="question-type">'+typeLabel+' · 第 '+(gameState.currentQuestion+1)+'/'+level.questions.length+' 题</div><div class="question-text">'+q.q+'</div>';if(q.type==='choice'){html+='<div class="options">';q.options.forEach((opt,i)=>{const key=String.fromCharCode(65+i);html+='<button class="option-btn" data-idx="'+i+'" onclick="selectOption('+i+')"><span class="opt-key">'+key+'</span><span>'+opt.substring(3)+'</span></button>'});html+='</div>'}else if(q.type==='truefalse'){html+='<div class="options true-false">';html+='<button class="option-btn" data-idx="1" onclick="selectOption(1)"><span class="opt-key">✓</span><span>正确</span></button>';html+='<button class="option-btn" data-idx="0" onclick="selectOption(0)"><span class="opt-key">✗</span><span>错误</span></button>';html+='</div>'}else if(q.type==='text'){html+='<div class="options"><textarea class="text-input" id="textAnswer" placeholder="在这里输入你的答案...（写完点击确认查看参考答案）"></textarea></div>'}html+='<div class="feedback" id="feedback"></div>';body.innerHTML=html;gameState.selectedAnswer=null;gameState.answered=false;const checkBtn=document.getElementById('checkBtn');const hint=document.getElementById('quizHint');if(q.type==='text'){checkBtn.textContent='查看参考答案';checkBtn.disabled=false;hint.textContent='简答题没有标准答案写完点击查看参考思路'}else{checkBtn.textContent='确认';checkBtn.disabled=true;hint.textContent='选择你认为正确的答案'}document.getElementById('feedback').classList.remove('show')}
-
-function selectOption(idx){if(gameState.answered)return;const btns=document.querySelectorAll('.option-btn');btns.forEach(b=>b.classList.remove('selected'));btns[idx].classList.add('selected');gameState.selectedAnswer=idx;document.getElementById('checkBtn').disabled=false}
-
-function checkAnswer(){const level=LEVELS[gameState.currentLevel];const q=level.questions[gameState.currentQuestion];const feedback=document.getElementById('feedback');if(q.type==='text'){feedback.className='feedback show correct';feedback.innerHTML='<div class="result-icon">💡 参考思路</div><div class="explanation">'+q.explain+'</div>';gameState.answered=true;document.getElementById('checkBtn').textContent='继续';document.getElementById('quizHint').textContent='参考思路不是唯一答案结合自己理解发挥';return}if(gameState.selectedAnswer===null)return;gameState.answered=true;const correct=gameState.selectedAnswer===q.answer;const btns=document.querySelectorAll('.option-btn');btns.forEach((b,i)=>{b.style.pointerEvents='none';if(i===q.answer)b.classList.add('correct');if(i===gameState.selectedAnswer&&!correct)b.classList.add('wrong')});if(correct){gameState.comboCount++;const baseXp=level.difficulty==='easy'?10:level.difficulty==='medium'?15:level.difficulty==='hard'?20:30;const comboBonus=gameState.comboCount>1?gameState.comboCount*5:0;const totalXp=baseXp+comboBonus;gameState.xp+=totalXp;gameState.streak++;let comboText='';if(gameState.comboCount>=3)comboText=' 🔥 '+gameState.comboCount+'连击！+'+comboBonus+'XP';feedback.className='feedback show correct';feedback.innerHTML='<div class="result-icon">✅ 答对了！+'+totalXp+' XP'+comboText+'</div><div class="explanation">'+q.explain+'</div>'}else{gameState.comboCount=0;gameState.hearts--;gameState.streak=0;feedback.className='feedback show wrong';const correctText=q.type==='truefalse'?(q.answer?'正确':'错误'):q.options[q.answer].substring(3);feedback.innerHTML='<div class="result-icon">❌ 答错了！-1 ❤️</div><div class="explanation"><strong>正确答案：'+correctText+'</strong><br><br>'+q.explain+'</div>';if(gameState.hearts<=0){setTimeout(()=>{alert('💔 心碎了！知识点都在解析里刷新页面重新挑战！');quitQuiz()},2000)}}updateStats();checkAchievements();document.getElementById('checkBtn').textContent=gameState.currentQuestion<level.questions.length-1?'下一题':'完成关卡';document.getElementById('quizHint').textContent=''}
-
-document.getElementById('checkBtn').onclick=function(){const level=LEVELS[gameState.currentLevel];if(!gameState.answered){checkAnswer();return}gameState.currentQuestion++;if(gameState.currentQuestion<level.questions.length){renderQuestion()}else{completeLevel()}};
-
-function completeLevel(){const level=LEVELS[gameState.currentLevel];let stars=3;if(gameState.hearts<=2)stars=2;if(gameState.hearts<=1)stars=1;gameState.levelStars[gameState.currentLevel]=stars;const levelXp=level.difficulty==='easy'?50:level.difficulty==='medium'?80:level.difficulty==='hard'?120:200;gameState.xp+=levelXp;const overlay=document.getElementById('victoryOverlay');const isLast=gameState.currentLevel===LEVELS.length-1;document.getElementById('trophyIcon').textContent=isLast?'👑':'🏆';document.getElementById('victoryTitle').textContent=isLast?'面试 BOSS 已通关！':level.name+' 通关！';document.getElementById('victorySubtitle').textContent=isLast?'你已准备好迎接周一的面试了！':'你离面试成功又近了一步';document.getElementById('rewardXp').textContent='+'+levelXp;document.getElementById('rewardStars').textContent=stars+' / 3';overlay.classList.add('active');document.getElementById('quizOverlay').classList.remove('active');updateStats();checkAchievements()}
-
-function closeVictory(){document.getElementById('victoryOverlay').classList.remove('active');renderMap()}
-function quitQuiz(){document.getElementById('quizOverlay').classList.remove('active')}
-
-function checkAchievements(){const achievements=[{id:'first_blood',cond:()=>gameState.xp>0,icon:'🎯',text:'初出茅庐：获得第一笔经验值'},{id:'combo3',cond:()=>gameState.comboCount>=3,icon:'🔥',text:'三连击！答对3题不间断'},{id:'level3',cond:()=>Object.keys(gameState.levelStars).length>=5,icon:'🗺️',text:'探险家：通关5个关卡'},{id:'all_clear',cond:()=>Object.keys(gameState.levelStars).length===LEVELS.length,icon:'👑',text:'面试大师：全部16关通关！'},{id:'xp500',cond:()=>gameState.xp>=500,icon:'⭐',text:'经验丰富：累计500 XP'},{id:'xp1000',cond:()=>gameState.xp>=1000,icon:'💎',text:'面试王者：累计1000 XP'},{id:'combo5',cond:()=>gameState.comboCount>=5,icon:'⚡',text:'五连绝杀！答对5题不间断'}];achievements.forEach(a=>{if(!gameState.achievements.includes(a.id)&&a.cond()){gameState.achievements.push(a.id);showAchievement(a.icon,a.text)}})}
-
-function showAchievement(icon,text){const toast=document.getElementById('achievementToast');toast.querySelector('span').textContent=icon;document.getElementById('achievementText').textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),3000)}
 </script>
+<script src="practice-data.js?v=1"></script>
+<script src="coding.js?v=1"></script>
+<script src="practice.js?v=1"></script>
+<script src="project-levels.js?v=1"></script>
+<script src="game.js?v=1"></script>
 </body>
 </html>
