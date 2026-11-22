@@ -275,6 +275,14 @@
         answer: 1,
         explain:
           '直接在渲染时计算 visible = products.filter(...)，使结果始终对应这次 props/state。把它另存 state 再用 Effect 同步，会先提交旧结果、再额外提交新结果，还增加遗漏依赖的风险。实测过滤昂贵时用 useMemo 缓存纯计算，依赖必须包括 products 与 keyword；缓存不是正确性的前提。',
+        detail: {
+          example:
+            '把 filter 结果另存一份 state、再用 Effect 同步，会先渲染一次旧结果，Effect 跑完再渲染新结果——用户能看到一闪而过的错误列表，还多了一次提交。直接 const visible = products.filter(...) 写在渲染里，结果永远对应这一次的输入，不需要同步，也不会有遗漏依赖的问题。真要缓存，等实测出瓶颈再加 useMemo。',
+          code:
+            '// 渲染时派生，无需同步\nconst visible = products.filter((p) => p.name.includes(keyword));\n\n// 实测昂贵时再缓存，依赖必须完整\nconst visible = useMemo(\n  () => products.filter((p) => p.name.includes(keyword)),\n  [products, keyword],\n);',
+          pitfalls:
+            '派生状态另存一份，几乎是所有“显示和输入不同步”的来源。Effect 里少写一个依赖，结果就停在旧值上。useMemo 不是正确性工具，依赖写漏照样出错，先保证渲染时计算正确再谈缓存。写请求放进 Effect 更危险，重挂和状态恢复都可能重复触发。',
+        },
       },
       {
         type: 'truefalse',
@@ -283,6 +291,14 @@
         answer: false,
         explain:
           '错误。useDeferredValue 让部分渲染使用稍旧的值，优先让输入反馈完成，没有固定延迟也不承诺合并网络请求。若每次 query 变化都发 fetch，请求数仍可能相同。按产品要求在请求层做防抖、缓存或去重，并用请求身份阻止旧结果覆盖新结果。',
+        detail: {
+          example:
+            '输入框绑即时 query，让用户每次按键都立刻看到字符；把 useDeferredValue(query) 交给 memo 包装的昂贵列表，列表可以晚一步再用新值渲染。这个过程只改善“打字卡不卡”，如果每次 query 变化都照发一条 fetch，请求次数一个都不会少——那是请求层的事，得单独做防抖或去重。',
+          code:
+            'const [query, setQuery] = useState(\'\');\nconst deferredQuery = useDeferredValue(query);\nconst stale = query !== deferredQuery;   // 用来显示"更新中"\n\n<DeferredList query={deferredQuery} />   // 昂贵列表可被延后',
+          pitfalls:
+            '把 useDeferredValue 当成防抖，是最常见的误读，它没有固定延迟也不合并请求。以为 startTransition 能把同步计算移到别的线程也不对，回调里的同步代码照样占主线程。快速输入后点了旧列表上的按钮，要明确绑定的是旧查询还是禁用操作，否则用户操作的就是过期结果。',
+        },
       },
       {
         type: 'choice',
@@ -297,6 +313,14 @@
         answer: 2,
         explain:
           '未改变时返回同一份不可变快照，改变时创建新快照并通知订阅者。React 用 Object.is 比较；每次重新包装对象会被视为变化，原地修改同一对象又可能漏掉变化。getSnapshot 应只读取状态，不应在读取时顺手修改 Store。',
+        detail: {
+          example:
+            'getSnapshot 每次返回 { items: store.items }，底层数据一点没变，React 用 Object.is 比较两次结果却发现是新对象，于是认为状态变了，持续重渲染甚至报快照缓存警告。正确做法是：没变就返回同一份冻结快照，真变了才建新对象并通知订阅者。',
+          code:
+            'function createCounterStore() {\n  let snapshot = Object.freeze({ count: 0 });\n  const listeners = new Set();\n  return {\n    getSnapshot: () => snapshot,\n    subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },\n    increment() {\n      snapshot = Object.freeze({ count: snapshot.count + 1 });  // 换引用\n      for (const fn of [...listeners]) fn();\n    },\n  };\n}',
+          pitfalls:
+            '每次新建包装对象会让“没变”被判成“变了”。反过来原地修改同一对象，引用没变，订阅者收不到更新。subscribe 写在组件内部每次都是新函数，会导致反复重订阅。getSnapshot 里顺手改状态更糟，读取动作产生了副作用。服务端渲染还要单独提供 getServerSnapshot。',
+        },
       },
       {
         type: 'choice',
@@ -311,6 +335,14 @@
         answer: 0,
         explain:
           '在 async onClick 中 await 导出请求，用 try/catch 更新错误提示，finally 恢复按钮；使用 fetch 还需检查 response.ok，HTTP 500 不会自动 reject。Error Boundary 处理后代渲染等 React 管理阶段，不能代替普通事件或 Promise 的错误处理。重试前区分只读导出与可能已执行的写操作。',
+        detail: {
+          example:
+            '表格外层包了 Error Boundary，点导出却还是只在控制台报错、界面没反应。因为 onClick 跑在事件流程里，不经过 Error Boundary 处理的那些渲染阶段。要自己在事件里 await、try/catch、把失败写进可重试的错误状态，finally 里恢复按钮。另外 fetch 遇到 HTTP 500 不会自动 reject，必须手动检查 response.ok。',
+          code:
+            'async function onExport() {\n  setBusy(true); setError(\'\');\n  try {\n    const res = await fetch(\'/api/export\');\n    if (!res.ok) throw new Error(\'HTTP \' + res.status);   // 5xx 不会自动 reject\n    downloadBlob(await res.blob());\n  } catch (e) {\n    setError(e.message);\n  } finally {\n    setBusy(false);\n  }\n}',
+          pitfalls:
+            '以为有 Error Boundary 就一劳永逸，是这里最典型的误解，它只管渲染和生命周期里的错误。给整页套 try/catch 也接不住稍后发生的子组件渲染异常，那时代码已经跑出去了。把失败一直显示成 loading，用户既不知道失败也等不到结果。重试前要分清只读导出和可能已执行成功的写操作，后者必须先查原结果。',
+        },
       },
       {
         type: 'truefalse',
@@ -319,6 +351,12 @@
         answer: false,
         explain:
           '错误。普通 Effect 在提交后执行，其中的 fetch 不会自动告诉 Suspense 当前渲染正在挂起。此路径需自己维护 loading/error，或使用明确支持 Suspense 的数据框架；React.lazy 加载组件代码也是常见的挂起来源。把任意请求包在 Suspense 外面不会自动接管其状态。',
+        detail: {
+          example:
+            '外层已经包了 Suspense，子组件在 useEffect 里 fetch，fallback 却从不出现。因为普通 Effect 在提交之后才跑，那时渲染早已完成，没有人告诉 Suspense“我正在挂起”。Suspense 真正的挂起来源是 React.lazy 加载组件代码，或明确支持 Suspense 的数据框架；普通请求得自己维护 loading 和 error。',
+          pitfalls:
+            '以为包上 Suspense 就能自动接管所有请求，是最常见的错位。同一个边界里的详情和推荐会一起揭示，快的那个也得等慢的，要按设计拆成嵌套边界。换筛选时整块变骨架屏，是没配合 Transition 或 deferred value。把失败一直显示成 loading，是最难排查的状态覆盖。',
+        },
       },
       {
         type: 'choice',
@@ -333,6 +371,14 @@
         answer: 3,
         explain:
           'watchEffect 只跟踪同步执行期间读取的响应式依赖；首次 await 后才读取的 ref 不在这次自动收集范围内。可在 await 前读取所需值，或用 watch(() => id.value, ...) 显式声明依赖。异步任务变化时还要清理旧请求，并防止迟到结果回写。',
+        detail: {
+          example:
+            'watchEffect(async () => { await ready(); use(id.value); }) 里，id 是在 await 之后才读的。自动依赖收集只发生在副作用同步执行的那一段，await 之后已经出了收集窗口，所以 id 变了不会触发重跑。改法要么在 await 之前先把 id.value 读出来，要么用 watch(() => id.value, ...) 把依赖写明白。',
+          code:
+            '// 不会被追踪：id 在 await 之后才读取\nwatchEffect(async () => { await ready(); use(id.value); });\n\n// 显式声明依赖，并清理旧请求\nwatch(() => id.value, async (id, _, onCleanup) => {\n  const c = new AbortController();\n  onCleanup(() => c.abort());\n  use(id, { signal: c.signal });\n}, { immediate: true });',
+          pitfalls:
+            '“异步监听不受支持”是误读，异步回调能用，只是依赖收集在 await 处中断。deep: true 解决的是嵌套属性，和这里无关。回调里发请求却不清理，id 快速变化时会有一串旧请求回来覆盖新结果。在 setTimeout 里新建的 watcher 可能没绑到组件，卸载后仍在跑。',
+        },
       },
       {
         type: 'choice',
@@ -347,6 +393,14 @@
         answer: 1,
         explain:
           '在 onDeactivated 中清除轮询，在 onActivated 中按需要恢复，并在最终卸载时清理。缓存切走通常只是失活，实例没有卸载，所以仅用 onUnmounted 会继续后台轮询。启动函数应先清旧定时器，避免多次激活叠加；失活还要取消或忽略正在执行的旧请求。',
+        detail: {
+          example:
+            '页面放进 KeepAlive，切到别的页后组件没卸载、只是失活，所以 onUnmounted 根本没执行，轮询还在后台跑。要在 onDeactivated 里清掉定时器、onActivated 里恢复，同时保留最终卸载的清理。启动函数必须先清旧定时器，否则来回切几次就会叠出好几个轮询并发。',
+          code:
+            'let timer = 0;\nfunction start() { stop(); timer = setInterval(poll, 30000); }\nfunction stop() { clearInterval(timer); timer = 0; }\n\nonActivated(start);\nonDeactivated(stop);\nonUnmounted(stop);   // 最终销毁也要清理',
+          pitfalls:
+            '只写 onUnmounted 是这里最典型的遗漏，缓存场景下它几乎不会触发。每次 render 创建轮询会让数量失控。失活时还要取消或忽略在途请求，否则旧响应回来后仍会写状态。KeepAlive 有 max 上限，超出后实例会被淘汰，重新访问时是全新初始化，草稿恢复要单独设计。',
+        },
       },
       {
         type: 'text',
@@ -354,6 +408,14 @@
         q: '详情组件从 A 复用到 B，A 的慢请求随后才返回。请描述结果、错误和 loading 如何避免串到 B。',
         explain:
           '监听 route.params.id 并 immediate 加载；每次请求记录递增代际与资源 ID，监听清理时 abort 旧请求。成功时仅当前代际写 data，catch 仅当前代际写 error，finally 也仅当前代际置 loading=false。只比 ID 不够覆盖 A→B→A；卸载时使当前任务失效。新页面明确显示加载态，草稿按资源 ID 独立存储。',
+        detail: {
+          example:
+            '同一个路由组件从 /users/A 切到 /users/B，实例被复用、mounted 不会再跑，所以必须监听参数变化并带 immediate 首次加载。A 的请求在切到 B 之后才返回，要答好需要两件事同时做：切走时把旧请求 abort 掉；每次加载记住自己的代际号，结果、错误、loading 三个回写点都只在“我仍是当前代际”时才写。',
+          code:
+            'let generation = 0;\nwatch(() => route.params.id, async (id, _, onCleanup) => {\n  const mine = ++generation;\n  const c = new AbortController();\n  onCleanup(() => c.abort());\n  user.value = null; loading.value = true;\n  const current = () => mine === generation;\n  try {\n    const r = await fetch(`/api/users/${id}`, { signal: c.signal });\n    if (current()) user.value = await r.json();\n  } catch (e) {\n    if (current() && e.name !== \'AbortError\') error.value = e.message;\n  } finally {\n    if (current()) loading.value = false;\n  }\n}, { immediate: true });',
+          pitfalls:
+            '只比较 ID 不够，A→B→A 时第一个 A 的结果也能通过 ID 检查。只 abort 不做代际校验，abort 与回写之间仍有窗口。三个回写点漏掉任何一个，都会出现 B 的页面带着 A 的错误或 loading。深度 watch 整个 route 会被 query、hash 等无关变化触发。草稿要按资源 ID 分开存，否则切回去会看到别人的内容。',
+        },
       },
     ],
   });
