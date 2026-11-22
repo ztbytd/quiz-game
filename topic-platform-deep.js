@@ -294,6 +294,14 @@
         answer: 1,
         explain:
           '先画出祖先层叠上下文：内容区及后代整体在外层以 z-index:1 排序，内部的 999999 只能赢过该内容区内部兄弟，无法越过外层的导航 2。可调整公共祖先层级、把浮层挂到合适的公共容器，或按需求使用进入顶层的原生模态 dialog。还需排查 transform、opacity 等建立的新上下文及 overflow 裁切。',
+        detail: {
+          example:
+            '内容区是 position:relative; z-index:1，导航是 z-index:2，弹窗写在内容区里、数值加到 999999 依然被导航盖住。原因是内容区和它的后代作为一个整体在外层按 1 排序，弹窗的 999999 只能赢过内容区内部的兄弟，越不过外层的 2。要么把内容区整体抬高，要么把浮层挂到 body 下或用原生 dialog 进入顶层。另外父元素某次加了 transform:translateZ(0)，会新建层叠上下文，问题会在那次改动后突然出现。',
+          code:
+            '/* 错误：弹窗被困在 z-index:1 的上下文里 */\n.content { position: relative; z-index: 1; }\n.nav     { position: sticky; z-index: 2; }\n.modal   { position: fixed; z-index: 999999; }  /* 仍在 .content 内部 */\n\n/* 修复方向之一：用原生 dialog 进入顶层 */\n<dialog open>…</dialog>',
+          pitfalls:
+            '继续把数值乘十，永远解决不了跨上下文的比较。给弹窗加更具体的选择器只影响优先级，不改层叠上下文。父级出现 transform、opacity<1、filter、will-change 都会新建上下文，是“昨天还好好的”这类问题的常见来源。overflow:hidden 的祖先还会把浮层裁掉一部分，这跟层级是两回事。',
+        },
       },
       {
         type: 'choice',
@@ -303,6 +311,14 @@
         answer: 0,
         explain:
           'auto-fill 会保留按容器宽度计算出的空轨道；auto-fit 在布局后折叠空轨道，剩余 1fr 轨道可能扩宽。示例 grid-template-columns:repeat(auto-fill,minmax(200px,1fr)) 在宽容器只有一个项目时仍保留其他列槽位。容器窄于最小轨道时还需调整最小值，避免水平溢出。',
+        detail: {
+          example:
+            '宽容器里只有一张卡：用 auto-fit 时空轨道被折叠，剩下那一列会被 1fr 拉宽铺满整行；用 auto-fill 时空轨道保留，卡片仍按原宽度呆在第一列，后面的槽位空着。产品要的就是后者的效果。容器窄到放不下最小轨道时，还要用 min(100%, 最小值) 兜一下，否则会撑出横向滚动。',
+          code:
+            '.cards {\n  display: grid;\n  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));\n  gap: 1rem;\n}\n.card { min-width: 0; overflow-wrap: anywhere; }',
+          pitfalls:
+            'auto-fit 和 auto-fill 的区别只在“有没有空轨道可折叠”，容器刚好放满时两者表现一样，容易误判。flex-wrap 的每一行各自分配剩余空间，最后一行只有一项时会铺满，做不到跨行对齐。给唯一卡片加 flex-grow:1 正好加剧了这个问题。',
+        },
       },
       {
         type: 'truefalse',
@@ -311,6 +327,14 @@
         answer: false,
         explain:
           '错误。preventDefault 取消可取消的默认行为，如链接跳转；stopPropagation 才停止继续传播，但也会影响上层委托和埋点。图标点击可用 target.closest 找按钮，并验证它属于当前列表。行点击与操作按钮最好在入口识别目标范围，避免所有子元素无差别停止传播。',
+        detail: {
+          example:
+            '列表只在容器上绑 click，点删除按钮里的图标时 event.target 是那个图标，不是 button。硬按 target 判断就会漏掉。要在处理函数里用 closest 往上找带 data-action 的按钮，再确认它确实属于当前这个列表、不是嵌套的另一份列表。这样动态插入的新按钮也自动生效，不用重新绑定。',
+          code:
+            'function bindActions(list, removeById) {\n  function click(e) {\n    if (!(e.target instanceof Element)) return;\n    const btn = e.target.closest(\'button[data-action="delete"]\');\n    if (!btn || !list.contains(btn)) return;\n    if (btn.closest(\'[data-list]\') !== list) return;   // 排除嵌套列表\n    removeById(btn.dataset.id);\n  }\n  list.addEventListener(\'click\', click);\n  return () => list.removeEventListener(\'click\', click);\n}',
+          pitfalls:
+            'preventDefault 管的是默认动作（比如链接跳转），和事件传播完全是两件事，这是本题的核心混淆点。所有子按钮都调 stopPropagation，会让上层埋点和委托监听收不到事件。不校验 closest 结果是否属于当前列表，嵌套列表里的点击会误删外层数据。绑定后不清理，重复挂载会执行多次。',
+        },
       },
       {
         type: 'choice',
@@ -325,6 +349,12 @@
         answer: 2,
         explain:
           '先尝试恢复到仍存在的触发按钮；该行已删除时，选择下一项、上一项或列表标题等符合后续操作的位置，并确保目标可聚焦。不要继续 focus 已移除节点。弹窗打开时还应移入焦点、保持键盘操作在模态范围内，并让背景不可交互，关闭后解除这些约束。',
+        detail: {
+          example:
+            '确认删除后弹窗关闭，可那一行已经从列表里删掉了，焦点如果回到原来的按钮就会落空，键盘用户只能从页面开头重新 Tab。正确做法是回到仍然存在的触发按钮；它已经没了，就落到相邻的那一行或列表标题上。另外弹窗打开时要先把焦点移进去、把 Tab 限制在弹窗内、让背景不可交互，关闭时再解除。',
+          pitfalls:
+            '焦点永远丢回 body 是键盘用户最讨厌的体验，等于重新遍历整个页面。focus 已经移除的节点，浏览器会静默失败，焦点还是不知道去哪。只设 role="dialog" 和 aria-modal="true" 不会自动限制焦点，语义和交互是两回事。自动连带打开另一个弹窗是打断式的错误补偿。',
+        },
       },
       {
         type: 'choice',
@@ -339,6 +369,14 @@
         answer: 3,
         explain:
           'sizes="320px" 声明用于选图的预期槽位为 320 CSS px；实际显示宽度仍由 CSS 和元素约束决定。浏览器结合 DPR、候选固有宽度等选择文件，例如 DPR=2 时通常需要接近 640 像素候选。用 currentSrc、实际布局宽度和网络面板核对，不应断言一定下载 320 像素文件。',
+        detail: {
+          example:
+            '手机卡片宽 320 CSS px，却下载了 2400 像素的封面。sizes 说的是“我准备给这张图多大的槽位”，浏览器再结合设备像素比和候选固有宽度来挑文件：槽位 320、DPR=2 时通常会选接近 640 的候选，而不是 2400 那张。用 currentSrc 和网络面板能看到实际选了哪个，用布局宽度能看到实际显示多宽，两者别混。',
+          code:
+            '<img src="cover-640.jpg"\n     srcset="cover-320.jpg 320w, cover-640.jpg 640w, cover-960.jpg 960w"\n     sizes="(max-width: 352px) calc(100vw - 32px), 320px"\n     width="640" height="400" alt="文档封面"\n     style="display:block; width:320px; max-width:100%; height:auto">',
+          pitfalls:
+            'sizes 不负责设置 CSS 宽度，它只影响选图，这是最常见的误读。srcset 里的 w 必须和文件真实像素宽度一致，写错了浏览器就会挑错。以为浏览器一定下载 320 像素的文件也不对，DPR 和候选质量都在参与决策。不加 width/height 会导致图片晚到时把正文顶下去。',
+        },
       },
       {
         type: 'truefalse',
@@ -347,6 +385,14 @@
         answer: false,
         explain:
           '错误。单条请求 success 只说明该请求成功；后续写失败仍可能令整个事务 abort，前面的写入也回滚。批量保存成功应在 transaction.complete 后确认，并处理 abort/error。事务完成与断电时数据一定已刷到物理介质也不是同一保证，需按浏览器与 durability 约定区分。',
+        detail: {
+          example:
+            '一个 readwrite 事务里写三条草稿，第一条 onsuccess 时就提示“保存成功”，结果第二条失败、整个事务 abort，三条一起回滚，用户却发现提示是成功的。保存成功必须绑在事务完成上，同时监听 abort 和 error。另外创建事务后先 await 一个 fetch 再用它，事务可能已经空闲自动提交，直接报 TransactionInactiveError。',
+          code:
+            'const tx = db.transaction([\'drafts\'], \'readwrite\');\ntx.objectStore(\'drafts\').put(a);\ntx.objectStore(\'drafts\').put(b);\ntx.objectStore(\'drafts\').put(c);\n\ntx.oncomplete = () => reportSaved();      // 这里才算成功\ntx.onabort = () => reportFailed(tx.error);',
+          pitfalls:
+            '把单条请求的 success 当整批成功，是这里最典型的错误。在事务里 await 任意异步工作，事务会因空闲自动提交。旧标签页占着连接会让数据库升级一直 blocked，界面永远停在初始化中。事务 complete 不等于已经刷到物理介质，这两层保证要分开说。',
+        },
       },
       {
         type: 'choice',
@@ -361,6 +407,14 @@
         answer: 1,
         explain:
           '执行 git bisect skip，表示该提交无法判断目标缺陷。good 表示已经验证目标行为正常，bad 表示已经复现目标缺陷，二者都不能由构建环境失败推导。若关键区间存在多个 skip，最终可能只能得到候选集合；恢复可运行环境后继续缩小，避免把候选说成已确认根因。',
+        detail: {
+          example:
+            '六十次提交里找哪次引入白屏，二分到某个提交时发现它依赖旧工具链、今天根本构建不起来。这时既不能标 good（没验证过白屏是否存在），也不能标 bad（这只是环境问题）。正确做法是 git bisect skip。如果关键区间跳过了好几个，最后可能只给出一组候选，而不是单一定位结果。',
+          code:
+            'git bisect start\ngit bisect bad HEAD\ngit bisect good v1.4.0\ngit bisect skip          # 该提交无法判断\ngit bisect run ./check.sh   # 脚本：0=good, 1-127=bad, 125=skip, 其他=中止',
+          pitfalls:
+            '把构建失败标成 bad，会把定位引向完全错误的提交。标 good 更糟，等于宣称没测的那个提交是好的。bisect run 里命令不存在返回 127，会被当成 bad，环境故障必须显式映射成 125 或中止。定位到某次合并也只提供线索，还要看具体差异和触发条件才能算根因。',
+        },
       },
       {
         type: 'text',
@@ -368,6 +422,12 @@
         q: '错误平台已经收到 source map，但还原的文件行号明显错误。请给出两项具体核对。',
         explain:
           '第一，核对错误事件的资源 URL、release/build ID、行列号与上传的 JavaScript 及 map 是否属于同一次构建，排除客户端旧缓存与同名覆盖。第二，核对 map 生成后是否又经过压缩、拼接或 CDN 改写，产物一旦变化旧映射就不匹配。用最终线上产物触发已知源码位置的受控异常，验证还原的文件、行列与版本都正确。',
+        detail: {
+          example:
+            '线上报 app.min.js:1:28491，平台还原出来的行号却明显离谱。第一项核对：这条错误所属的 release/build ID，和上传的 JS、map 是不是同一次构建——旧标签页缓存了旧文件、或者同名文件被覆盖都会错配。第二项核对：map 生成之后产物有没有再被压缩、拼接或 CDN 改写，产物一变旧映射就失效。',
+          pitfalls:
+            '拿本地最新代码重新构建一份 map 去对线上位置，几乎必然对不上，位置随提交、依赖和压缩结果一起变。以为上传成功就等于匹配成功，其实版本索引错了照样还原错误。禁止浏览器下载 map 不影响内部平台按权限使用它，但要让自己的上传链路带上正确的版本标识。只在开发环境验证过不算数，要用最终线上产物触发一次已知位置的受控异常。',
+        },
       },
     ],
   });
