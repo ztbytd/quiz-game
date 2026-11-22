@@ -175,6 +175,14 @@
         answer: 1,
         explain:
           '先确认模块格式和当前检查点。比如顶层依次安排 Promise、queueMicrotask、nextTick 时，常见 CJS 入口会先处理 nextTick，而 ESM 顶层求值已处于微任务过程，Promise/queueMicrotask 可以先执行。Promise 回调里新增 nextTick 也不会立刻打断当前微任务队列；应逐次记录入队并在目标 Node 版本验证。',
+        detail: {
+          example:
+            '同一段顶层代码，作为 .cjs 入口大概是 S、N、P、Q（nextTick 先于 Promise），改成 .mjs 后可能变成 S、P、Q、N。因为 ESM 的顶层求值本身就处在微任务过程里，队列位置不一样。所以问“nextTick 和 Promise 谁先”之前，必须先确认模块格式和当前正在处理哪个队列，脱离上下文直接背结论一定会错。',
+          code:
+            'console.log(\'S\');\nPromise.resolve().then(() => console.log(\'P\'));\nqueueMicrotask(() => console.log(\'Q\'));\nprocess.nextTick(() => console.log(\'N\'));\n\n// .cjs 入口：S N P Q\n// .mjs 入口：S P Q N（视 Node 版本与上下文）',
+          pitfalls:
+            '把“nextTick 永远最先”当作通则，是最典型的误解，它只在某些执行上下文里成立。已经处于清空微任务队列的过程中时，新安排的 nextTick 不会插队打断当前队列。递归 queueMicrotask 会让队列永不空转，I/O 根本推进不了，这时应该换成 setImmediate 让出。',
+        },
       },
       {
         type: 'choice',
@@ -189,6 +197,14 @@
         answer: 2,
         explain:
           '这些 API 可共享 libuv 线程池。固定输入做混合负载，观测各 API 耗时、在途数、CPU 和其他轻请求的尾延迟。',
+        detail: {
+          example:
+            '密码校验流量一上来，pbkdf2、fs.readFile、dns.lookup 一起变慢，可事件循环延迟并不高。原因是它们默认共用 libuv 的工作线程池，池子大小有限，任务虽然异步提交了，仍然要在池里排队；主事件循环这时是空闲的，所以延迟指标看着正常。固定输入跑混合负载，看各 API 的耗时和在途数就能确认。',
+          code:
+            '// 池子默认大小 4，启动前设置才有效\nUV_THREADPOOL_SIZE=8 node server.js\n\n// 运行中改 process.env 不会重建已经创建的池',
+          pitfalls:
+            '以为“异步”就等于“不排队”，是这里的关键误判，异步只是不占主线程。把 UV_THREADPOOL_SIZE 直接调到 128 不是答案，CPU 竞争和内存开销会一起上来。普通网络收发通常走系统异步机制，不是每次都经过这个池，只有 dns.lookup 这类会占用。运行中改环境变量对已创建的池无效。',
+        },
       },
       {
         type: 'truefalse',
@@ -197,6 +213,12 @@
         answer: false,
         explain:
           'Worker 使用可并行执行的线程。普通对象默认不共享；线程并行、对象所有权和进程故障隔离需要分别讨论。',
+        detail: {
+          example:
+            '把图片解析丢进 worker_threads 后，主线程确实不卡了，因为 Worker 跑在真实线程上，能在另一个核上并行执行 JavaScript。但“堆隔离”和“并行”是两件事：普通对象默认不共享，要传就结构化克隆或转移 ArrayBuffer。而且同进程 Worker 挡不住进程级崩溃，带原生扩展的解析库挂掉，主进程一样受影响。',
+          pitfalls:
+            '把“有独立执行环境”理解成“不能并行”，正好说反了，Worker 就是用来并行的。以为 postMessage 传的是同一个对象引用，其实普通对象是结构化克隆。把 Worker 当完整的安全边界，遇到原生扩展崩溃就失效，那种场景要用子进程或独立服务。每个请求新建一个 Worker，启动成本可能比计算本身还贵。',
+        },
       },
       {
         type: 'choice',
@@ -210,6 +232,14 @@
         ],
         answer: 1,
         explain: 'arrayBuffers 的相关分配已计入 external，各指标统计范围不同。容器总用量还可能包含其他进程。',
+        detail: {
+          example:
+            '容器在 1 GB 限制下被杀了，可 heapUsed 才 300 MB。这时候把 heapUsed、external、arrayBuffers、rss 全部相加去“算真实总量”，结果会虚高——因为 arrayBuffers 的分配本来就已经算进 external 里了，加两次等于重复统计。正确做法是分列看趋势：RSS 是进程驻留，heapUsed 只是 JS 堆，external 是堆外分配。',
+          code:
+            'process.memoryUsage();\n// { rss, heapTotal, heapUsed, external, arrayBuffers }\n// external 已包含 arrayBuffers —— 不可相加',
+          pitfalls:
+            'reSS、heapUsed、external 的统计范围各自不同，求和没有意义。只看 heapUsed 小就排除内存问题，忽略了缓冲区、原生分配和其他进程。把 --max-old-space-size 设成容器全部内存，反而会因为没给年轻代、线程栈和原生库留余量而更早失败。RSS 涨但 GC 后 heapUsed 回落，也不等于没有泄漏。',
+        },
       },
       {
         type: 'truefalse',
@@ -218,6 +248,14 @@
         answer: false,
         explain:
           '该方法不负责升级后的连接。应用需要登记并关闭这些连接，并为排空请求、清理资源设置总截止时间。',
+        detail: {
+          example:
+            '滚动发布时收到了 SIGTERM，调用 closeAllConnections() 之后进程却退不掉，因为还有几条已经升级成 WebSocket 的连接挂着；这个 API 只管 HTTP(S) 连接，升级后的连接不归它管。要自己登记这些连接，发关闭通知，到期再销毁，同时清掉定时器和订阅，最后才退出。',
+          code:
+            'server.close();                    // 停止接受新连接\nserver.closeAllConnections();      // 只关 HTTP(S)，不含升级连接\nfor (const ws of upgraded) ws.close();   // 升级连接要自己登记自己关',
+          pitfalls:
+            '以为 closeAllConnections 一把梭全关了，WebSocket 和 SSE 这类升级连接会被漏掉。收到 SIGTERM 立刻 process.exit(0)，会截断在途响应和日志。停机逻辑没有一次性标志位，可能重复执行。健康检查“曾经正常”不代表停机那一刻没有在途请求，readiness 要先摘流量再排空。',
+        },
       },
       {
         type: 'choice',
@@ -232,6 +270,14 @@
         answer: 3,
         explain:
           '同步等待子进程可能让主线程不能推进循环，但主线程并未持续计算，因此可以出现 ELU 高而 CPU 低。ELU 与 CPU 口径不同，还需确认 CPU 是单进程还是整机指标。对齐短窗口采样，结合调用栈和轻请求尾延迟检验该假设，不应只看累计利用率。',
+        detail: {
+          example:
+            '监控显示事件循环利用率接近 100%，CPU 却只有 10%，轻请求全被卡住。这组合指向的是“主线程在同步等待”——比如同步调用子进程——它挡住了循环推进，但没有持续消耗 CPU，所以 ELU 高而 CPU 低。另外运行三天的服务只看累计 ELU，今天那一分钟的尖峰早就被稀释掉了，必须用窗口差值看。',
+          code:
+            'const { performance } = require(\'node:perf_hooks\');\nlet prev = performance.eventLoopUtilization();\nsetInterval(() => {\n  const cur = performance.eventLoopUtilization();\n  const delta = performance.eventLoopUtilization(cur, prev);\n  prev = cur;\n  console.log(delta.utilization);   // 用窗口差值，不用累计值\n}, 1000).unref();',
+          pitfalls:
+            '认为 ELU 和 CPU 必须相等，于是去查采集有没有坏，方向就偏了，两者口径本来不同。只读累计利用率，尖峰会被长期平均值淹没。monitorEventLoopDelay 的 p99 单位是纳秒，直接当毫秒显示会得出“延迟两千万毫秒”这种荒谬数字。CPU 指标还要分清是单进程还是整机。',
+        },
       },
     ],
   });
