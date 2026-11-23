@@ -66,9 +66,15 @@ export async function migrate(db: Database) {
     `CREATE TABLE IF NOT EXISTS candidates (id text PRIMARY KEY, owner text REFERENCES users(id), question jsonb NOT NULL, checks jsonb NOT NULL, review text NOT NULL DEFAULT 'unreviewed', saved boolean NOT NULL DEFAULT false, version integer NOT NULL DEFAULT 1, created_at timestamptz NOT NULL DEFAULT now())`,
     `CREATE TABLE IF NOT EXISTS candidate_versions (question_id text NOT NULL REFERENCES candidates(id),version integer NOT NULL,question jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(question_id,version))`,
     `CREATE TABLE IF NOT EXISTS releases (id bigserial PRIMARY KEY, bank jsonb NOT NULL, by_user text, created_at timestamptz NOT NULL DEFAULT now())`,
+    `CREATE TABLE IF NOT EXISTS content_upgrades (id text PRIMARY KEY,release_id bigint REFERENCES releases(id),detail jsonb NOT NULL DEFAULT '{}',created_at timestamptz NOT NULL DEFAULT now())`,
     `CREATE TABLE IF NOT EXISTS audits (id bigserial PRIMARY KEY, actor text NOT NULL, action text NOT NULL, target text NOT NULL, detail jsonb NOT NULL DEFAULT '{}', created_at timestamptz NOT NULL DEFAULT now())`,
     `CREATE TABLE IF NOT EXISTS notes (id text PRIMARY KEY,owner text NOT NULL REFERENCES users(id),message_id text NOT NULL,title text NOT NULL,content text NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(owner,message_id))`,
     `ALTER TABLE notes ADD COLUMN IF NOT EXISTS version integer NOT NULL DEFAULT 1`,
   ];
-  for (const sql of statements) await db.query(sql);
+  await db.transaction(async (tx) => {
+    // PostgreSQL can race on CREATE TABLE IF NOT EXISTS itself; serialize schema setup
+    // before the content row lock is available to concurrently starting API/Workers.
+    await tx.query("SELECT pg_advisory_xact_lock(764121,1)");
+    for (const sql of statements) await tx.query(sql);
+  });
 }

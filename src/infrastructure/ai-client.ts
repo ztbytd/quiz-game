@@ -24,6 +24,13 @@ export async function api<T = any>(
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: options.signal || AbortSignal.timeout(8000),
+  }).catch((error: Error) => {
+    throw new ApiError(
+      0,
+      error.name === "TimeoutError" || error.name === "AbortError"
+        ? "请求超时，请检查网络后重试"
+        : "暂时无法连接服务，请检查网络后重试",
+    );
   });
   const content = response.headers.get("content-type");
   if (!content?.includes("application/json"))

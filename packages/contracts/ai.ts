@@ -47,12 +47,18 @@ export const assessmentSchema = z.object({
   improvements: z
     .array(
       z.object({
-        type: z.enum(["错误", "遗漏", "表达", "待核实"]),
+        type: z.enum(["错误", "遗漏", "表达", "待核实", "拓展"]),
         point: z.string(),
         reason: z.string(),
       }),
     )
-    .max(8),
+    .max(5)
+    .superRefine((items, context) => {
+      if (items.filter((item) => item.type !== "拓展").length > 3)
+        context.addIssue({ code: "custom", message: "必要改进最多三项" });
+      if (items.filter((item) => item.type === "拓展").length > 2)
+        context.addIssue({ code: "custom", message: "拓展建议最多两项" });
+    }),
   dimensions: z
     .array(
       z.object({

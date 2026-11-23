@@ -17,6 +17,9 @@
     "test:api": "tsx --test server/*.test.ts",
     "dev:all": "node scripts/start-local.cjs",
     "test:ai-ui": "node scripts/run-ai-e2e.cjs",
+    "test:journey": "node scripts/run-journey.cjs",
+    "test:journey:live": "node scripts/run-journey.cjs --live",
+    "test:ui-regressions": "node scripts/verify-ui-regressions.cjs",
     "start:api": "node server/index.ts"
   },
   "dependencies": {

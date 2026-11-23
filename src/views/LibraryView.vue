@@ -1,55 +1,72 @@
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue';
-import {useRoute, useRouter, RouterLink} from 'vue-router';
-import {bank, oralQuestions, questionById, chainById, topicById} from '@/data/content';
-import {useLearningStore} from '@/stores/learning';
-import type {StudyQuestion, Topic} from '@/domain/types';
-import AppIcon from '@/components/AppIcon.vue';
-import TopicCover from '@/components/TopicCover.vue';
+import { computed, ref, watch } from "vue";
+import { useRoute, useRouter, RouterLink } from "vue-router";
+import {
+  bank,
+  oralQuestions,
+  questionById,
+  chainById,
+  topicById,
+} from "@/data/content";
+import { useLearningStore } from "@/stores/learning";
+import type { StudyQuestion, Topic } from "@/domain/types";
+import AppIcon from "@/components/AppIcon.vue";
+import TopicCover from "@/components/TopicCover.vue";
 
 const route = useRoute(),
   router = useRouter(),
   learning = useLearningStore();
-const search = ref(String(route.query.q || '')),
-  page = ref(1);
-const tab = computed(() => (route.query.tab === 'oral' ? 'oral' : 'quiz'));
-const category = computed(() => String(route.query.category || 'all'));
+const search = ref(String(route.query.q || ""));
+const page = computed(() => {
+  const value = String(route.query.page || "1");
+  const parsed = /^\d+$/.test(value) ? Number(value) : 1;
+  return Math.min(
+    maxPage.value,
+    Math.max(1, Number.isSafeInteger(parsed) ? parsed : 1),
+  );
+});
+const tab = computed(() => (route.query.tab === "oral" ? "oral" : "quiz"));
+const category = computed(() => String(route.query.category || "all"));
 const query = computed(() => search.value.trim().toLocaleLowerCase());
 const categories = computed(() =>
-  tab.value === 'quiz'
+  tab.value === "quiz"
     ? [...new Set(bank.topics.map((t) => t.category))].map((c) => ({
         id: c,
         title: c,
       }))
-    : bank.groups.map((g) => ({id: g.id, title: g.title})),
+    : bank.groups.map((g) => ({ id: g.id, title: g.title })),
 );
 function updateQuery(values: Record<string, string>) {
-  const next: Record<string, unknown> = {...route.query, ...values};
+  const next: Record<string, unknown> = { ...route.query, ...values };
+  if ("q" in values || "tab" in values || "category" in values)
+    delete next.page;
   for (const key of Object.keys(next))
-    if (next[key] === '' || next[key] === 'all') delete next[key];
-  router.replace({path: '/library', query: next as Record<string, string>});
+    if (next[key] === "" || next[key] === "all") delete next[key];
+  router.replace({ path: "/library", query: next as Record<string, string> });
 }
 watch(
   () => route.query.q,
   (q) => {
-    search.value = String(q || '');
+    search.value = String(q || "");
   },
 );
-watch([search, tab, category], () => {
-  page.value = 1;
-});
 const topics = computed(() =>
-  bank.topics.filter((t) => category.value === 'all' || t.category === category.value),
+  bank.topics.filter(
+    (t) => category.value === "all" || t.category === category.value,
+  ),
 );
 const groups = computed(() =>
-  bank.groups.filter((g) => category.value === 'all' || g.id === category.value),
+  bank.groups.filter(
+    (g) => category.value === "all" || g.id === category.value,
+  ),
 );
 const results = computed(() => {
-  const candidates = tab.value === 'quiz' ? bank.questions : oralQuestions;
+  const candidates = tab.value === "quiz" ? bank.questions : oralQuestions;
   return candidates.filter((q) => {
     const groupId = q.chainId ? chainById.get(q.chainId)?.groupId : undefined;
-    const belongs = tab.value === 'quiz' ? topicById.get(q.topicId || '')?.category : groupId;
-    if (category.value !== 'all' && belongs !== category.value) return false;
+    const belongs =
+      tab.value === "quiz" ? topicById.get(q.topicId || "")?.category : groupId;
+    if (category.value !== "all" && belongs !== category.value) return false;
     return [
       q.prompt,
       q.explanation,
@@ -60,41 +77,53 @@ const results = computed(() => {
       ...(q.detail?.followups?.flat() || []),
     ]
       .filter(Boolean)
-      .join(' ')
+      .join(" ")
       .toLocaleLowerCase()
       .includes(query.value);
   });
 });
-const visibleResults = computed(() => results.value.slice((page.value - 1) * 20, page.value * 20));
-const maxPage = computed(() => Math.max(1, Math.ceil(results.value.length / 20)));
+const visibleResults = computed(() =>
+  results.value.slice((page.value - 1) * 20, page.value * 20),
+);
+const maxPage = computed(() =>
+  Math.max(1, Math.ceil(results.value.length / 20)),
+);
 function mastered(ids: string[]) {
-  return ids.filter((id) => learning.getRecord(id).status === 'mastered').length;
+  return ids.filter((id) => learning.getRecord(id).status === "mastered")
+    .length;
 }
 function topicProgress(topic: Topic) {
-  return Math.round((mastered(topic.questionIds) / topic.questionIds.length) * 100);
+  return Math.round(
+    (mastered(topic.questionIds) / topic.questionIds.length) * 100,
+  );
 }
 function questionLink(q: StudyQuestion) {
   return {
-    path: '/practice',
-    query: q.id.startsWith('oral:')
-      ? {mode: 'oral', chain: q.chainId, question: q.id}
-      : {mode: 'quiz', topic: q.topicId, question: q.id},
+    path: "/practice",
+    query: q.id.startsWith("oral:")
+      ? { mode: "oral", chain: q.chainId, question: q.id }
+      : { mode: "quiz", topic: q.topicId, question: q.id },
   };
 }
 function questionContext(q: StudyQuestion) {
-  return q.id.startsWith('oral:')
-    ? chainById.get(q.chainId || '')?.title
-    : topicById.get(q.topicId || '')?.title;
+  return q.id.startsWith("oral:")
+    ? chainById.get(q.chainId || "")?.title
+    : topicById.get(q.topicId || "")?.title;
 }
 const difficultyLabels: Record<string, string> = {
-  easy: '基础',
-  medium: '进阶',
-  hard: '深入',
-  boss: '综合',
+  easy: "基础",
+  medium: "进阶",
+  hard: "深入",
+  boss: "综合",
 };
 function changePage(next: number) {
-  page.value = next;
-  document.querySelector('.library-results')?.scrollIntoView({block: 'start', behavior: 'smooth'});
+  router.push({
+    path: "/library",
+    query: { ...route.query, page: next === 1 ? undefined : String(next) },
+  });
+  document
+    .querySelector(".library-results")
+    ?.scrollIntoView({ block: "start", behavior: "smooth" });
 }
 </script>
 
@@ -112,14 +141,18 @@ function changePage(next: number) {
     </header>
 
     <div class="library-controls panel">
-      <form class="library-search" role="search" @submit.prevent="updateQuery({q: search})">
+      <form
+        class="library-search"
+        role="search"
+        @submit.prevent="updateQuery({ q: search })"
+      >
         <AppIcon name="search" :size="20" />
         <input
           v-model="search"
           type="search"
           aria-label="搜索题目和解析"
           placeholder="搜索问题、知识点或项目场景…"
-          @input="updateQuery({q: search})"
+          @input="updateQuery({ q: search })"
         />
         <span class="search-count" v-if="query">{{ results.length }} 条</span>
       </form>
@@ -128,22 +161,23 @@ function changePage(next: number) {
           <button
             :aria-selected="tab === 'quiz'"
             role="tab"
-            :class="{active: tab === 'quiz'}"
-            @click="updateQuery({tab: 'quiz', category: 'all'})"
+            :class="{ active: tab === 'quiz' }"
+            @click="updateQuery({ tab: 'quiz', category: 'all' })"
           >
             专题学习 <span>{{ bank.topics.length }}</span>
           </button>
           <button
             :aria-selected="tab === 'oral'"
             role="tab"
-            :class="{active: tab === 'oral'}"
-            @click="updateQuery({tab: 'oral', category: 'all'})"
+            :class="{ active: tab === 'oral' }"
+            @click="updateQuery({ tab: 'oral', category: 'all' })"
           >
             追问练习 <span>{{ bank.chains.length }}</span>
           </button>
         </div>
         <label class="category-select"
-          ><AppIcon name="filter" :size="16" /><span class="sr-only">筛选分类</span
+          ><AppIcon name="filter" :size="16" /><span class="sr-only"
+            >筛选分类</span
           ><select
             :value="category"
             aria-label="筛选分类"
@@ -175,7 +209,7 @@ function changePage(next: number) {
           class="button button-quiet"
           @click="
             search = '';
-            updateQuery({q: '', category: 'all'});
+            updateQuery({ q: '', category: 'all' });
           "
         >
           清除筛选
@@ -189,18 +223,26 @@ function changePage(next: number) {
           class="question-result"
         >
           <span class="result-kind">{{
-            q.kind === 'choice' ? '选择' : q.kind === 'boolean' ? '判断' : '口述'
+            q.kind === "choice"
+              ? "选择"
+              : q.kind === "boolean"
+                ? "判断"
+                : "口述"
           }}</span>
           <div>
             <p class="result-context">{{ questionContext(q) }}</p>
             <h3>{{ q.prompt }}</h3>
-            <p class="result-preview">{{ q.explanation.split('↵')[0] }}</p>
+            <p class="result-preview">{{ q.explanation.split("↵")[0] }}</p>
           </div>
           <AppIcon name="chevron-right" :size="18" />
         </RouterLink>
       </div>
       <nav v-if="maxPage > 1" class="pagination" aria-label="搜索结果分页">
-        <button class="button button-quiet" :disabled="page === 1" @click="changePage(page - 1)">
+        <button
+          class="button button-quiet"
+          :disabled="page === 1"
+          @click="changePage(page - 1)"
+        >
           上一页</button
         ><span>{{ page }} / {{ maxPage }}</span
         ><button
@@ -215,7 +257,7 @@ function changePage(next: number) {
 
     <section v-else-if="tab === 'quiz'" aria-label="专题目录">
       <div class="section-heading">
-        <h2>{{ category === 'all' ? '所有专题' : category }}</h2>
+        <h2>{{ category === "all" ? "所有专题" : category }}</h2>
         <span class="muted">{{ topics.length }} 个专题 · 自由选择练习顺序</span>
       </div>
       <div class="topic-grid">
@@ -234,17 +276,23 @@ function changePage(next: number) {
           <div class="topic-info">
             <div class="topic-title-row">
               <h3>{{ topic.title }}</h3>
-              <span class="difficulty">{{ difficultyLabels[topic.difficulty] || '专题' }}</span>
+              <span class="difficulty">{{
+                difficultyLabels[topic.difficulty] || "专题"
+              }}</span>
             </div>
             <p>{{ topic.description }}</p>
             <div class="topic-progress">
-              <span>{{ topic.sections.length }} 章 · {{ topic.questionIds.length }} 道题</span
+              <span
+                >{{ topic.sections.length }} 章 ·
+                {{ topic.questionIds.length }} 道题</span
               ><span>{{
-                mastered(topic.questionIds) ? `已掌握 ${mastered(topic.questionIds)} 题` : '待开启'
+                mastered(topic.questionIds)
+                  ? `已掌握 ${mastered(topic.questionIds)} 题`
+                  : "待开启"
               }}</span>
             </div>
             <div class="topic-progress-line">
-              <span :style="{width: topicProgress(topic) + '%'}"></span>
+              <span :style="{ width: topicProgress(topic) + '%' }"></span>
             </div>
           </div>
         </RouterLink>
@@ -261,10 +309,11 @@ function changePage(next: number) {
           <template v-for="id in group.chainIds" :key="id"
             ><RouterLink
               v-if="chainById.get(id)"
-              :to="{path: '/practice', query: {mode: 'oral', chain: id}}"
+              :to="{ path: '/practice', query: { mode: 'oral', chain: id } }"
               class="chain-tile panel"
               ><div class="chain-label">
-                <span class="tag">{{ chainById.get(id)!.questionIds.length }} 层追问</span
+                <span class="tag"
+                  >{{ chainById.get(id)!.questionIds.length }} 层追问</span
                 ><AppIcon
                   name="check"
                   v-if="
@@ -276,7 +325,9 @@ function changePage(next: number) {
               </div>
               <h3>{{ chainById.get(id)!.title }}</h3>
               <p>
-                {{ questionById.get(chainById.get(id)!.questionIds[0])?.prompt }}
+                {{
+                  questionById.get(chainById.get(id)!.questionIds[0])?.prompt
+                }}
               </p>
               <span class="chain-footer"
                 >{{ mastered(chainById.get(id)!.questionIds) }} /

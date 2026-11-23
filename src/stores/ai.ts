@@ -35,9 +35,7 @@ export const useAiStore = defineStore("ai", () => {
     () => !!run.value && ["queued", "running"].includes(run.value.status),
   );
   let unsubscribe: (() => void) | undefined,
-    poll: ReturnType<typeof setInterval> | undefined,
-    pendingKey = "",
-    pendingText = "";
+    poll: ReturnType<typeof setInterval> | undefined;
   function stopSubscription() {
     unsubscribe?.();
     unsubscribe = undefined;
@@ -121,7 +119,11 @@ export const useAiStore = defineStore("ai", () => {
     run.value = undefined;
     candidates.value = [];
     for (const key of Object.keys(localStorage))
-      if (key.startsWith(`zhixu-ai-draft:${previousUser}:`))
+      if (
+        key.startsWith(`zhixu-ai-draft:${previousUser}:`) ||
+        key.startsWith(`zhixu-ai-pending:${previousUser}:`) ||
+        key === `zhixu-ai-generate:${previousUser}`
+      )
         localStorage.removeItem(key);
     clearIdentity();
   }
@@ -152,8 +154,6 @@ export const useAiStore = defineStore("ai", () => {
     messages.value = [];
     run.value = undefined;
     error.value = "";
-    pendingKey = "";
-    pendingText = "";
   }
   async function create(
     context: {
@@ -228,28 +228,39 @@ export const useAiStore = defineStore("ai", () => {
     sending.value = true;
     try {
       const c = current.value || (await create(context));
-      const signature = JSON.stringify({ text, action, finalAnswer });
-      if (pendingText !== signature) {
-        pendingKey = crypto.randomUUID();
-        pendingText = signature;
-      }
+      const answer =
+        finalAnswer ?? (action === "assess" ? context.answer : undefined);
+      const signature = JSON.stringify({ text, action, answer });
+      const storageKey = `zhixu-ai-pending:${user.value?.id}:${c.id}`;
+      let cached: { key: string; signature: string } | undefined;
+      try {
+        cached = JSON.parse(localStorage.getItem(storageKey) || "null");
+      } catch {}
+      const pendingKey =
+        cached?.signature === signature ? cached.key : crypto.randomUUID();
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ key: pendingKey, signature }),
+      );
       const value = await api<AiRun>(`/conversations/${c.id}/messages`, {
         method: "POST",
         body: {
           text,
           key: pendingKey,
           action,
-          answer:
-            finalAnswer ?? (action === "assess" ? context.answer : undefined),
+          answer,
         },
       });
-      pendingKey = "";
-      pendingText = "";
-      const data = await api(`/conversations/${c.id}`);
-      messages.value = data.messages;
-      current.value = data.conversation;
+      localStorage.removeItem(storageKey);
+      try {
+        const data = await api(`/conversations/${c.id}`);
+        messages.value = data.messages;
+        current.value = data.conversation;
+      } catch (error) {
+        report(error);
+      }
       watchRun(value);
-      await refresh();
+      await refresh().catch(report);
       return c.id;
     } catch (e) {
       report(e);

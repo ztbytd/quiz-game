@@ -39,10 +39,14 @@ npm run check:api
 npm run test:api
 npm run build
 npm run test:ai-ui
+npm run test:journey
+npm run test:journey:live
 npm run test:e2e
 ```
 
 AI 界面测试使用独立内存数据库和测试 provider，不调用真实模型。生产浏览器回归覆盖 PWA、离线练习、备份、刷新恢复、选择题顺序与代码隔离。截图位于 `test-results/`。
+
+`test:journey:live` 会调用私有配置中的真实模型；测试账号及内容位于临时数据库，不修改用户现有记录。本轮已完成 15 组真实用户流程、5 组专项界面回归和 153 道题的语义抽查，具体修订和检查范围见 [检查报告](docs/qa-report-2026-11-23.md)。
 
 ## 项目目录
 

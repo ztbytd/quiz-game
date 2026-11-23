@@ -1,4 +1,10 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+const chrome =
+  process.env.CHROME_PATH ||
+  (existsSync("C:/Program Files/Google/Chrome/Application/chrome.exe")
+    ? "C:/Program Files/Google/Chrome/Application/chrome.exe"
+    : undefined);
 const base = "http://127.0.0.1:4176/quiz/";
 const server = spawn(
   process.execPath,
@@ -37,12 +43,17 @@ try {
     "scripts/verify-browser.cjs",
     "scripts/verify-practice.cjs",
     "scripts/verify-quality.cjs",
+    "scripts/verify-ui-regressions.cjs",
     "scripts/verify-update.cjs",
   ]) {
     await new Promise((resolve, reject) => {
       const test = spawn(process.execPath, [file], {
         stdio: "inherit",
-        env: { ...process.env, BASE_URL: base },
+        env: {
+          ...process.env,
+          BASE_URL: base,
+          ...(chrome ? { CHROME_PATH: chrome } : {}),
+        },
       });
       test.on("error", reject);
       test.on("exit", (code) =>

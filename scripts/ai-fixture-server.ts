@@ -58,6 +58,40 @@ const { app } = await createApp({
         }),
         tokens: 100,
       };
+    if (messages[0]?.content.includes("ASSESSMENT_TASK")) {
+      const context = JSON.parse(messages.at(-1)!.content);
+      const negativeFixture = context.actualAnswer?.includes("自动在新线程");
+      return {
+        text: JSON.stringify({
+          covered:
+            context.actualAnswer && !negativeFixture
+              ? [
+                  {
+                    quote: context.actualAnswer.slice(0, 30),
+                    comment: "说明了主线程阻塞与渲染机会。",
+                  },
+                ]
+              : [],
+          improvements: negativeFixture
+            ? [
+                {
+                  type: "错误",
+                  point: "将异步调度理解成创建线程",
+                  reason:
+                    "Promise 回调仍运行于当前 JavaScript 线程；原生 JSON.parse 也不会被外部计时器自动切分。",
+                },
+              ]
+            : [],
+          dimensions: [
+            { name: "机制", level: "充分", reason: "结合实际作答核对。" },
+          ],
+          answer:
+            "设置状态不等于立即绘制，主线程上的同步解析会推迟浏览器获得渲染机会。原生 JSON.parse 不能从外部暂停续跑，可减少数据或放入 Worker，可拆开的后处理再按批执行。",
+          followup: "Worker 解析完成后怎样控制结果回传的开销？",
+        }),
+        tokens: 300,
+      };
+    }
     if (messages[0]?.content.includes("questions")) {
       const input = JSON.parse(messages.at(-1)!.content);
       return {

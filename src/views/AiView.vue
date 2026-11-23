@@ -14,6 +14,7 @@ import { questionById } from "../data/content";
 import AiMarkdown from "../components/AiMarkdown.vue";
 import AiInterviewReport from "../components/AiInterviewReport.vue";
 import AppIcon from "../components/AppIcon.vue";
+import AppDialog from "../components/AppDialog.vue";
 import { api } from "../infrastructure/ai-client";
 import type { StudyQuestion } from "../domain/types";
 const props = defineProps<{
@@ -122,8 +123,12 @@ function exportChat() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 async function showNotes() {
-  notes.value = (await api("/notes")).items;
-  notesOpen.value = true;
+  try {
+    notes.value = (await api("/notes")).items;
+    notesOpen.value = true;
+  } catch (error) {
+    ai.error = (error as Error).message;
+  }
 }
 const contextQuestion = computed(
   () =>
@@ -170,9 +175,31 @@ const examples = [
   },
   { icon: "experiment", title: "生成练习", text: "" },
 ];
-const draftKey = computed(
-  () => `zhixu-ai-draft:${ai.user?.id || "guest"}:${ai.current?.id || "new"}`,
-);
+const draftKey = computed(() => {
+  const prefix = `zhixu-ai-draft:${ai.user?.id || "guest"}:`;
+  if (ai.current?.id) return prefix + ai.current.id;
+  if (questionId.value) {
+    let quoteHash = 0;
+    for (const character of props.quote || "")
+      quoteHash = (Math.imul(quoteHash, 31) + character.charCodeAt(0)) | 0;
+    return (
+      prefix +
+      `question:${questionId.value}:v${contextQuestion.value?.version || 1}:${props.embedded ? "panel" : "tab"}:${nextAction.value}:${quoteHash >>> 0}`
+    );
+  }
+  return prefix + (isInterview.value ? "interview:new" : "new");
+});
+function initialDraft() {
+  if (props.quote) return "请结合当前题目，解释我引用的这段内容。";
+  if (nextAction.value === "assess")
+    return "请点评我对当前题目的回答，指出已答到的要点和具体遗漏。";
+  if (isInterview.value && !ai.current)
+    return "请围绕高级前端工程师岗位开始模拟面试，先问一道主问题，再根据我的回答追问。";
+  return "";
+}
+function restoreDraft() {
+  text.value = localStorage.getItem(draftKey.value) ?? initialDraft();
+}
 watch(
   () => [route.query.question, route.query.mode, route.query.action],
   () => {
@@ -181,17 +208,13 @@ watch(
       ai.newChat();
       questionId.value = String(route.query.question || "");
       nextAction.value = route.query.action === "assess" ? "assess" : "chat";
-      text.value =
-        route.query.mode === "interview"
-          ? "请围绕高级前端岗位开始模拟面试。"
-          : "";
     }
   },
 );
 watch(
   draftKey,
   (key) => {
-    text.value = localStorage.getItem(key) || "";
+    text.value = localStorage.getItem(key) ?? initialDraft();
   },
   { immediate: true },
 );
@@ -245,6 +268,10 @@ async function send(
     if (!props.embedded && route.params.id !== id)
       await router.replace("/ai/" + id);
     await scrollEnd();
+  } else {
+    text.value = value;
+    if (!props.embedded && ai.current?.id && route.params.id !== ai.current.id)
+      await router.replace("/ai/" + ai.current.id);
   }
 }
 function keydown(e: KeyboardEvent) {
@@ -300,9 +327,13 @@ async function logout() {
   }
 }
 async function copy(id: string, value: string) {
-  await navigator.clipboard.writeText(value);
-  copied.value = id;
-  setTimeout(() => (copied.value = ""), 1800);
+  try {
+    await navigator.clipboard.writeText(value);
+    copied.value = id;
+    setTimeout(() => (copied.value = ""), 1800);
+  } catch {
+    ai.error = "浏览器未允许复制，请选中文本后手动复制。";
+  }
 }
 async function note(id: string, value: string) {
   const q = contextQuestion.value;
@@ -321,12 +352,21 @@ async function note(id: string, value: string) {
 }
 async function rename(id: string, title: string) {
   const next = window.prompt("会话名称", title);
-  if (next) await ai.rename(id, next);
+  if (next)
+    try {
+      await ai.rename(id, next);
+    } catch (error) {
+      ai.error = (error as Error).message;
+    }
 }
 async function remove(id: string) {
   if (window.confirm("删除这段对话？已保存的笔记和练习会保留。")) {
-    await ai.remove(id);
-    if (!ai.current) await router.replace("/ai");
+    try {
+      await ai.remove(id);
+      if (!ai.current) await router.replace("/ai");
+    } catch (error) {
+      ai.error = (error as Error).message;
+    }
   }
 }
 function focusInput() {
@@ -355,12 +395,8 @@ onMounted(async () => {
     );
     if (previous) await ai.open(previous.id);
   }
-  if (route.query.mode === "interview")
-    text.value =
-      "请围绕高级前端工程师岗位开始模拟面试，先问一道主问题，再根据我的回答追问。";
-  if (props.initialAction === "assess" || route.query.action === "assess")
-    text.value = "请点评我对当前题目的回答，指出已答到的要点和具体遗漏。";
-  if (props.quote) text.value = "请结合当前题目，解释我引用的这段内容。";
+  await nextTick();
+  restoreDraft();
   ready.value = true;
 });
 onBeforeUnmount(() => {
@@ -521,18 +557,8 @@ onBeforeUnmount(() => {
         </div>
       </div></Teleport
     >
-    <div
-      v-if="historyOpen"
-      class="ai-drawer-backdrop"
-      @click.self="historyOpen = false"
-      @keydown.esc="historyOpen = false"
-    >
-      <section
-        class="ai-history-drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-label="会话列表"
-      >
+    <AppDialog v-model:open="historyOpen" label="会话列表" side="left">
+      <section class="ai-history-drawer">
         <header>
           <strong>对话</strong
           ><button
@@ -560,6 +586,12 @@ onBeforeUnmount(() => {
         <div v-for="c in filtered" :key="c.id" class="ai-history-row">
           <button @click="openConversation(c.id)">{{ c.title }}</button><button
             class="icon-button"
+            aria-label="重命名会话"
+            @click="rename(c.id, c.title)"
+          >
+            <AppIcon name="edit" :size="16" /></button
+          ><button
+            class="icon-button"
             aria-label="删除会话"
             @click="remove(c.id)"
           >
@@ -568,14 +600,14 @@ onBeforeUnmount(() => {
         </div>
         <p v-if="!filtered.length" class="muted">暂无对话</p>
       </section>
-    </div>
+    </AppDialog>
     <div v-if="!ready || ai.checking" class="ai-loading" role="status">
       正在读取对话…
     </div>
     <div v-else-if="!ai.user" class="ai-auth">
       <div class="ai-auth-intro">
         <span class="ai-glyph"><AppIcon name="chat" :size="27" /></span>
-        <h1>把问题聊清楚</h1>
+        <h1>AI 学习助手</h1>
         <p>解释知识点，复盘项目，生成你需要的练习。</p>
       </div>
       <form class="ai-login" @submit.prevent="login">
@@ -637,21 +669,30 @@ onBeforeUnmount(() => {
             @submit.prevent="send('chat', '开始模拟面试，请先问一个具体问题。')"
           >
             <label
-              >主问题<select v-model.number="interviewOptions.mainQuestions">
+              >主问题<select
+                v-model.number="interviewOptions.mainQuestions"
+                aria-label="主问题"
+              >
                 <option v-for="n in [2, 4, 6, 8]" :key="n" :value="n">
                   {{ n }} 道
                 </option>
               </select></label
             >
             <label
-              >每题最多追问<select v-model.number="interviewOptions.followups">
+              >每题最多追问<select
+                v-model.number="interviewOptions.followups"
+                aria-label="每题最多追问"
+              >
                 <option v-for="n in [0, 1, 2, 3]" :key="n" :value="n">
                   {{ n }} 次
                 </option>
               </select></label
             >
             <label
-              >时长<select v-model.number="interviewOptions.minutes">
+              >时长<select
+                v-model.number="interviewOptions.minutes"
+                aria-label="时长"
+              >
                 <option v-for="n in [5, 10, 20, 30, 45]" :key="n" :value="n">
                   {{ n }} 分钟
                 </option>
@@ -688,18 +729,50 @@ onBeforeUnmount(() => {
                   <blockquote>{{ point.quote }}</blockquote>
                   <p>{{ point.comment }}</p>
                 </div>
-                <h3>需要补充</h3>
-                <div
-                  v-for="point in message.result.improvements"
-                  :key="point.point"
-                  class="ai-improvement"
+                <template
+                  v-if="
+                    message.result.improvements.some(
+                      (point) => point.type !== '拓展',
+                    )
+                  "
                 >
-                  <span>{{ point.type }}</span>
-                  <div>
-                    <strong>{{ point.point }}</strong>
-                    <p>{{ point.reason }}</p>
+                  <h3>需要改进</h3>
+                  <div
+                    v-for="point in message.result.improvements.filter(
+                      (point) => point.type !== '拓展',
+                    )"
+                    :key="point.type + ':' + point.point"
+                    class="ai-improvement"
+                  >
+                    <span>{{ point.type }}</span>
+                    <div>
+                      <strong>{{ point.point }}</strong>
+                      <p>{{ point.reason }}</p>
+                    </div>
                   </div>
-                </div>
+                </template>
+                <template
+                  v-if="
+                    message.result.improvements.some(
+                      (point) => point.type === '拓展',
+                    )
+                  "
+                >
+                  <h3>进一步练习</h3>
+                  <div
+                    v-for="point in message.result.improvements.filter(
+                      (point) => point.type === '拓展',
+                    )"
+                    :key="point.point"
+                    class="ai-improvement"
+                  >
+                    <span>{{ point.type }}</span>
+                    <div>
+                      <strong>{{ point.point }}</strong>
+                      <p>{{ point.reason }}</p>
+                    </div>
+                  </div>
+                </template>
                 <div class="ai-dimensions">
                   <span
                     v-for="d in message.result.dimensions"
@@ -871,17 +944,8 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </template>
-    <div
-      v-if="notesOpen"
-      class="ai-context-backdrop"
-      @click.self="notesOpen = false"
-    >
-      <aside
-        class="ai-context-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label="我的笔记"
-      >
+    <AppDialog v-model:open="notesOpen" label="我的笔记">
+      <aside class="ai-context-panel">
         <header>
           <strong>我的笔记</strong
           ><button
@@ -936,19 +1000,13 @@ onBeforeUnmount(() => {
           </button>
         </details>
       </aside>
-    </div>
-    <div
-      v-if="contextOpen && contextQuestion"
-      class="ai-context-backdrop"
-      @click.self="contextOpen = false"
+    </AppDialog>
+    <AppDialog
+      v-if="contextQuestion"
+      v-model:open="contextOpen"
+      label="关联题目"
     >
-      <aside
-        class="ai-context-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label="关联题目"
-        @keydown.esc="contextOpen = false"
-      >
+      <aside class="ai-context-panel">
         <header>
           <strong>关联题目</strong
           ><button
@@ -969,7 +1027,7 @@ onBeforeUnmount(() => {
           >返回练习</RouterLink
         >
       </aside>
-    </div>
+    </AppDialog>
   </div>
 </template>
 <style>
@@ -1397,13 +1455,6 @@ onBeforeUnmount(() => {
 .ai-history-row:hover .ai-rename,
 .ai-history-row:focus-within .ai-rename {
   display: inline-flex;
-}
-.ai-drawer-backdrop,
-.ai-context-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  background: #1c291e44;
 }
 .ai-history-drawer {
   width: min(85vw, 320px);

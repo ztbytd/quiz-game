@@ -27,13 +27,13 @@ import { labs } from "../data/labs";
 import AnswerContent from "../components/AnswerContent.vue";
 import CodeLab from "../components/CodeLab.vue";
 import AppIcon from "../components/AppIcon.vue";
+import AppDialog from "../components/AppDialog.vue";
 const AiView = defineAsyncComponent(() => import("./AiView.vue"));
 const aiOpen = ref(false),
   aiAction = ref<"assess" | undefined>(),
   aiQuote = ref(""),
   selectedQuote = ref("");
-const questionPanel = ref<HTMLElement>(),
-  aiDialog = ref<HTMLElement>();
+const questionPanel = ref<HTMLElement>();
 let aiTrigger: HTMLElement | undefined;
 let previousOverflow = "";
 watch(
@@ -65,50 +65,16 @@ function captureQuote() {
       ? selection.toString().trim().slice(0, 4000)
       : "";
 }
-async function openAi(event: Event, action?: "assess", quote = "") {
+function openAi(event: Event, action?: "assess", quote = "") {
   aiTrigger = event.currentTarget as HTMLElement;
   aiAction.value = action;
   aiQuote.value = quote;
   aiOpen.value = true;
-  await nextTick();
-  aiDialog.value?.focus();
 }
-function closeAi() {
+async function closeAi() {
   aiOpen.value = false;
+  await nextTick();
   aiTrigger?.focus({ preventScroll: true });
-}
-function dialogKeys(event: KeyboardEvent) {
-  if (event.key === "Escape") {
-    event.preventDefault();
-    closeAi();
-  }
-  if (event.key !== "Tab") return;
-  const controls = [
-    ...(aiDialog.value?.querySelectorAll<HTMLElement>(
-      "button:not(:disabled),a[href],input:not(:disabled),textarea:not(:disabled),select",
-    ) || []),
-  ].filter((el) => el.getClientRects().length);
-  const first = controls[0],
-    last = controls.at(-1);
-  if (!first) {
-    event.preventDefault();
-    return;
-  }
-  if (
-    event.shiftKey &&
-    (document.activeElement === first ||
-      document.activeElement === aiDialog.value)
-  ) {
-    event.preventDefault();
-    last?.focus();
-  } else if (
-    !event.shiftKey &&
-    (document.activeElement === last ||
-      document.activeElement === aiDialog.value)
-  ) {
-    event.preventDefault();
-    first.focus();
-  }
 }
 
 const route = useRoute(),
@@ -823,20 +789,14 @@ function sourceLabel(question: StudyQuestion) {
       </aside>
     </div>
     <Teleport to="body">
-      <div
+      <AppDialog
         v-if="aiOpen && current"
+        :open="aiOpen"
+        label="题目 AI 助手"
         class="practice-ai-backdrop"
-        @click.self="closeAi"
+        @update:open="closeAi"
       >
-        <aside
-          ref="aiDialog"
-          class="practice-ai-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-label="题目 AI 助手"
-          tabindex="-1"
-          @keydown="dialogKeys"
-        >
+        <aside class="practice-ai-dialog">
           <AiView
             embedded
             :question="current"
@@ -850,7 +810,7 @@ function sourceLabel(question: StudyQuestion) {
             @close="closeAi"
           />
         </aside>
-      </div>
+      </AppDialog>
     </Teleport>
   </div>
 </template>
@@ -860,7 +820,6 @@ function sourceLabel(question: StudyQuestion) {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: #15281945;
   display: flex;
   justify-content: flex-end;
 }

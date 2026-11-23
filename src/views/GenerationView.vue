@@ -28,7 +28,12 @@ const visible = computed(() => {
       : ai.candidates.filter((c) => !c.saved);
 });
 const currentCandidates = computed(() =>
-  ai.run?.kind === "generate" ? ai.run.output?.candidates || [] : [],
+  ai.run?.kind === "generate"
+    ? (ai.run.output?.candidates || []).map(
+        (candidate: any) =>
+          ai.candidates.find((item) => item.id === candidate.id) || candidate,
+      )
+    : [],
 );
 const readyCount = computed(
   () => currentCandidates.value.filter((c: any) => !c.checks.length).length,
@@ -36,14 +41,28 @@ const readyCount = computed(
 const remaining = computed(() =>
   Math.max(0, (ai.run?.output?.requested || 0) - readyCount.value),
 );
-async function generate(amount = count.value) {
+async function generate(amount = count.value, source?: any) {
   const run = await ai.generate({
-    scope: scope.value,
+    scope: source?.scope ?? scope.value,
     count: amount,
-    difficulty: difficulty.value,
-    kind: kind.value,
+    difficulty: source?.difficulty ?? difficulty.value,
+    kind: source?.kind ?? kind.value,
   });
   if (run) await router.replace({ path: "/generate", query: { run: run.id } });
+}
+async function supplement() {
+  await generate(remaining.value, (ai.run as any)?.input);
+}
+async function selectTask(task: any) {
+  ai.watchRun(task);
+  tab.value = "generate";
+  if (task.input) {
+    scope.value = task.input.scope;
+    difficulty.value = task.input.difficulty;
+    kind.value = task.input.kind;
+    count.value = task.input.count;
+  }
+  await router.replace({ path: "/generate", query: { run: task.id } });
 }
 onMounted(async () => {
   if (!ai.user) await ai.init();
@@ -123,20 +142,20 @@ onBeforeUnmount(() => ai.stopSubscription());
         </div>
         <div class="generation-options">
           <label
-            >难度<select v-model="difficulty">
+            >难度<select v-model="difficulty" aria-label="难度">
               <option>基础</option>
               <option>进阶</option>
               <option>深入</option>
             </select></label
           ><label
-            >题型<select v-model="kind">
+            >题型<select v-model="kind" aria-label="题型">
               <option value="oral">口述题</option>
               <option value="choice">选择题</option>
               <option value="boolean">判断题</option>
               <option value="mixed">混合</option>
             </select></label
           ><label
-            >数量<select v-model.number="count">
+            >数量<select v-model.number="count" aria-label="数量">
               <option v-for="n in 20" :key="n" :value="n">{{ n }} 道</option>
             </select></label
           ><button
@@ -200,7 +219,7 @@ onBeforeUnmount(() => ai.stopSubscription());
           v-else-if="remaining && ai.run.output?.requested"
           class="button"
           :disabled="ai.sending"
-          @click="generate(remaining)"
+          @click="supplement"
         >
           补足 {{ remaining }} 道
         </button>
@@ -301,10 +320,7 @@ onBeforeUnmount(() => ai.stopSubscription());
         <button
           v-for="task in ai.tasks"
           :key="task.id"
-          @click="
-            ai.watchRun(task);
-            tab = 'generate';
-          "
+          @click="selectTask(task)"
         >
           <span>{{
             task.created_at.slice(0, 16).replace("T", " ")

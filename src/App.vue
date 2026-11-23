@@ -8,6 +8,9 @@ import { syncContent } from "./data/content";
 import { useAiStore } from "./stores/ai";
 
 const appBase = import.meta.env.BASE_URL;
+const shortcutLabel = /Mac|iPhone|iPad/.test(navigator.platform)
+  ? "⌘ K"
+  : "Ctrl K";
 const route = useRoute(),
   router = useRouter(),
   learning = useLearningStore();
@@ -204,7 +207,7 @@ onUnmounted(() => {
             v-model="search"
             aria-label="搜索题目与知识点"
             placeholder="搜索题目、知识点…"
-          /><kbd>⌘ K</kbd>
+          /><kbd>{{ shortcutLabel }}</kbd>
         </form>
         <div class="topbar-right">
           <span class="date-label">{{ today }}</span><RouterLink

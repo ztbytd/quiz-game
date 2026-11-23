@@ -12,6 +12,8 @@ import { api } from "../infrastructure/ai-client";
 import { validQuestion } from "../domain/content-validation";
 
 export const bank = reactive(structuredClone(raw) as unknown as Bank);
+let publicSnapshot = structuredClone(raw) as unknown as Bank;
+const personalById = new Map<string, StudyQuestion>();
 export const quizQuestions = reactive(
   bank.questions.filter((q) => q.id.startsWith("quiz:")),
 );
@@ -53,10 +55,19 @@ function reindex() {
 }
 export function addPersonal(questions: StudyQuestion[]) {
   for (const q of questions) {
-    if (!questionById.has(q.id)) {
-      bank.questions.push(q);
-      questionById.set(q.id, q);
-    }
+    const existing = personalById.get(q.id);
+    if (!existing || (q.version || 1) >= (existing.version || 1))
+      personalById.set(q.id, q);
+  }
+  rebuildContent();
+}
+function rebuildContent() {
+  Object.assign(bank, structuredClone(publicSnapshot));
+  for (const q of personalById.values()) {
+    const index = bank.questions.findIndex((item) => item.id === q.id);
+    if (index < 0) bank.questions.push(q);
+    else if ((q.version || 1) > (bank.questions[index]?.version || 1))
+      bank.questions[index] = q;
   }
   reindex();
 }
@@ -104,10 +115,8 @@ export function validateBank(value: any): Bank {
   return value;
 }
 function activate(next: Bank) {
-  const personal = bank.questions.filter((q) => q.origin === "ai-private");
-  Object.assign(bank, next);
-  addPersonal(personal);
-  reindex();
+  publicSnapshot = structuredClone(next);
+  rebuildContent();
 }
 export async function restoreContent() {
   const cached = await cachedContent();
@@ -144,10 +153,10 @@ export async function syncPersonal(owner?: string) {
   return questions;
 }
 export async function clearPersonal(owner?: string, erase = true) {
-  const privateIds = bank.questions
-    .filter((q) => q.origin === "ai-private")
-    .map((q) => q.id);
-  bank.questions = bank.questions.filter((q) => q.origin !== "ai-private");
-  for (const key of privateIds) questionById.delete(key);
+  const publicIds = new Set(publicSnapshot.questions.map((q) => q.id));
+  for (const key of personalById.keys())
+    if (!publicIds.has(key)) questionById.delete(key);
+  personalById.clear();
+  rebuildContent();
   if (erase) await clearPersonalCache(owner);
 }

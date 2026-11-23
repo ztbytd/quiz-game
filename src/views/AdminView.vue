@@ -4,6 +4,7 @@ import { api } from "../infrastructure/ai-client";
 import { useAiStore } from "../stores/ai";
 import { bank, syncContent } from "../data/content";
 import type { Candidate } from "../../packages/contracts/ai";
+import AppDialog from "../components/AppDialog.vue";
 const ai = useAiStore(),
   items = ref<Candidate[]>([]),
   error = ref(""),
@@ -221,7 +222,13 @@ onMounted(async () => {
           </button>
         </footer>
       </section>
-      <div v-if="editing" class="admin-editor">
+      <AppDialog
+        v-if="editing"
+        :open="!!editing"
+        label="修订题目"
+        class="admin-editor"
+        @update:open="editing = undefined"
+      >
         <section class="panel">
           <h2>修订题目</h2>
           <textarea
@@ -236,7 +243,7 @@ onMounted(async () => {
             </button>
           </div>
         </section>
-      </div></template
+      </AppDialog></template
     >
   </div>
 </template>
@@ -330,18 +337,16 @@ onMounted(async () => {
   background: #edf3e8;
   overflow-wrap: anywhere;
 }
-.admin-editor {
-  position: fixed;
-  inset: 0;
-  background: #0005;
-  z-index: 150;
-  display: grid;
-  place-items: center;
+.admin-editor[open] {
+  align-items: center;
+  justify-content: center;
   padding: 20px;
 }
 .admin-editor > section {
   width: min(800px, 100%);
   padding: 24px;
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
 }
 .admin-editor textarea {
   width: 100%;

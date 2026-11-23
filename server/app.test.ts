@@ -18,6 +18,7 @@ const q = {
   },
 };
 let calls = 0;
+let latestAssessmentInput: any;
 const complete: Complete = async (messages, options) => {
   calls++;
   if (messages[0]?.content.includes("INTERVIEW_STEP"))
@@ -52,7 +53,10 @@ const complete: Complete = async (messages, options) => {
     };
   const gen = messages[0]?.content.includes("questions");
   if (gen) return { text: JSON.stringify({ questions: [q] }), tokens: 1200 };
-  if (options.structured)
+  if (options.structured) {
+    latestAssessmentInput = JSON.parse(messages.at(-1)!.content);
+    assert.equal(messages.at(-1)!.role, "user");
+    assert.equal(typeof latestAssessmentInput.actualAnswer, "string");
     return {
       text: JSON.stringify({
         covered: [{ quote: "数据库唯一键", comment: "说明了幂等标识" }],
@@ -64,6 +68,7 @@ const complete: Complete = async (messages, options) => {
       }),
       tokens: 500,
     };
+  }
   await options.delta?.("先确定任务的唯一标识。");
   return {
     text: "先确定任务的唯一标识，然后通过服务端状态变化取得执行权。",
@@ -242,6 +247,42 @@ test("known upstream rejection releases reservation instead of charging unknown 
   const after = (await request("GET", "/usage")).json();
   assert.equal(after.consumed, before.consumed);
   assert.equal(after.reserved, before.reserved);
+});
+test("assessment receives the latest submitted answer in its user message", async () => {
+  const c = (
+    await request("POST", "/conversations", { answer: "这是旧草稿。" })
+  ).json();
+  const answer = "我使用数据库唯一键建立幂等任务，重复请求返回已有状态。";
+  const run = (
+    await request("POST", `/conversations/${c.id}/messages`, {
+      key: "latest-answer-123",
+      action: "assess",
+      text: "请点评最新回答。",
+      answer,
+    })
+  ).json();
+  await processOne();
+  assert.equal(
+    (await request("GET", `/runs/${run.id}`)).json().status,
+    "succeeded",
+  );
+  assert.equal(latestAssessmentInput.actualAnswer, answer);
+});
+test("empty assessment is rejected before reserving tokens or invoking a model", async () => {
+  const c = (await request("POST", "/conversations", {})).json();
+  const before = calls;
+  const result = await request("POST", `/conversations/${c.id}/messages`, {
+    key: "empty-answer-123",
+    action: "assess",
+    text: "请点评我的回答",
+  });
+  assert.equal(result.statusCode, 400);
+  assert.equal(calls, before);
+  assert.equal(
+    (await db.query("SELECT id FROM runs WHERE conversation_id=$1", [c.id]))
+      .rows.length,
+    0,
+  );
 });
 test("interview closes after recap and prevents accidental continuation", async () => {
   const c = (

@@ -1,0 +1,71 @@
+{
+  "id": "baseline-quality-2026.11.23.2",
+  "bankVersion": "2026.11.23-quality.2",
+  "questionVersion": 2,
+  "patches": [
+    {
+      "id": "quiz:21:3",
+      "path": ["detail", "code"],
+      "before": "function Item(x) { this.x = x; }\nconst Bound = Item.bind({ x: 0 }, 5);\n\nnew Bound(8).x;        // 5  ← new 的 this 优先于 bind 的 this\nItem.bind({ x: 0 })(5).x;  // 0  ← 普通调用时 bind 的 this 生效",
+      "after": "function Item(x) { this.x = x; }\nconst Bound = Item.bind({ x: 0 }, 5);\nconsole.log(new Bound(8).x); // 5：构造调用忽略绑定 this，预置参数仍生效\n\nconst context = { x: 0 };\nconst result = Item.bind(context)(5);\nconsole.log(context.x); // 5：普通调用使用绑定对象\nconsole.log(result);    // undefined：Item 没有显式返回值"
+    },
+    {
+      "id": "quiz:21:6",
+      "path": ["detail", "example"],
+      "before": "a.mjs 导出 let count = 0 并提供 increment()，b.mjs 写 import { count, increment } from \"./a.mjs\" 后调用 increment() 再读 count，看到的是更新后的值。命名导入拿到的不是一份拷贝，而是指向同一个绑定的实时引用；这和 CommonJS 那个“当时值的快照”有本质区别。",
+      "after": "a.mjs 导出 let count = 0 并提供 increment()，b.mjs 命名导入后调用 increment()，再读 count 会看到更新后的值。ESM 的导入关联到导出绑定。CommonJS 中 require 返回 module.exports 的值；它若是共享对象，之后通过该对象读取属性也能看到修改，而提前解构出的原始值不会随属性更新。应区分实时绑定、共享对象引用和一次取值。"
+    },
+    {
+      "id": "quiz:21:6",
+      "path": ["detail", "code"],
+      "before": "// a.mjs\nexport let count = 0;\nexport function increment() { count++; }\n\n// b.mjs\nimport { count, increment } from './a.mjs';\nincrement();\nconsole.log(count);   // 1，能看到更新\n// count = 5;         // SyntaxError：导入方不能赋值",
+      "after": "// a.mjs\nexport let count = 0;\nexport function increment() { count++; }\n\n// b.mjs\nimport { count, increment } from './a.mjs';\nincrement();\nconsole.log(count); // 1\n// count = 5;      // 原生 ESM 中会抛 TypeError：导入绑定不能重新赋值"
+    },
+    {
+      "id": "quiz:21:0",
+      "path": ["detail", "pitfalls"],
+      "before": "Promise.resolve(load) 传的是函数本身，它会被当成普通值直接兑现，根本不会调用。Promise.all([load]) 同理，函数作为值进结果数组，不会执行。以为 try/catch 能包住异步拒绝也不对，catch 只接同步部分。这个模式只统一两类失败，不改变 thenable 的解析规则。",
+      "after": "Promise.resolve(load) 与 Promise.all([load]) 只把函数当值，不会调用。外层 try/catch 若没有 await，也接不到稍后的 Promise 拒绝；在 async 函数内使用 try { await load() } catch (error) { ... } 则能统一处理同步抛错与异步拒绝。选择写法时保持错误归属和返回值契约明确。"
+    },
+    {
+      "id": "quiz:21:2",
+      "path": ["detail", "pitfalls"],
+      "before": "以为 finally 能把值改成 9 是最常见的误解，它的返回值一律被忽略。原请求失败、finally 又抛错时，catch 收到的是清理阶段的错误，原始错误就丢了，重要任务要分别记录两者。finally 返回的 Promise 没有超时，会让主流程一直等一个卡住的上报任务。",
+      "after": "finally 的普通返回值或返回 Promise 的兑现值不会替换原结果；返回的 Promise 会被等待，拒绝或同步抛错则会改变最终状态。原任务失败、清理又失败时，应分别记录两者，避免只留下清理错误。若清理任务可能卡住，还要按业务需要设置截止时间。"
+    },
+    {
+      "id": "quiz:21:7",
+      "path": ["detail", "code"],
+      "before": "function* rows(fetchPage, close) {\n  try {\n    for (let p = 1; ; p++) yield fetchPage(p);   // 不预取\n  } finally {\n    close();                                     // 幂等清理\n  }\n}\n\nfor (const row of rows(fetchPage, close)) { break; }\n// close 调用 1 次；fetchPage 只被调了 1 次（第 1 页）",
+      "after": "function* rows(fetchPage, close) {\n  try {\n    for (let page = 1; ; page++) yield fetchPage(page);\n  } finally {\n    close();\n  }\n}\n\n// 用同步桩演示题设的前两页消费；异步分页对应 async generator / for await。\nconst requested = [];\nlet closeCount = 0;\nconst iterator = rows(\n  page => { requested.push(page); return { page }; },\n  () => { closeCount++; },\n);\nfor (const row of iterator) {\n  if (row.page === 2) break;\n}\nconsole.assert(closeCount === 1, 'break 时收尾一次');\nconsole.assert(requested.join(',') === '1,2', '没有拉取第三页');\niterator.return();\nconsole.assert(closeCount === 1 && requested.join(',') === '1,2', '再次 return 不重复收尾或取页');"
+    },
+    {
+      "id": "oral:loop:0",
+      "path": ["explanation"],
+      "before": "状态修改只安排了界面更新，真正显示还要等主线程释放并获得渲染机会。如果后面马上做大 JSON 解析或持续添加微任务，浏览器仍来不及画出 loading。我会在 Performance 中对齐点击、长任务和下一帧，确认阻塞来自计算、解析还是渲染，再分别减少数据、分段处理或使用 Worker。改完用相同数据和设备复测，检查 loading 出现时间与下一次输入响应，而不只看状态变量是否已经变化。",
+      "after": "设置 loading 只安排了界面更新，真正显示还要等主线程释放并获得渲染机会。紧接着同步解析大 JSON，或持续添加微任务，都会推迟绘制。我会用 Performance 对齐点击、长任务和下一帧。原生 JSON.parse 是单次同步调用，不能在外面套定时器就拆开解析；可减少返回体、改为分页，或将完整解析放到 Worker。解析后的遍历等可拆工作再按批让出主线程，最后用同设备和数据复测显示时间与输入响应。"
+    },
+    {
+      "id": "oral:loop:2",
+      "path": ["explanation"],
+      "before": "分段可以在批次间让出主线程，但每批工作仍消耗帧预算。Worker 隔离计算，需要计入数据传输、复制内存和初始化成本；能转移所有权的二进制缓冲区可使用 transfer。",
+      "after": "setTimeout 分段适用于能拆成独立批次的工作，每批仍消耗主线程预算，也不保证批次间一定绘制。一次原生 JSON.parse 不能从外部暂停续跑；可减少数据或改为 Worker 解析，真正增量解析需要相应格式和解析器。Worker 的代价是初始化、消息传输和可能的内存复制；可转移的 ArrayBuffer 能转移所有权，但完整数据和解析结果仍要计入峰值内存。"
+    },
+    {
+      "id": "quiz:2:14",
+      "path": ["explanation"],
+      "before": "以证书认证的 TLS 1.3 完整握手为例：客户端 ClientHello 携带支持参数和密钥共享；服务端 ServerHello 选定参数并给出密钥共享，随后发送加密的握手信息、证书、签名证明与 Finished；客户端验证身份和握手完整性后发送自己的 Finished。双方派生业务流量密钥，使用对称认证加密。",
+      "after": "以证书认证的 TLS 1.3 完整握手为例：客户端发送支持参数和密钥共享，服务端选定参数并发送密钥共享、加密的证书与握手证明，客户端验证后发送 Finished，双方派生业务流量密钥。相比常见 TLS 1.2 完整握手，TLS 1.3 通常将 TLS 层往返从 2-RTT 减到 1-RTT，移除旧算法并加密更多握手消息。恢复连接可使用 0-RTT 早期数据，但有重放风险，不能直接承载无重放保护的业务写入。"
+    }
+  ],
+  "sources": [
+    "https://nodejs.org/api/modules.html#caching",
+    "https://tc39.es/ecma262/multipage/abstract-operations.html#sec-iteratorclose",
+    "https://tc39.es/ecma262/multipage/control-abstraction-objects.html#await",
+    "https://tc39.es/ecma262/multipage/control-abstraction-objects.html#sec-promise.prototype.finally",
+    "https://tc39.es/ecma262/multipage/executable-code-and-execution-contexts.html#sec-module-environment-records-setmutablebinding-n-v-s",
+    "https://tc39.es/ecma262/multipage/fundamental-objects.html#sec-function.prototype.bind",
+    "https://tc39.es/ecma262/multipage/structured-data.html#sec-json.parse",
+    "https://www.rfc-editor.org/rfc/rfc8446.html#section-1.2"
+  ]
+}

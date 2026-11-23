@@ -35,6 +35,8 @@ import {
 } from "../packages/contracts/ai.ts";
 import type { Database } from "./db.ts";
 import { migrate } from "./db.ts";
+import { initializeContent, lockPublicContent } from "./content-upgrades.ts";
+import { createStructuredReader, jsonRepairPrompt } from "./structured.ts";
 import type { Complete } from "./provider.ts";
 import {
   basePrompt,
@@ -85,11 +87,7 @@ export async function createApp(options: AppOptions) {
   const seed = JSON.parse(
     await readFile(new URL("../src/data/bank.json", import.meta.url), "utf8"),
   );
-  const initial = await db.query("SELECT id FROM releases LIMIT 1");
-  if (!initial.rows.length)
-    await db.query("INSERT INTO releases(bank) VALUES($1)", [
-      JSON.stringify(seed),
-    ]);
+  await initializeContent(db, seed);
   const app = Fastify({ bodyLimit: 100_000, logger: false });
   const controllers = new Map<string, AbortController>();
   const rate = new Map<string, { count: number; time: number }>();
@@ -495,6 +493,8 @@ export async function createApp(options: AppOptions) {
   app.post(prefix + "/conversations/:id/messages", async (req: any) => {
     const c = await ownConversation(req.user.id, req.params.id);
     const b = messageInput.parse(req.body);
+    if (b.action === "assess" && !(b.answer ?? c.context.answer ?? "").trim())
+      fail(400, "请先填写你的实际作答，再请求点评");
     const old = (
       await db.query("SELECT * FROM runs WHERE owner=$1 AND key=$2", [
         req.user.id,
@@ -802,6 +802,7 @@ export async function createApp(options: AppOptions) {
       .object({ ids: z.array(z.string()).min(1).max(50), topicId: z.string() })
       .parse(req.body);
     return db.transaction(async (tx) => {
+      await lockPublicContent(tx);
       const latest = (
         await tx.query(
           "SELECT * FROM releases ORDER BY id DESC LIMIT 1 FOR UPDATE",
@@ -871,11 +872,12 @@ export async function createApp(options: AppOptions) {
   });
   app.post(prefix + "/admin/releases/:id/restore", async (req: any) => {
     admin(req);
-    const release = await db.query("SELECT bank FROM releases WHERE id=$1", [
-      req.params.id,
-    ]);
-    if (!release.rows[0]) fail(404, "发布版本不存在");
     return db.transaction(async (tx) => {
+      await lockPublicContent(tx);
+      const release = await tx.query("SELECT bank FROM releases WHERE id=$1", [
+        req.params.id,
+      ]);
+      if (!release.rows[0]) fail(404, "发布版本不存在");
       const result = await tx.query(
         "INSERT INTO releases(bank,by_user) VALUES($1,$2) RETURNING id",
         [
@@ -1014,6 +1016,26 @@ export async function createApp(options: AppOptions) {
             maxTokens + Buffer.byteLength(JSON.stringify(messages), "utf8");
           return r;
         };
+        const readStructured = createStructuredReader(
+          async (malformed, maxTokens) => {
+            const active = await db.query(
+              "SELECT id FROM runs WHERE id=$1 AND fence=$2 AND status='running'",
+              [run.id, run.fence],
+            );
+            if (!active.rows.length) abort.abort();
+            abort.signal.throwIfAborted();
+            const repaired = await call(
+              [
+                { role: "system", content: jsonRepairPrompt },
+                { role: "user", content: JSON.stringify({ malformed }) },
+              ],
+              true,
+              maxTokens,
+            );
+            return repaired.text;
+          },
+          abort.signal,
+        );
         let output: any;
         if (run.kind === "check") {
           const result = await call(
@@ -1024,7 +1046,9 @@ export async function createApp(options: AppOptions) {
             true,
             2000,
           );
-          const reviews = reviewSchema.parse(JSON.parse(result.text)).reviews;
+          const reviews = reviewSchema.parse(
+            await readStructured(result.text, 2000),
+          ).reviews;
           if (reviews.length !== 1 || reviews[0]?.index !== 0)
             throw new Error("复核结果未对应当前题目");
           const old = (
@@ -1096,8 +1120,12 @@ export async function createApp(options: AppOptions) {
               true,
               6000,
             );
-            const data = JSON.parse(result.text);
-            if (!Array.isArray(data.questions))
+            const data = await readStructured(result.text, 6000);
+            if (
+              !data ||
+              typeof data !== "object" ||
+              !Array.isArray(data.questions)
+            )
               throw new Error("模型未返回题目数组");
             data.questions = data.questions.slice(0, count);
             for (
@@ -1123,7 +1151,9 @@ export async function createApp(options: AppOptions) {
                   true,
                   1500,
                 );
-                reviews = reviewSchema.parse(JSON.parse(checked.text)).reviews;
+                reviews = reviewSchema.parse(
+                  await readStructured(checked.text, 1500),
+                ).reviews;
                 if (
                   reviews.length !== data.questions.length ||
                   new Set(reviews.map((r) => r.index)).size !==
@@ -1257,7 +1287,12 @@ export async function createApp(options: AppOptions) {
             true,
             Math.min(18000, 1800 + transcript.length * 500),
           );
-          const data = interviewReportSchema.parse(JSON.parse(result.text));
+          const data = interviewReportSchema.parse(
+            await readStructured(
+              result.text,
+              Math.min(18000, 1800 + transcript.length * 500),
+            ),
+          );
           for (const item of data.strengths)
             if (!transcript.some((t: any) => t.answer.includes(item.quote)))
               throw new Error("复盘引用与实际回答不一致");
@@ -1316,7 +1351,9 @@ export async function createApp(options: AppOptions) {
                 run.input.interviewState,
               );
             const result = await call(messages, true, 1200);
-            const step = stepSchema.parse(JSON.parse(result.text));
+            const step = stepSchema.parse(
+              await readStructured(result.text, 1200),
+            );
             const state = advanceInterview(
               run.input.interviewOptions,
               run.input.interviewState,
@@ -1324,9 +1361,25 @@ export async function createApp(options: AppOptions) {
             );
             output = { text: step.question, interviewState: state };
           } else if (run.kind === "assess") {
-            messages[0].content += "\n" + assessmentPrompt;
-            const result = await call(messages, true, 2200);
-            const assessment = assessmentSchema.parse(JSON.parse(result.text));
+            const assessmentMessages = [
+              { role: "system", content: basePrompt + "\n" + assessmentPrompt },
+              {
+                role: "user",
+                content: JSON.stringify({
+                  question: material.question?.prompt,
+                  reference: {
+                    answer: material.question?.explanation,
+                    rubric: material.question?.rubric,
+                  },
+                  actualAnswer: material.answer,
+                  request: run.input.text,
+                }),
+              },
+            ];
+            const result = await call(assessmentMessages, true, 2200);
+            const assessment = assessmentSchema.parse(
+              await readStructured(result.text, 2200),
+            );
             const answer =
               run.input.context?.answer ??
               "" +

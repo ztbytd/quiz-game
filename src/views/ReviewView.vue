@@ -38,6 +38,15 @@ const counts = computed(() =>
     ]),
   ),
 );
+const weakQuestions = computed(() =>
+  bank.questions
+    .filter((q) => matches(q, "weak"))
+    .sort((a, b) =>
+      (learning.getRecord(b.id).lastReviewedAt || "").localeCompare(
+        learning.getRecord(a.id).lastReviewedAt || "",
+      ),
+    ),
+);
 const items = computed(() =>
   bank.questions
     .filter(
@@ -113,7 +122,7 @@ const emptyCopy: Record<string, [string, string]> = {
           query: {
             scope:
               '围绕以下我已标记为还需练习的问题，生成不同场景的变式题：' +
-              items
+              weakQuestions
                 .slice(0, 5)
                 .map((q) => q.prompt)
                 .join('；'),
