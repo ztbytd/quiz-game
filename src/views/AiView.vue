@@ -43,6 +43,9 @@ const text = ref(""),
   savedNote = ref("");
 const authFormId = useId();
 const passwordVisible = ref(false);
+const composing = ref(false);
+let compositionEndedAt = Number.NEGATIVE_INFINITY;
+let composerBlurFrame: number | undefined;
 const transcript = ref<HTMLElement>(),
   input = ref<HTMLTextAreaElement>(),
   accountOpen = ref(false),
@@ -246,6 +249,7 @@ async function send(
   action: "chat" | "assess" | "followup" | "recap" = nextAction.value,
   override?: string,
 ) {
+  if (composing.value) return;
   const value = override || text.value;
   if (!value.trim()) return;
   const key = draftKey.value;
@@ -277,11 +281,30 @@ async function send(
       await router.replace("/ai/" + ai.current.id);
   }
 }
+function compositionStart() {
+  composing.value = true;
+}
+function compositionEnd() {
+  composing.value = false;
+  compositionEndedAt = performance.now();
+}
+function compositionChange() {
+  if (composing.value) compositionEnd();
+}
 function keydown(e: KeyboardEvent) {
-  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
-    e.preventDefault();
-    void send();
-  }
+  if (e.key !== "Enter" || e.shiftKey) return;
+  if (
+    composing.value ||
+    e.isComposing ||
+    e.keyCode === 229 ||
+    performance.now() - compositionEndedAt < 100
+  )
+    return;
+  // A phone's Return key belongs to its keyboard, including IME candidate selection.
+  if (matchMedia("(pointer: coarse)").matches && !e.ctrlKey && !e.metaKey)
+    return;
+  e.preventDefault();
+  void send();
 }
 async function scrollEnd() {
   await nextTick();
@@ -333,7 +356,11 @@ function toggleRegistration(event: Event) {
 }
 async function login(event: Event) {
   if (ai.busy) return;
-  readAuthForm(event.currentTarget as HTMLFormElement);
+  const form = event.currentTarget as HTMLFormElement;
+  readAuthForm(form);
+  // Finish the password field's native input session before replacing the form.
+  const focused = document.activeElement;
+  if (focused instanceof HTMLElement && form.contains(focused)) focused.blur();
   await ai.login(
     loginName.value,
     password.value,
@@ -399,16 +426,29 @@ async function remove(id: string) {
   }
 }
 function focusInput() {
+  if (composerBlurFrame !== undefined) cancelAnimationFrame(composerBlurFrame);
+  composerBlurFrame = undefined;
   document.body.classList.add("ai-keyboard");
 }
 function blurInput() {
+  if (composerBlurFrame !== undefined) cancelAnimationFrame(composerBlurFrame);
+  composerBlurFrame = undefined;
+  composing.value = false;
   document.body.classList.remove("ai-keyboard");
 }
 function composerBlur(event: FocusEvent) {
+  const composer = event.currentTarget as HTMLElement;
   if (
-    !(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node)
+    event.relatedTarget instanceof Node &&
+    composer.contains(event.relatedTarget)
   )
-    blurInput();
+    return;
+  if (composerBlurFrame !== undefined) cancelAnimationFrame(composerBlurFrame);
+  composerBlurFrame = requestAnimationFrame(() => {
+    composerBlurFrame = undefined;
+    // Safari can temporarily report no related target while the input keeps focus.
+    if (!composer.contains(document.activeElement)) blurInput();
+  });
 }
 onMounted(async () => {
   historyTarget.value =
@@ -971,11 +1011,18 @@ onBeforeUnmount(() => {
             <textarea
               ref="input"
               v-model="text"
+              name="message"
+              inputmode="text"
+              enterkeyhint="enter"
+              autocomplete="off"
               aria-label="给 AI 发送消息"
               :placeholder="ai.enabled ? '输入你的问题…' : 'AI 服务尚未启用'"
               rows="2"
               maxlength="8000"
               :disabled="!ai.enabled || interviewFinished"
+              @compositionstart="compositionStart"
+              @compositionend="compositionEnd"
+              @change="compositionChange"
               @keydown="keydown"
             ></textarea>
             <div class="ai-composer-tools">

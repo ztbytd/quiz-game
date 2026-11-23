@@ -22,6 +22,8 @@
     "test:ui-regressions": "node scripts/verify-ui-regressions.cjs",
     "test:auth": "node scripts/verify-auth.cjs",
     "test:auth:webkit": "node scripts/verify-auth.cjs --webkit",
+    "test:ime": "node scripts/verify-ime.cjs",
+    "test:ime:webkit": "node scripts/verify-ime.cjs --webkit",
     "start:api": "node server/index.ts"
   },
   "dependencies": {
