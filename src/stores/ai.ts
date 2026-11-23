@@ -136,12 +136,15 @@ export const useAiStore = defineStore("ai", () => {
       current.value = data.conversation;
       messages.value = data.messages;
       run.value = undefined;
-      const latest = data.runs.find((r: AiRun) =>
+      // Runs arrive newest first; a successful reply supersedes older failures.
+      const latest: AiRun | undefined = data.runs[0];
+      if (
+        latest &&
         ["queued", "running", "outcome_unknown", "failed", "canceled"].includes(
-          r.status,
-        ),
-      );
-      if (latest) watchRun(latest);
+          latest.status,
+        )
+      )
+        watchRun(latest);
     } catch (e) {
       report(e);
     } finally {
@@ -317,6 +320,7 @@ export const useAiStore = defineStore("ai", () => {
     tasks.value = history.items.filter((r: AiRun) => r.kind === "generate");
   }
   async function save(candidateId: string) {
+    error.value = "";
     try {
       await api(`/candidates/${candidateId}/save`, { method: "POST" });
       await syncPersonal();

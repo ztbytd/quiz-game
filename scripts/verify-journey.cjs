@@ -6,7 +6,8 @@ const base = process.env.QA_BASE || "http://127.0.0.1:5190/quiz/";
 const live = process.env.QA_LIVE_AI === "1";
 const results = [],
   content = [],
-  runtimeErrors = [];
+  runtimeErrors = [],
+  browserDiagnostics = [];
 let browser,
   page,
   personalPrompt,
@@ -23,12 +24,22 @@ async function step(name, run) {
     return;
   }
   const start = Date.now();
+  const diagnosticsStart = browserDiagnostics.length;
   try {
     await run();
     results.push({ name, ok: true, seconds: (Date.now() - start) / 1000 });
     console.log("PASS " + name);
   } catch (error) {
-    results.push({ name, ok: false, error: error.message });
+    results.push({
+      name,
+      ok: false,
+      error: error.message,
+      diagnostics: browserDiagnostics.slice(diagnosticsStart),
+      alerts: await page
+        ?.getByRole("alert")
+        .allTextContents()
+        .catch(() => []),
+    });
     if (page)
       await page
         .screenshot({
@@ -68,6 +79,22 @@ async function send(text) {
 }
 function errorsFor(p) {
   p.on("pageerror", (e) => runtimeErrors.push(e.message));
+  p.on("requestfailed", (request) => {
+    browserDiagnostics.push({
+      kind: "requestfailed",
+      path: new URL(request.url()).pathname,
+      method: request.method(),
+      error: request.failure()?.errorText,
+    });
+  });
+  p.on("response", (response) => {
+    if (response.status() >= 400)
+      browserDiagnostics.push({
+        kind: "response",
+        path: new URL(response.url()).pathname,
+        status: response.status(),
+      });
+  });
 }
 (async () => {
   await fs.mkdir("test-results/journey", { recursive: true });

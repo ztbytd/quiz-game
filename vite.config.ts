@@ -4,6 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
+  cacheDir: process.env.VITE_CACHE_DIR || "node_modules/.vite",
   server: {
     proxy: {
       "/quiz/api": {

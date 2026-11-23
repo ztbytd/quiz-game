@@ -57,7 +57,11 @@ async function ready(url, child) {
         "5190",
         "--strictPort",
       ],
-      { API_TARGET: "http://127.0.0.1:3120" },
+      {
+        API_TARGET: "http://127.0.0.1:3120",
+        // Keep the QA optimizer separate from the user's running dev server.
+        VITE_CACHE_DIR: "node_modules/.vite-journey",
+      },
     );
     await ready(origin + "/quiz/", ui);
     const verify = launch(["scripts/verify-journey.cjs"], {

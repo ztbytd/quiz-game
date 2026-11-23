@@ -40,6 +40,8 @@ async function installFixture(page, state) {
   state.unexpected = [];
   state.messages = [];
   state.generations = [];
+  state.saveAttempts = 0;
+  state.savedQuestionReads = [];
   await page.route("**/*", async (route) => {
     const request = route.request();
     const endpoint = new URL(request.url()).pathname.match(
@@ -65,9 +67,16 @@ async function installFixture(page, state) {
       data = { consumed: 0, reserved: 0, limit: 300000 };
     else if (method === "GET" && endpoint === "/conversations")
       data = { items: state.conversations };
-    else if (method === "GET" && endpoint === "/my/questions")
+    else if (method === "GET" && endpoint === "/my/questions") {
+      if (state.retrySave)
+        state.savedQuestionReads.push(
+          state.candidates.map((candidate) => ({
+            id: candidate.id,
+            saved: candidate.saved,
+          })),
+        );
       data = { items: state.candidates };
-    else if (method === "GET" && endpoint === "/runs")
+    } else if (method === "GET" && endpoint === "/runs")
       data = { items: state.runs };
     else if (method === "GET" && endpoint === "/notes")
       data = {
@@ -80,6 +89,18 @@ async function installFixture(page, state) {
           },
         ],
       };
+    else if (
+      method === "GET" &&
+      state.conversationDetails?.[endpoint.split("/")[2]] &&
+      /^\/conversations\/[^/]+$/.test(endpoint)
+    )
+      data = state.conversationDetails[endpoint.split("/")[2]];
+    else if (
+      method === "GET" &&
+      /^\/runs\/[^/]+$/.test(endpoint) &&
+      state.runs.some((run) => run.id === endpoint.split("/")[2])
+    )
+      data = state.runs.find((run) => run.id === endpoint.split("/")[2]);
     else if (
       method === "POST" &&
       endpoint === "/conversations" &&
@@ -123,6 +144,19 @@ async function installFixture(page, state) {
       state.generations.push(request.postDataJSON());
       status = 429;
       data = { error: "回归测试：已截获补题计划，未创建任务" };
+    } else if (
+      method === "POST" &&
+      /^\/candidates\/[^/]+\/save$/.test(endpoint) &&
+      state.retrySave
+    ) {
+      state.saveAttempts += 1;
+      if (state.saveAttempts === 1) return route.abort("blockedbyclient");
+      const candidate = state.candidates.find(
+        (item) => item.id === endpoint.split("/")[2],
+      );
+      assert.ok(candidate, "The candidate must exist before it is saved");
+      candidate.saved = true;
+      data = { saved: true };
     } else {
       state.unexpected.push({ method, endpoint });
       return route.abort("blockedbyclient");
@@ -457,6 +491,84 @@ async function checkDialogs(page, state) {
   );
 }
 
+async function checkGenerationSaveRetry(page, state) {
+  const candidate = {
+    id: "fixture-save-retry",
+    question: {
+      ...weakQuestion,
+      prompt: "生成题首次保存断网后，重试成功应怎样显示？",
+      knowledgePoints: ["保存失败重试"],
+      angle: "场景",
+      rubric: { required: ["成功后清除错误"], alternatives: [], mistakes: [] },
+    },
+    checks: [],
+    review: "unreviewed",
+    saved: false,
+    version: 1,
+    owner: "ui-regression-fixture",
+  };
+  const run = {
+    id: "fixture-run-save-retry",
+    kind: "generate",
+    status: "succeeded",
+    created_at: "2026-11-23T12:00:00.000Z",
+    input: {
+      scope: "保存失败重试",
+      count: 1,
+      difficulty: "进阶",
+      kind: "oral",
+    },
+    output: { requested: 1, candidates: [candidate] },
+  };
+  state.retrySave = true;
+  state.candidates = [candidate];
+  state.runs = [run];
+  state.step = "first-save-network-failure";
+  await page.goto(url("/generate?run=" + run.id));
+  const save = page.getByRole("button", {
+    name: "保存到我的题库",
+    exact: true,
+  });
+  await save.click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "暂时无法连接服务，请检查网络后重试" })
+    .waitFor();
+  assert.equal(state.saveAttempts, 1);
+  assert.equal(candidate.saved, false);
+  assert.equal(
+    await page.getByRole("link", { name: "开始练习", exact: true }).count(),
+    0,
+  );
+  assert.equal(await save.isEnabled(), true);
+
+  state.step = "second-save-success-clears-error";
+  await save.click();
+  const practice = page.getByRole("link", { name: "开始练习", exact: true });
+  await practice.waitFor();
+  assert.equal(state.saveAttempts, 2);
+  assert.ok(
+    state.savedQuestionReads.some((items) =>
+      items.some((item) => item.id === candidate.id && item.saved),
+    ),
+    "The saved candidate must be refreshed from the personal-question API",
+  );
+  assert.equal(
+    await page.getByRole("alert").count(),
+    0,
+    "Successful save retry must clear the previous connection error",
+  );
+  assert.equal(
+    routeQuery(await practice.getAttribute("href")).get("question"),
+    candidate.id,
+  );
+  await practice.click();
+  await page
+    .locator(".question-prompt")
+    .filter({ hasText: candidate.question.prompt })
+    .waitFor();
+}
+
 async function checkPagination(page) {
   await page.goto(url("/library"));
   await page.getByRole("searchbox", { name: "搜索题目和解析" }).fill("请求");
@@ -499,6 +611,80 @@ async function checkPagination(page) {
   );
 }
 
+async function checkLatestRunNotice(page, state) {
+  for (const priorStatus of ["canceled", "failed", "outcome_unknown"]) {
+    state.step = `success-after-${priorStatus}`;
+    const conversation = {
+      id: `fixture-history-${priorStatus}`,
+      title: "历史任务状态复查",
+      mode: "chat",
+      context: {},
+      updated_at: "2026-11-23T12:10:00.000Z",
+    };
+    const latest = {
+      id: `fixture-latest-${priorStatus}`,
+      status: "succeeded",
+      kind: "chat",
+      conversation_id: conversation.id,
+      output: { text: "最新一次任务已经成功完成。" },
+      created_at: "2026-11-23T12:10:00.000Z",
+    };
+    const older = {
+      ...latest,
+      id: `fixture-older-${priorStatus}`,
+      status: priorStatus,
+      output: {},
+      error: "旧任务失败提示不应覆盖最新成功状态。",
+      created_at: "2026-11-23T12:00:00.000Z",
+    };
+    state.conversations = [conversation];
+    state.runs = [latest, older];
+    state.conversationDetails = {
+      [conversation.id]: {
+        conversation,
+        messages: [
+          { id: "fixture-user", role: "user", text: "请给出最新答案。" },
+          {
+            id: "fixture-assistant",
+            role: "assistant",
+            text: latest.output.text,
+            runId: latest.id,
+          },
+        ],
+        runs: state.runs,
+      },
+    };
+    await page.goto(url("/ai/" + conversation.id));
+    const answer = page.locator(".ai-message-assistant");
+    await answer.filter({ hasText: latest.output.text }).waitFor();
+    assert.equal(
+      await page.locator(".ai-run-notice").count(),
+      0,
+      `A newer succeeded run must supersede an older ${priorStatus} notice`,
+    );
+    await page.reload();
+    await answer.filter({ hasText: latest.output.text }).waitFor();
+    assert.equal(await page.locator(".ai-run-notice").count(), 0);
+  }
+
+  state.step = "latest-failed-keeps-notice";
+  const conversation = state.conversations[0];
+  const latestFailure = {
+    ...state.runs[0],
+    id: "fixture-latest-failure",
+    status: "failed",
+    output: {},
+    error: "最新一次请求失败，请稍后重试。",
+    created_at: "2026-11-23T12:20:00.000Z",
+  };
+  state.runs = [latestFailure, ...state.runs];
+  state.conversationDetails[conversation.id].runs = state.runs;
+  await page.reload();
+  const notice = page.locator(".ai-run-notice");
+  await notice.filter({ hasText: latestFailure.error }).waitFor();
+  assert.equal(await notice.count(), 1);
+}
+
 (async () => {
   fs.mkdirSync(resultsPath, { recursive: true });
   const browser = await chromium.launch({ headless: true, executablePath });
@@ -515,11 +701,16 @@ async function checkPagination(page) {
         run: checkGeneration,
       },
       {
+        name: "generation-save-retry-clears-error",
+        run: checkGenerationSaveRetry,
+      },
+      {
         name: "modal-keyboard-focus-and-nesting",
         run: checkDialogs,
         viewport: { width: 390, height: 844 },
       },
       { name: "library-pagination-back-and-refresh", run: checkPagination },
+      { name: "latest-conversation-run-notice", run: checkLatestRunNotice },
     ]) {
       const context = await browser.newContext({
         viewport: test.viewport || { width: 1440, height: 1000 },
@@ -529,7 +720,39 @@ async function checkPagination(page) {
       page.setDefaultTimeout(15000);
       const state = {};
       const pageErrors = [];
+      const diagnostics = {
+        consoleErrors: [],
+        failedRequests: [],
+        scriptErrors: [],
+      };
       page.on("pageerror", (error) => pageErrors.push(error.message));
+      page.on("console", (message) => {
+        if (message.type() === "error")
+          diagnostics.consoleErrors.push(message.text());
+      });
+      page.on("requestfailed", (request) => {
+        const error = request.failure()?.errorText || "unknown";
+        if (
+          /\/api\/v1\//.test(new URL(request.url()).pathname) &&
+          /BLOCKED_BY_CLIENT/i.test(error)
+        )
+          return;
+        diagnostics.failedRequests.push({
+          url: request.url(),
+          method: request.method(),
+          error,
+        });
+      });
+      page.on("response", (response) => {
+        if (
+          response.request().resourceType() === "script" &&
+          response.status() >= 400
+        )
+          diagnostics.scriptErrors.push({
+            url: response.url(),
+            status: response.status(),
+          });
+      });
       await installFixture(page, state);
       try {
         await test.run(page, state);
@@ -570,6 +793,7 @@ async function checkPagination(page) {
             .catch(() => null),
           unexpected: state.unexpected,
           pageErrors,
+          diagnostics,
         });
         process.exitCode = 1;
       } finally {
