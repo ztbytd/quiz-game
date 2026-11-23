@@ -66,6 +66,12 @@ pg_restore --list /var/backups/zhixu/对应文件.dump
 
 ## 检索入口范围更新
 
-当前静态前端为 `db533effbe4df752a356fc672a1789cf9d1ec200`，移除顶部全局搜索及全站检索快捷键，保留题库等页面的局部搜索。39 个静态文件逐一核对哈希，原前端保留在 `/var/www/.quiz-before-db533effbe4d`。后台仍为 `729fe54`，API、Nginx、Caddy、PostgreSQL 均正常运行，没有重启后台或迁移数据库。
+静态前端 `db533effbe4df752a356fc672a1789cf9d1ec200` 移除顶部全局搜索及全站检索快捷键，保留题库等页面的局部搜索。39 个静态文件逐一核对哈希，原前端保留在 `/var/www/.quiz-before-db533effbe4d`。后台仍为 `729fe54`，API、Nginx、Caddy、PostgreSQL 均正常运行，没有重启后台或迁移数据库。
 
 严格 HTTPS 的线上版本接口与健康检查通过。隔离 Chromium/WebKit 各 2 组检索专项通过，覆盖手机、电脑、普通练习、模拟面试和题库检索；API 请求均由夹具处理。验证范围见 [检索入口调整](search-scope.md)。已有 PWA 用户刷新后点击「保存并更新」加载新版。
+
+## AI 输入框回缩更新
+
+当前前端为 `b5895e6e3b9d06d9621af2e37bfaef8cfbe07117`，修复长文本发送后空框不回缩，并补上长草稿首次挂载和会话切换后的高度计算。39 个文件哈希逐项一致，上一版保留在 `/var/www/.quiz-before-b5895e6e3b9d`。后台仍为 `729fe54`，所有服务正常，未重启后台或迁移数据。
+
+线上严格 HTTPS 的版本和健康接口通过，Chromium/WebKit 输入框专项各 8/8 通过，覆盖手机和电脑。连续发送、失败保留和草稿恢复的测试范围见 [输入框回缩修复](composer-resize-fix.md)。
