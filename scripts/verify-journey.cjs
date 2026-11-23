@@ -213,16 +213,15 @@ function errorsFor(p) {
         await page.locator(".backup-message").waitFor();
       },
     );
-    await step("keyboard search shortcut and install dialog", async () => {
-      await page.keyboard.press("Control+k");
-      assert.equal(
-        await page
-          .getByLabel("搜索题目与知识点")
-          .evaluate((e) => document.activeElement === e),
-        true,
-      );
-      await page.getByLabel("搜索题目与知识点").fill("AbortController");
-      await page.keyboard.press("Enter");
+    await step("library-scoped search and install dialog", async () => {
+      assert.equal(await page.locator(".topbar [role=search]").count(), 0);
+      await page
+        .locator(".side-nav")
+        .getByRole("link", { name: "专题题库", exact: true })
+        .click();
+      await page
+        .getByRole("searchbox", { name: "搜索题目和解析" })
+        .fill("AbortController");
       await page.locator(".question-result").first().waitFor();
       await page
         .getByRole("button", { name: "添加到主屏幕", exact: true })

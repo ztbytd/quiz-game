@@ -1,6 +1,6 @@
 // UI regressions use fresh browser contexts and intercept every API request.
 // No credentials, server records, or paid model calls are used by this script.
-const { chromium } = require("playwright");
+const { chromium, webkit } = require("playwright");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -18,6 +18,9 @@ const url = (route) => site.href + "#" + route;
 const chrome = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const executablePath =
   process.env.CHROME_PATH || (fs.existsSync(chrome) ? chrome : undefined);
+const engine = process.argv.includes("--webkit") ? "webkit" : "chromium";
+const filter =
+  process.argv.find((arg) => arg.startsWith("--filter="))?.slice(9) || "";
 const [weakQuestion, bookmarkedQuestion] = bank.questions.filter(
   (question) => question.kind === "oral" && question.id.startsWith("oral:"),
 );
@@ -569,6 +572,79 @@ async function checkGenerationSaveRetry(page, state) {
     .waitFor();
 }
 
+async function checkSearchScope(page, state) {
+  await page.goto(url("/"));
+  await page.locator(".daily-hero").waitFor();
+  assert.equal(await page.locator(".topbar [role=search]").count(), 0);
+  assert.equal(await page.locator("#global-search").count(), 0);
+
+  for (const route of [
+    "/practice?question=" + encodeURIComponent(weakQuestion.id),
+    "/practice?mode=mock",
+  ]) {
+    state.step = route;
+    await page.goto(url(route));
+    const response = page.getByRole("textbox", { name: "先写下你的回答" });
+    const draft = "先把当前问题的判断、原理和例子写完整。";
+    await response.fill(draft);
+    const before = {
+      url: page.url(),
+      prompt: await page.locator(".question-prompt").innerText(),
+    };
+    assert.equal(await page.getByRole("searchbox").count(), 0);
+    assert.equal(await page.locator(".topbar [role=search]").count(), 0);
+
+    for (const modifier of ["ctrlKey", "metaKey"]) {
+      await response.focus();
+      // Dispatch page events so the browser's address-bar shortcut is not
+      // mistaken for an application focus or navigation regression.
+      const prevented = await response.evaluate((element, key) => {
+        const event = new KeyboardEvent("keydown", {
+          key: "k",
+          code: "KeyK",
+          [key]: true,
+          bubbles: true,
+          cancelable: true,
+        });
+        element.dispatchEvent(event);
+        return event.defaultPrevented;
+      }, modifier);
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      assert.equal(
+        prevented,
+        false,
+        "The app must not claim a global search shortcut",
+      );
+      assert.equal(page.url(), before.url);
+      assert.equal(
+        await page.locator(".question-prompt").innerText(),
+        before.prompt,
+      );
+      assert.equal(await response.inputValue(), draft);
+      assert.equal(
+        await response.evaluate(
+          (element) => document.activeElement === element,
+        ),
+        true,
+        "Search shortcuts must not take focus away from an unfinished answer",
+      );
+    }
+    await page.keyboard.insertText("继续补充边界条件。");
+    assert.equal(await response.inputValue(), draft + "继续补充边界条件。");
+    assert.equal(await response.isEditable(), true);
+    assert.equal(await page.locator(".reveal-button").isEnabled(), true);
+  }
+
+  state.step = "library-local-search";
+  await page.goto(url("/library"));
+  const search = page.getByRole("searchbox", { name: "搜索题目和解析" });
+  await search.fill("AbortController");
+  await page.locator(".question-result").first().waitFor();
+  assert.equal(routeQuery(page.url()).get("q"), "AbortController");
+  assert.ok(await page.locator(".question-result").count());
+  assert.equal(await page.locator(".topbar [role=search]").count(), 0);
+}
+
 async function checkPagination(page) {
   await page.goto(url("/library"));
   await page.getByRole("searchbox", { name: "搜索题目和解析" }).fill("请求");
@@ -687,7 +763,10 @@ async function checkLatestRunNotice(page, state) {
 
 (async () => {
   fs.mkdirSync(resultsPath, { recursive: true });
-  const browser = await chromium.launch({ headless: true, executablePath });
+  const browser = await (engine === "webkit" ? webkit : chromium).launch({
+    headless: true,
+    ...(engine === "chromium" ? { executablePath } : {}),
+  });
   const results = [];
   try {
     for (const test of [
@@ -709,9 +788,18 @@ async function checkLatestRunNotice(page, state) {
         run: checkDialogs,
         viewport: { width: 390, height: 844 },
       },
+      {
+        name: "search-scoped-to-library-preserves-practice",
+        run: checkSearchScope,
+      },
+      {
+        name: "mobile-search-scoped-to-library-preserves-practice",
+        run: checkSearchScope,
+        viewport: { width: 390, height: 844 },
+      },
       { name: "library-pagination-back-and-refresh", run: checkPagination },
       { name: "latest-conversation-run-notice", run: checkLatestRunNotice },
-    ]) {
+    ].filter((test) => !filter || test.name.includes(filter))) {
       const context = await browser.newContext({
         viewport: test.viewport || { width: 1440, height: 1000 },
         serviceWorkers: "block",
@@ -803,14 +891,23 @@ async function checkLatestRunNotice(page, state) {
   } finally {
     await browser.close();
   }
+  assert.ok(
+    results.length,
+    "The requested UI regression filter must match at least one test",
+  );
   const report = {
     ok: results.every((result) => result.ok),
     base: site.href,
+    browser: engine,
+    filter,
     mockedApi: true,
     results,
   };
   fs.writeFileSync(
-    path.join(resultsPath, "ui-regressions.json"),
+    path.join(
+      resultsPath,
+      `ui-regressions${engine === "webkit" ? "-webkit" : ""}${filter ? "-filtered" : ""}.json`,
+    ),
     JSON.stringify(report, null, 2),
   );
   console.log(JSON.stringify(report));

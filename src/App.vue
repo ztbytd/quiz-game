@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { useRegisterSW } from "virtual:pwa-register/vue";
 import AppIcon from "./components/AppIcon.vue";
 import { useLearningStore } from "./stores/learning";
@@ -8,14 +8,9 @@ import { syncContent } from "./data/content";
 import { useAiStore } from "./stores/ai";
 
 const appBase = import.meta.env.BASE_URL;
-const shortcutLabel = /Mac|iPhone|iPad/.test(navigator.platform)
-  ? "⌘ K"
-  : "Ctrl K";
 const route = useRoute(),
-  router = useRouter(),
   learning = useLearningStore();
-const search = ref(""),
-  online = ref(navigator.onLine),
+const online = ref(navigator.onLine),
   fatal = ref("");
 const installHelp = ref<HTMLDialogElement | null>(null);
 interface InstallPrompt extends Event {
@@ -62,12 +57,6 @@ function active(to: string) {
         (to === "/ai" && route.path.startsWith("/ai/")) ||
         (to === "/library" && route.path.startsWith("/topics/"));
 }
-function find() {
-  router.push({
-    path: "/library",
-    query: search.value.trim() ? { q: search.value.trim() } : {},
-  });
-}
 function connection() {
   online.value = navigator.onLine;
 }
@@ -85,12 +74,6 @@ async function install() {
     await installEvent.value.userChoice;
     installEvent.value = null;
   } else installHelp.value?.showModal();
-}
-function shortcut(event: KeyboardEvent) {
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-    event.preventDefault();
-    document.getElementById("global-search")?.focus();
-  }
 }
 async function update() {
   try {
@@ -120,7 +103,6 @@ onMounted(async () => {
   addEventListener("offline", connection);
   addEventListener("beforeinstallprompt", captureInstall);
   addEventListener("appinstalled", markInstalled);
-  addEventListener("keydown", shortcut);
   try {
     await learning.init();
     void syncContent().catch(() => {});
@@ -134,7 +116,6 @@ onUnmounted(() => {
   removeEventListener("offline", connection);
   removeEventListener("beforeinstallprompt", captureInstall);
   removeEventListener("appinstalled", markInstalled);
-  removeEventListener("keydown", shortcut);
 });
 </script>
 <template>
@@ -201,14 +182,6 @@ onUnmounted(() => {
           >我的学习空间 <span>/</span>
           <strong>{{ route.meta.title }}</strong></span
         >
-        <form class="global-search" role="search" @submit.prevent="find">
-          <AppIcon name="search" :size="18" /><input
-            id="global-search"
-            v-model="search"
-            aria-label="搜索题目与知识点"
-            placeholder="搜索题目、知识点…"
-          /><kbd>{{ shortcutLabel }}</kbd>
-        </form>
         <div class="topbar-right">
           <span class="date-label">{{ today }}</span><RouterLink
             to="/profile"
