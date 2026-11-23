@@ -5,6 +5,7 @@ import {
   onMounted,
   onBeforeUnmount,
   ref,
+  useId,
   watch,
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -40,6 +41,8 @@ const text = ref(""),
   newContent = ref(false),
   copied = ref(""),
   savedNote = ref("");
+const authFormId = useId();
+const passwordVisible = ref(false);
 const transcript = ref<HTMLElement>(),
   input = ref<HTMLTextAreaElement>(),
   accountOpen = ref(false),
@@ -308,14 +311,40 @@ watch(
     if (!value && ai.current) ai.newChat();
   },
 );
-async function login() {
+function readAuthForm(form: HTMLFormElement) {
+  // Read the native values too: password managers need not dispatch input events.
+  const values = new FormData(form);
+  loginName.value = String(values.get("username") ?? "").trim();
+  password.value = String(values.get("password") ?? "");
+  if (registering.value)
+    invitation.value = String(values.get("invitation") ?? "").trim();
+}
+function togglePassword(event: Event) {
+  const form = (event.currentTarget as HTMLButtonElement).form;
+  if (form) readAuthForm(form);
+  passwordVisible.value = !passwordVisible.value;
+}
+function toggleRegistration(event: Event) {
+  const form = (event.currentTarget as HTMLButtonElement).form;
+  if (form) readAuthForm(form);
+  registering.value = !registering.value;
+  passwordVisible.value = false;
+  ai.error = "";
+}
+async function login(event: Event) {
+  if (ai.busy) return;
+  readAuthForm(event.currentTarget as HTMLFormElement);
   await ai.login(
     loginName.value,
     password.value,
     registering.value ? invitation.value : undefined,
   );
-  password.value = "";
-  if (ai.user && route.params.id) await ai.open(String(route.params.id));
+  if (ai.user) {
+    password.value = "";
+    invitation.value = "";
+    passwordVisible.value = false;
+    if (route.params.id) await ai.open(String(route.params.id));
+  }
 }
 async function logout() {
   try {
@@ -615,27 +644,84 @@ onBeforeUnmount(() => {
         <label
           >用户名<input
             v-model="loginName"
+            :id="`${authFormId}-username`"
+            name="username"
             autocomplete="username"
+            autocapitalize="none"
+            autocorrect="off"
+            :spellcheck="false"
+            enterkeyhint="next"
             required
-            maxlength="80" /></label
-        ><label
-          >密码<input
-            v-model="password"
-            type="password"
-            :autocomplete="registering ? 'new-password' : 'current-password'"
+            :minlength="registering ? 2 : 1"
+            maxlength="80"
+        /></label>
+        <div class="ai-auth-field">
+          <label :for="`${authFormId}-password`">密码</label>
+          <div class="ai-password-field">
+            <input
+              v-model="password"
+              :id="`${authFormId}-password`"
+              name="password"
+              :type="passwordVisible ? 'text' : 'password'"
+              :autocomplete="registering ? 'new-password' : 'current-password'"
+              autocapitalize="none"
+              autocorrect="off"
+              :spellcheck="false"
+              :enterkeyhint="registering ? 'next' : 'go'"
+              :aria-describedby="
+                registering ? `${authFormId}-password-hint` : undefined
+              "
+              required
+              maxlength="200"
+              :minlength="registering ? 12 : 1"
+            />
+            <button
+              type="button"
+              class="ai-password-toggle"
+              :aria-label="passwordVisible ? '隐藏密码' : '显示密码'"
+              :aria-pressed="passwordVisible"
+              :disabled="ai.busy"
+              @click="togglePassword"
+            >
+              {{ passwordVisible ? "隐藏" : "显示" }}
+            </button>
+          </div>
+          <p
+            v-if="registering"
+            :id="`${authFormId}-password-hint`"
+            class="muted small"
+          >
+            至少 12 个字符
+          </p>
+        </div>
+        <label v-if="registering"
+          >邀请码<input
+            v-model="invitation"
+            name="invitation"
             required
-            :minlength="registering ? 12 : 1" /></label
-        ><label v-if="registering"
-          >邀请码<input v-model="invitation" required autocomplete="off"
+            autocomplete="off"
+            autocapitalize="none"
+            autocorrect="off"
+            :spellcheck="false"
+            enterkeyhint="go"
+            minlength="16"
+            maxlength="160"
         /></label>
         <p v-if="ai.error" class="ai-error" role="alert">{{ ai.error }}</p>
-        <button class="button button-primary" :disabled="ai.busy">
+        <button type="submit" class="button button-primary" :disabled="ai.busy">
           {{
-            ai.busy ? "正在登录…" : registering ? "创建账号" : "登录"
+            ai.busy
+              ? registering
+                ? "正在创建…"
+                : "正在登录…"
+              : registering
+                ? "创建账号"
+                : "登录"
           }}</button><button
           type="button"
           class="ai-text-button"
-          @click="registering = !registering"
+          :disabled="ai.busy"
+          @click="toggleRegistration"
         >
           {{ registering ? "已有账号，去登录" : "使用邀请码注册" }}</button
         ><RouterLink to="/library" class="ai-auth-back"
@@ -1523,7 +1609,8 @@ onBeforeUnmount(() => {
 .ai-login h2 {
   font-size: 1rem;
 }
-.ai-login label {
+.ai-login label,
+.ai-auth-field {
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -1535,6 +1622,31 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   padding: 9px 12px;
   outline-color: #97b38c;
+  min-height: 44px;
+  font-size: 1rem;
+  color: var(--text);
+  background: #fff;
+  -webkit-text-fill-color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.ai-password-field {
+  position: relative;
+}
+.ai-password-field input {
+  padding-right: 68px;
+}
+.ai-password-toggle {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  min-width: 56px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 0.875rem;
 }
 .ai-login .ai-text-button {
   justify-content: center;
