@@ -43,6 +43,9 @@ const topics = {
   30: 'track-resume-integration',
 };
 let state = {hearts: 5, xp: 0, streak: 0, stars: {}, mistakes: {}, badges: [], run: null, returnTo: 'home'};
+// Transient dialog state: not persisted, not part of learner progress.
+let isModalOpen = false;
+let savedScrollY = 0;
 try {
   const previous = JSON.parse(localStorage.getItem(storeKey));
   if (previous && previous.stars && previous.mistakes) state = {...state, ...previous};
@@ -127,6 +130,24 @@ function renderRoute(restoring = false) {
   byId('practiceHost').hidden = !inPractice;
   byId('quizOverlay').classList.toggle('active', !!inQuiz);
   byId('victoryOverlay').classList.toggle('active', route === 'victory' && !!state.victory);
+  // Lock the page behind an open dialog; without this a touch scroll inside
+  // the card chains through to the document once the card reaches its end.
+  // Safari and some mobile browsers drop the scroll position when overflow is
+  // hidden on body, so the offset is saved and restored around the lock.
+  // These are transient UI values, deliberately kept out of `state` so they
+  // are never written to localStorage alongside learner progress.
+  const modalOpen = !!inQuiz || (route === 'victory' && !!state.victory);
+  if (modalOpen !== isModalOpen) {
+    isModalOpen = modalOpen;
+    if (modalOpen) {
+      savedScrollY = window.scrollY;
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+      if (savedScrollY) window.scrollTo(0, savedScrollY);
+      savedScrollY = 0;
+    }
+  }
   updateStats();
   if (inPractice) Practice.open(route.slice('practice/'.length), restoring);
   else if (inQuiz) renderQuestion();

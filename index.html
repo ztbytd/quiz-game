@@ -76,9 +76,15 @@ body{font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sa
 .level-node:nth-child(even) .level-label{left:auto;right:88px;text-align:right}
 
 /* ---------- Quiz overlay ---------- */
-.quiz-overlay{position:fixed;inset:0;background:rgba(24,45,42,.38);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.quiz-overlay{position:fixed;inset:0;background:rgba(24,45,42,.38);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .quiz-overlay.active{display:flex}
-.quiz-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-lg);max-width:660px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:slideUp .22s ease}
+.quiz-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-lg);max-width:660px;width:100%;max-height:90vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:var(--shadow-lg);animation:slideUp .22s ease}
+
+/* While a modal is open the page behind it must not scroll on touch devices.
+   The dialog keeps its own scrolling, so touch-action is re-enabled inside it. */
+body.modal-open{overflow:hidden}
+body.modal-open .quiz-overlay{overflow:hidden;touch-action:none}
+body.modal-open .quiz-card{touch-action:pan-y;overflow-y:auto}
 @keyframes slideUp{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
 .quiz-header{padding:14px 22px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;background:var(--card-bg);z-index:1}
 .quiz-header .progress-bar{flex:1;height:6px;background:var(--surface-sunk);border-radius:999px;overflow:hidden}
@@ -123,9 +129,10 @@ body{font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sa
 .btn-primary:disabled{background:#dde3dd;color:#8b9990;cursor:not-allowed}
 
 /* ---------- Victory ---------- */
-.victory-overlay{position:fixed;inset:0;background:rgba(24,45,42,.45);z-index:300;display:none;align-items:center;justify-content:center}
+.victory-overlay{position:fixed;inset:0;background:rgba(24,45,42,.45);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;overscroll-behavior:contain}
 .victory-overlay.active{display:flex}
-.victory-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;max-width:400px;width:90%;text-align:center;animation:bi .35s ease;box-shadow:var(--shadow-lg)}
+.victory-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;max-width:400px;width:90%;text-align:center;animation:bi .35s ease;box-shadow:var(--shadow-lg);max-height:90vh;overflow-y:auto;overscroll-behavior:contain}
+body.modal-open .victory-card{touch-action:pan-y}
 @keyframes bi{0%{transform:scale(.94);opacity:0}100%{transform:scale(1);opacity:1}}
 .victory-card .trophy{font-size:56px;margin-bottom:12px}
 .victory-card h2{font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-.01em}
