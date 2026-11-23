@@ -224,6 +224,10 @@ async function checkDrafts(page, state) {
 }
 
 async function checkWeakScope(page) {
+  // The fixture identity must finish switching learning storage before any
+  // exercise records are created in that account.
+  await page.goto(url("/ai"));
+  await page.getByRole("textbox", { name: "给 AI 发送消息" }).waitFor();
   await page.goto(
     url("/practice?question=" + encodeURIComponent(weakQuestion.id)),
   );
@@ -375,10 +379,16 @@ async function checkGeneration(page, state) {
 }
 
 async function checkDialogs(page, state) {
+  const activate = async (control) => {
+    // Establish a keyboard return target without WebKit pointer focus changes.
+    await control.focus();
+    await control.press("Enter");
+  };
   state.step = "initial-ai";
   await page.goto(url("/ai?question=" + encodeURIComponent(weakQuestion.id)));
   await page.getByRole("textbox", { name: "给 AI 发送消息" }).waitFor();
-  await page.getByRole("button", { name: "打开会话列表" }).click();
+  const historyTrigger = page.getByRole("button", { name: "打开会话列表" });
+  await activate(historyTrigger);
   const history = page.getByRole("dialog", { name: "会话列表", exact: true });
   await history.waitFor();
   assert.equal(
@@ -420,7 +430,7 @@ async function checkDialogs(page, state) {
     "打开会话列表",
   );
   assert.equal(await page.evaluate(() => document.body.style.overflow), "");
-  await page.getByRole("button", { name: "关联题目", exact: true }).click();
+  await activate(page.getByRole("button", { name: "关联题目", exact: true }));
   const material = page.getByRole("dialog", { name: "关联题目", exact: true });
   await material.waitFor();
   assert.equal(
@@ -444,7 +454,7 @@ async function checkDialogs(page, state) {
     "关联题目",
   );
   await page.getByRole("button", { name: "账号与额度" }).click();
-  await page.getByRole("button", { name: "我的笔记", exact: true }).click();
+  await activate(page.getByRole("button", { name: "我的笔记", exact: true }));
   const notes = page.getByRole("dialog", { name: "我的笔记", exact: true });
   await notes.waitFor();
   assert.equal(
@@ -464,7 +474,7 @@ async function checkDialogs(page, state) {
   state.step = "first-embedded-ai";
   await page.getByRole("button", { name: "问 AI", exact: true }).click();
   await page.getByRole("textbox", { name: "给 AI 发送消息" }).waitFor();
-  await page.getByRole("button", { name: "当前题目", exact: true }).click();
+  await activate(page.getByRole("button", { name: "当前题目", exact: true }));
   await material.waitFor();
   await page.keyboard.press("Escape");
   await material.waitFor({ state: "hidden" });
@@ -483,7 +493,7 @@ async function checkDialogs(page, state) {
   state.step = "second-embedded-ai";
   await page.getByRole("button", { name: "问 AI", exact: true }).click();
   await page.getByRole("textbox", { name: "给 AI 发送消息" }).waitFor();
-  await page.getByRole("button", { name: "当前题目", exact: true }).click();
+  await activate(page.getByRole("button", { name: "当前题目", exact: true }));
   await material.waitFor();
   await page.goto(url("/library"));
   await page.getByRole("heading", { name: "专题题库", exact: true }).waitFor();
