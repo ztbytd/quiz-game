@@ -221,6 +221,9 @@ export function createSession(
     title,
     mode,
     questionIds: queue,
+    questionSnapshots: Object.fromEntries(
+      queue.map((key) => [key, JSON.parse(JSON.stringify(known.get(key)))]),
+    ),
     index: request.question ? Math.max(0, queue.indexOf(request.question)) : 0,
     answers: {},
     optionOrders: planOptionOrders(

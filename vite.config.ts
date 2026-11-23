@@ -4,6 +4,19 @@ import { VitePWA } from "vite-plugin-pwa";
 import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
+  server: {
+    proxy: {
+      "/quiz/api": {
+        target: process.env.API_TARGET || "http://127.0.0.1:3100",
+        changeOrigin: false,
+      },
+    },
+  },
+  preview: {
+    proxy: {
+      "/quiz/api": { target: "http://127.0.0.1:3100", changeOrigin: false },
+    },
+  },
   base: "/quiz/",
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   plugins: [
@@ -47,6 +60,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallback: "index.html",
         navigateFallbackAllowlist: [/^\/quiz(?:\/|$)/],
+        navigateFallbackDenylist: [/^\/quiz\/api(?:\/|$)/],
         cleanupOutdatedCaches: true,
       },
     }),

@@ -3,6 +3,21 @@ import DashboardView from "./views/DashboardView.vue";
 export const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: "/ai/:id?",
+      component: () => import("./views/AiView.vue"),
+      meta: { title: "AI" },
+    },
+    {
+      path: "/generate",
+      component: () => import("./views/GenerationView.vue"),
+      meta: { title: "补充练习" },
+    },
+    {
+      path: "/admin",
+      component: () => import("./views/AdminView.vue"),
+      meta: { title: "题库维护" },
+    },
     { path: "/", component: DashboardView, meta: { title: "学习工作台" } },
     {
       path: "/library",
@@ -33,18 +48,6 @@ export const router = createRouter({
       path: "/resume",
       component: () => import("./views/ResumeView.vue"),
       meta: { title: "简历对照" },
-    },
-    { path: "/map", redirect: "/library" },
-    { path: "/home", redirect: "/" },
-    { path: "/quiz", redirect: "/practice?resume=1" },
-    {
-      path: "/practice/:chain",
-      redirect: (to) =>
-        to.params.chain === "resume-audit"
-          ? "/resume"
-          : String(to.params.chain).startsWith("track-")
-            ? "/library?tab=oral"
-            : `/practice?mode=oral&chain=${encodeURIComponent(String(to.params.chain))}`,
     },
     { path: "/:pathMatch(.*)*", redirect: "/" },
   ],

@@ -1,7 +1,7 @@
 {
   "name": "interview-workbench",
   "private": true,
-  "version": "2.0.0",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -11,21 +11,35 @@
     "test:browser": "node scripts/verify-browser.cjs",
     "test:practice": "node scripts/verify-practice.cjs",
     "test:e2e": "node scripts/verify-e2e.mjs",
-    "content:validate": "node scripts/validate-content.mjs"
+    "content:validate": "node scripts/validate-content.mjs",
+    "dev:api": "tsx server/index.ts",
+    "check:api": "tsc -p tsconfig.server.json --noEmit",
+    "test:api": "tsx --test server/*.test.ts",
+    "dev:all": "node scripts/start-local.cjs",
+    "test:ai-ui": "node scripts/run-ai-e2e.cjs",
+    "start:api": "node server/index.ts"
   },
   "dependencies": {
     "@ant-design/icons-vue": "7.0.1",
+    "fastify": "^5.12.8",
     "idb": "8.0.4",
+    "markdown-it": "^15.0.3",
+    "pg": "^8.23.1",
     "pinia": "^3.0.4",
     "vue": "3.5.46",
-    "vue-router": "^4.6.0"
+    "vue-router": "^4.6.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.17",
+    "@types/markdown-it": "^14.2.0",
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
     "@vitejs/plugin-vue": "6.0.11",
     "fake-indexeddb": "^6.0.0",
     "playwright": "1.65.1",
     "prettier": "3.10.1",
+    "tsx": "^4.23.15",
     "typescript": "5.9.3",
     "vite": "8.3.8",
     "vite-plugin-pwa": "2.0.0",

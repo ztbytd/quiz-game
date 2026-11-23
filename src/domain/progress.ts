@@ -1,3 +1,4 @@
+import { validQuestion } from "./content-validation";
 import type {
   Grade,
   LearningRecord,
@@ -5,13 +6,6 @@ import type {
   StudySession,
 } from "./types";
 
-export const LEGACY_QUIZ_KEY = "quiz-game.progress.v1";
-export const LEGACY_PRACTICE_KEY = "frontend-deep-review-2026-v1";
-export interface LegacyBackup {
-  quiz: string | null;
-  practice: string | null;
-  capturedAt: string;
-}
 export const emptyRecord = (): LearningRecord => ({
   status: "new",
   attempts: 0,
@@ -21,7 +15,7 @@ export const emptyRecord = (): LearningRecord => ({
   bookmarked: false,
 });
 export const emptyProgress = (): ProgressSnapshot => ({
-  version: 2,
+  version: 3,
   records: {},
   session: null,
   history: [],
@@ -162,6 +156,12 @@ function validateSession(
         return fail("选项顺序");
     }
   }
+  if (raw.questionSnapshots !== undefined) {
+    if (!object(raw.questionSnapshots)) return fail("题目版本快照");
+    for (const [id, q] of Object.entries(raw.questionSnapshots))
+      if (!raw.questionIds.includes(id) || !validQuestion(q) || q.id !== id)
+        return fail("题目版本快照");
+  }
   return structuredClone(raw) as unknown as StudySession;
 }
 
@@ -172,7 +172,7 @@ export function validateProgress(
 ): ProgressSnapshot {
   if (
     !object(raw) ||
-    raw.version !== 2 ||
+    raw.version !== 3 ||
     !object(raw.records) ||
     !object(raw.evidence) ||
     !object(raw.code) ||
@@ -220,8 +220,6 @@ export function validateProgress(
     )
       return fail("学习日历");
   }
-  if (raw.migratedAt !== undefined && !isoDate(raw.migratedAt))
-    return fail("迁移日期");
   const result = structuredClone(raw) as unknown as ProgressSnapshot;
   result.session = validateSession(raw.session, ids);
   result.history = raw.history.map((s) => {
@@ -229,174 +227,6 @@ export function validateProgress(
     if (!session) return fail("历史记录");
     return session;
   });
-  return result;
-}
-
-function parseLegacy(raw: string | null): Dict | null {
-  if (!raw) return null;
-  try {
-    const value: unknown = JSON.parse(raw);
-    return object(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-function putLegacyText(target: Record<string, string>, raw: unknown) {
-  for (const [key, value] of ownEntries(raw))
-    if (safeKey(key) && boundedString(value, 200000)) target[key] = value;
-}
-
-export function migrateLegacy(
-  backup: LegacyBackup,
-  ids: ReadonlySet<string>,
-): ProgressSnapshot {
-  const result = emptyProgress(),
-    quiz = parseLegacy(backup.quiz),
-    practice = parseLegacy(backup.practice);
-  if (!backup.quiz && !backup.practice) return result;
-  result.migratedAt = backup.capturedAt;
-  const record = (id: string) => (result.records[id] ??= emptyRecord());
-  if (quiz && integer(quiz.xp, 100000000)) result.xp = quiz.xp;
-  for (const [key, value] of ownEntries(quiz?.mistakes)) {
-    const id = "quiz:" + key;
-    if (ids.has(id) && value) {
-      Object.assign(record(id), {
-        status: "learning",
-        attempts: 1,
-        nextReviewAt: backup.capturedAt,
-      });
-    }
-  }
-  for (const [key, value] of ownEntries(practice?.grades)) {
-    const id = "oral:" + key;
-    if (ids.has(id) && (value === "ok" || value === "weak"))
-      Object.assign(record(id), {
-        status: value === "ok" ? "mastered" : "learning",
-        attempts: 1,
-        correct: value === "ok" ? 1 : 0,
-        nextReviewAt: backup.capturedAt,
-      });
-  }
-  for (const [key, value] of ownEntries(practice?.notes)) {
-    const id = "oral:" + key;
-    if (ids.has(id) && boundedString(value)) {
-      record(id).note = value;
-      record(id).draft = value;
-    }
-  }
-  putLegacyText(result.evidence, practice?.resumeEvidence);
-  putLegacyText(result.code, practice?.programs);
-  const oldQuiz = object(quiz?.run) ? quiz.run : null;
-  if (oldQuiz && Array.isArray(oldQuiz.keys)) {
-    const original = oldQuiz.keys as unknown[],
-      questionIds = original
-        .filter((x): x is string => typeof x === "string")
-        .map((x) => "quiz:" + x)
-        .filter((id) => ids.has(id));
-    if (questionIds.length) {
-      const index = original
-        .slice(0, Number(oldQuiz.index) || 0)
-        .filter((x) => typeof x === "string" && ids.has("quiz:" + x)).length;
-      const s: StudySession = {
-        id: "legacy-quiz",
-        title: "继续旧版练习",
-        mode: "quiz",
-        questionIds,
-        index: Math.min(index, questionIds.length),
-        answers: {},
-        startedAt: backup.capturedAt,
-      };
-      const id = questionIds[s.index];
-      if (id) {
-        const text = boundedString(oldQuiz.draft) ? oldQuiz.draft : "";
-        const pick =
-          typeof oldQuiz.pick === "boolean" || integer(oldQuiz.pick, 100)
-            ? oldQuiz.pick
-            : undefined;
-        s.answers[id] = { text, pick, revealed: oldQuiz.answered === true };
-        record(id).draft = text;
-      }
-      result.session = s;
-    }
-  }
-  const migrateOralSession = (
-    raw: unknown,
-    key: string,
-  ): StudySession | null => {
-    if (!object(raw) || !Array.isArray(raw.queue)) return null;
-    const original = raw.queue,
-      questionIds = original
-        .filter((x): x is string => typeof x === "string")
-        .map((x) => "oral:" + x)
-        .filter((id) => ids.has(id));
-    if (!questionIds.length) return null;
-    const index = original
-      .slice(0, Number(raw.index) || 0)
-      .filter((x) => typeof x === "string" && ids.has("oral:" + x)).length;
-    const opened =
-      typeof raw.opened === "number" && Number.isFinite(raw.opened)
-        ? new Date(raw.opened).toISOString()
-        : backup.capturedAt;
-    const s: StudySession = {
-      id: key,
-      title: boundedString(raw.title, 500) ? raw.title : "旧版口述练习",
-      mode: raw.mode === "mock" ? "mock" : "oral",
-      questionIds,
-      index: Math.min(index, questionIds.length),
-      answers: {},
-      startedAt: opened,
-    };
-    const replies = object(raw.replies) ? raw.replies : {},
-      round = object(raw.round) ? raw.round : {};
-    for (const [i, id] of questionIds.entries()) {
-      const old = id.slice(5),
-        grade =
-          round[old] === "ok"
-            ? "good"
-            : round[old] === "weak"
-              ? "again"
-              : undefined;
-      const text = boundedString(replies[old])
-        ? replies[old]
-        : result.records[id]?.draft || "";
-      s.answers[id] = {
-        text,
-        ...(grade ? { grade } : {}),
-        revealed:
-          !!grade ||
-          (s.mode !== "mock" &&
-            (i < s.index || (i === s.index && raw.reveal === true))),
-      };
-    }
-    if (s.index === s.questionIds.length) s.completedAt = backup.capturedAt;
-    return s;
-  };
-  const oral = migrateOralSession(practice?.session, "legacy-oral");
-  if (oral) {
-    if (oral.completedAt) result.history.push(oral);
-    else if (!result.session || quiz?.returnTo === "quiz") {
-      if (result.session) result.history.push(result.session);
-      result.session = oral;
-    } else result.history.push(oral);
-  }
-  const historical = [
-    practice?.mock,
-    ...ownEntries(practice?.trackMocks).map(([, v]) => v),
-  ];
-  for (const [i, old] of historical.entries()) {
-    const session = migrateOralSession(old, `legacy-mock-${i}`);
-    if (
-      session &&
-      !result.history.some(
-        (s) => s.title === session.title && s.startedAt === session.startedAt,
-      ) &&
-      !(
-        result.session?.title === session.title &&
-        result.session?.startedAt === session.startedAt
-      )
-    )
-      result.history.push(session);
-  }
   return result;
 }
 
@@ -412,21 +242,9 @@ export function parseBackup(text: string, ids: ReadonlySet<string>) {
   if (
     !object(parsed) ||
     parsed.app !== "interview-workbench" ||
-    parsed.exportVersion !== 1
+    parsed.exportVersion !== 2
   )
     return fail("备份标识");
   const progress = validateProgress(parsed.progress, ids);
-  let legacy: LegacyBackup | undefined;
-  if (parsed.legacyBackup !== undefined) {
-    const raw = parsed.legacyBackup;
-    if (
-      !object(raw) ||
-      (raw.quiz !== null && !boundedString(raw.quiz, 5_000_000)) ||
-      (raw.practice !== null && !boundedString(raw.practice, 5_000_000)) ||
-      !isoDate(raw.capturedAt)
-    )
-      return fail("旧版原始备份");
-    legacy = structuredClone(raw) as unknown as LegacyBackup;
-  }
-  return { progress, legacy };
+  return { progress };
 }

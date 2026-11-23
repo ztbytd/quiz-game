@@ -1,6 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { ProgressSnapshot } from "@/domain/types";
-import type { LegacyBackup } from "@/domain/progress";
+import { learningDatabaseName } from "./learning-storage";
 
 interface StudyDB extends DBSchema {
   state: { key: string; value: unknown };
@@ -8,18 +8,13 @@ interface StudyDB extends DBSchema {
 export interface ProgressRepository {
   load(): Promise<unknown>;
   loadState(): Promise<{ progress: unknown; revision: number }>;
-  save(
-    progress: ProgressSnapshot,
-    legacy?: LegacyBackup,
-    revision?: number,
-  ): Promise<void>;
-  legacyBackup(): Promise<LegacyBackup | undefined>;
+  save(progress: ProgressSnapshot, revision?: number): Promise<void>;
   flush(): Promise<void>;
 }
 
 /** A serialized adapter. Content and domain code do not depend on browser storage. */
 export function createProgressRepository(
-  name = "interview-workbench-v2",
+  name = learningDatabaseName(),
 ): ProgressRepository {
   let connection: Promise<IDBPDatabase<StudyDB>> | undefined;
   let tail: Promise<void> = Promise.resolve();
@@ -50,9 +45,8 @@ export function createProgressRepository(
         revision: typeof revision === "number" ? revision : 0,
       };
     },
-    save(progress, legacy, revision) {
-      const snapshot = structuredClone(progress),
-        original = legacy ? structuredClone(legacy) : undefined;
+    save(progress, revision) {
+      const snapshot = structuredClone(progress);
       const operation = tail
         .catch(() => {})
         .then(async () => {
@@ -66,16 +60,10 @@ export function createProgressRepository(
           }
           await tx.store.put(snapshot, "progress");
           await tx.store.put(revision ?? committed + 1, "revision");
-          if (original) await tx.store.put(original, "legacy-backup");
           await tx.done;
         });
       tail = operation;
       return operation;
-    },
-    async legacyBackup() {
-      await tail.catch(() => {});
-      return (await (await database()).get("state", "legacy-backup")) as
-        LegacyBackup | undefined;
     },
     flush() {
       return tail;

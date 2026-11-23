@@ -9,6 +9,8 @@ export interface AnswerDetail {
   sources?: Source[];
 }
 export interface StudyQuestion {
+  version?: number;
+  origin?: string;
   id: string;
   kind: "choice" | "boolean" | "oral";
   prompt: string;
@@ -83,6 +85,7 @@ export interface SessionAnswer {
   revealed: boolean;
 }
 export interface StudySession {
+  questionSnapshots?: Record<string, StudyQuestion>;
   id: string;
   title: string;
   mode: "quiz" | "oral" | "mock";
@@ -94,7 +97,7 @@ export interface StudySession {
   optionOrders?: Record<string, number[]>;
 }
 export interface ProgressSnapshot {
-  version: 2;
+  version: 3;
   records: Record<string, LearningRecord>;
   session: StudySession | null;
   history: StudySession[];
@@ -103,5 +106,4 @@ export interface ProgressSnapshot {
   dailyGoal: number;
   activity: Record<string, number>;
   xp: number;
-  migratedAt?: string;
 }

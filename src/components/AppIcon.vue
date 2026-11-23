@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, type Component } from "vue";
 import {
+  MessageOutlined,
+  EditOutlined,
+  SendOutlined,
   HomeOutlined,
   ReadOutlined,
   BookOutlined,
@@ -47,6 +50,9 @@ const props = withDefaults(defineProps<{ name: string; size?: number }>(), {
   size: 20,
 });
 const icons: Record<string, Component> = {
+  chat: MessageOutlined,
+  edit: EditOutlined,
+  send: SendOutlined,
   home: HomeOutlined,
   library: ReadOutlined,
   book: BookOutlined,

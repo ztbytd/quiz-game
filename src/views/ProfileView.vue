@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import {computed, ref} from 'vue';
-import {RouterLink} from 'vue-router';
-import {useLearningStore} from '@/stores/learning';
-import {bank} from '@/data/content';
-import AppIcon from '@/components/AppIcon.vue';
+import { computed, ref } from "vue";
+import { RouterLink } from "vue-router";
+import { useLearningStore } from "@/stores/learning";
+import { bank } from "@/data/content";
+import AppIcon from "@/components/AppIcon.vue";
 
 const learning = useLearningStore(),
   input = ref<HTMLInputElement | null>(null);
-const message = ref(''),
-  error = ref(''),
+const message = ref(""),
+  error = ref(""),
   busy = ref(false),
   selected = ref<File | null>(null);
 const goal = computed({
@@ -19,67 +19,75 @@ const completedSessions = computed(() =>
   learning.progress.history
     .filter((s) => s.completedAt)
     .slice()
-    .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))
+    .sort((a, b) => (b.completedAt || "").localeCompare(a.completedAt || ""))
     .slice(0, 8),
 );
-const mastery = computed(() => Math.round((learning.stats.mastered / bank.questions.length) * 100));
+const mastery = computed(() =>
+  Math.round((learning.stats.mastered / bank.questions.length) * 100),
+);
 function day(value: string) {
-  return new Date(value).toLocaleDateString('zh-CN', {month: 'long', day: 'numeric'});
+  return new Date(value).toLocaleDateString("zh-CN", {
+    month: "long",
+    day: "numeric",
+  });
 }
 function dateStamp() {
   const d = new Date();
   return [
     d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, '0'),
-    String(d.getDate()).padStart(2, '0'),
-  ].join('-');
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 async function exportBackup() {
   busy.value = true;
-  error.value = '';
-  message.value = '';
+  error.value = "";
+  message.value = "";
   try {
     const data = await learning.exportData();
-    const url = URL.createObjectURL(new Blob([data], {type: 'application/json'}));
-    const a = document.createElement('a');
+    const url = URL.createObjectURL(
+      new Blob([data], { type: "application/json" }),
+    );
+    const a = document.createElement("a");
     a.href = url;
     a.download = `interview-study-${dateStamp()}.json`;
     a.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-    message.value = '备份文件已生成，包含学习记录、笔记和当前练习。';
+    message.value = "备份文件已生成，包含学习记录、笔记和当前练习。";
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '导出失败，请稍后重试。';
+    error.value = e instanceof Error ? e.message : "导出失败，请稍后重试。";
   } finally {
     busy.value = false;
   }
 }
 function chooseFile(event: Event) {
-  error.value = '';
-  message.value = '';
+  error.value = "";
+  message.value = "";
   selected.value = null;
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
   if (file.size > 10 * 1024 * 1024) {
-    error.value = '文件超过 10 MB，请选择本应用导出的学习备份。';
+    error.value = "文件超过 10 MB，请选择本应用导出的学习备份。";
     return;
   }
   selected.value = file;
 }
 function cancelImport() {
   selected.value = null;
-  if (input.value) input.value.value = '';
+  if (input.value) input.value.value = "";
 }
 async function importBackup() {
   if (!selected.value) return;
   busy.value = true;
-  error.value = '';
-  message.value = '';
+  error.value = "";
+  message.value = "";
   try {
     await learning.importData(await selected.value.text());
-    message.value = '备份已导入，学习记录已更新。';
+    message.value = "备份已导入，学习记录已更新。";
     cancelImport();
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '文件无效，当前记录没有被替换。';
+    error.value =
+      e instanceof Error ? e.message : "文件无效，当前记录没有被替换。";
   } finally {
     busy.value = false;
   }
@@ -103,19 +111,27 @@ async function importBackup() {
     </section>
     <div class="profile-stats">
       <article class="panel">
-        <AppIcon name="check" :size="19" /><strong>{{ learning.stats.mastered }}</strong
+        <AppIcon name="check" :size="19" /><strong>{{
+          learning.stats.mastered
+        }}</strong
         ><span>已掌握问题</span>
       </article>
       <article class="panel">
-        <AppIcon name="book" :size="19" /><strong>{{ learning.stats.answered }}</strong
+        <AppIcon name="book" :size="19" /><strong>{{
+          learning.stats.answered
+        }}</strong
         ><span>已练习问题</span>
       </article>
       <article class="panel">
-        <AppIcon name="calendar" :size="19" /><strong>{{ learning.stats.studyDays }}</strong
+        <AppIcon name="calendar" :size="19" /><strong>{{
+          learning.stats.studyDays
+        }}</strong
         ><span>累计学习天数</span>
       </article>
       <article class="panel">
-        <AppIcon name="target" :size="19" /><strong>{{ learning.stats.streak }}</strong
+        <AppIcon name="target" :size="19" /><strong>{{
+          learning.stats.streak
+        }}</strong
         ><span>连续学习天数</span>
       </article>
     </div>
@@ -131,7 +147,7 @@ async function importBackup() {
             <button
               v-for="n in [5, 10, 15, 20]"
               :key="n"
-              :class="{active: goal === n}"
+              :class="{ active: goal === n }"
               :aria-pressed="goal === n"
               @click="goal = n"
             >
@@ -140,15 +156,21 @@ async function importBackup() {
           </div>
           <div class="goal-today">
             <span
-              >今天已练习 <strong>{{ learning.stats.todayCount }}</strong> 题</span
+              >今天已练习
+              <strong>{{ learning.stats.todayCount }}</strong> 题</span
             ><span>{{
               learning.stats.todayCount >= goal
-                ? '今日目标已达成'
+                ? "今日目标已达成"
                 : `还差 ${goal - learning.stats.todayCount} 题`
             }}</span>
           </div>
           <div class="goal-track">
-            <span :style="{width: Math.min(100, (learning.stats.todayCount / goal) * 100) + '%'}"></span>
+            <span
+              :style="{
+                width:
+                  Math.min(100, (learning.stats.todayCount / goal) * 100) + '%',
+              }"
+            ></span>
           </div>
         </section>
         <section class="panel history-section">
@@ -165,10 +187,18 @@ async function importBackup() {
                 <h3>{{ s.title }}</h3>
                 <p>
                   {{ s.questionIds.length }} 道题 ·
-                  {{ s.mode === 'mock' ? '模拟面试' : s.mode === 'oral' ? '专项追问' : '基础练习' }}
+                  {{
+                    s.mode === "mock"
+                      ? "模拟面试"
+                      : s.mode === "oral"
+                        ? "专项追问"
+                        : "基础练习"
+                  }}
                 </p>
               </div>
-              <time :datetime="s.completedAt">{{ day(s.completedAt || s.startedAt) }}</time>
+              <time :datetime="s.completedAt">{{
+                day(s.completedAt || s.startedAt)
+              }}</time>
             </article>
           </div>
         </section>
@@ -179,11 +209,21 @@ async function importBackup() {
             <AppIcon name="download" :size="20" />
             <h2>数据备份</h2>
           </header>
-          <p>换设备或清理浏览器前，先导出一份备份。导入后可以继续原来的学习。</p>
+          <p>
+            换设备或清理浏览器前，先导出一份备份。导入后可以继续原来的学习。
+          </p>
           <div class="backup-actions">
-            <button class="button button-primary" :disabled="busy" @click="exportBackup">
+            <button
+              class="button button-primary"
+              :disabled="busy"
+              @click="exportBackup"
+            >
               <AppIcon name="download" :size="18" />导出学习备份</button
-            ><button class="button button-quiet" :disabled="busy" @click="input?.click()">
+            ><button
+              class="button button-quiet"
+              :disabled="busy"
+              @click="input?.click()"
+            >
               <AppIcon name="upload" :size="18" />导入备份文件</button
             ><input
               ref="input"
@@ -198,16 +238,29 @@ async function importBackup() {
             <strong>{{ selected.name }}</strong>
             <p>导入将替换当前学习记录。建议先导出备份。</p>
             <div>
-              <button class="button button-primary" :disabled="busy" @click="importBackup">
-                {{ busy ? '正在导入…' : '确认导入并替换' }}</button
-              ><button class="button button-quiet" :disabled="busy" @click="cancelImport">取消</button>
+              <button
+                class="button button-primary"
+                :disabled="busy"
+                @click="importBackup"
+              >
+                {{ busy ? "正在导入…" : "确认导入并替换" }}</button><button
+                class="button button-quiet"
+                :disabled="busy"
+                @click="cancelImport"
+              >
+                取消
+              </button>
             </div>
           </div>
-          <p v-if="message" class="backup-message" role="status">{{ message }}</p>
+          <p v-if="message" class="backup-message" role="status">
+            {{ message }}
+          </p>
           <p v-if="error" class="backup-error" role="alert">{{ error }}</p>
         </section>
         <RouterLink to="/resume" class="resume-link panel"
-          ><div class="resume-link-icon"><AppIcon name="file" :size="22" /></div>
+          ><div class="resume-link-icon">
+            <AppIcon name="file" :size="22" />
+          </div>
           <div>
             <h2>简历与项目对照</h2>
           </div>
@@ -215,7 +268,7 @@ async function importBackup() {
         /></RouterLink>
         <div class="privacy-note">
           <AppIcon name="bookmark" :size="17" />
-          <p>记录存于当前浏览器，不会自动同步到其他设备。旧版学习数据会自动迁移。</p>
+          <p>记录存于当前浏览器，不会自动同步到其他设备。</p>
         </div>
       </aside>
     </div>

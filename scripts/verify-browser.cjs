@@ -94,13 +94,11 @@ const output = path.resolve("test-results");
     const backup = JSON.parse(await fs.readFile(await download.path(), "utf8"));
     assert.equal(backup.progress.dailyGoal, 20);
     assert.equal(backup.progress.records["quiz:0:0"].bookmarked, true);
-    await page
-      .getByLabel("选择学习备份文件")
-      .setInputFiles({
-        name: "invalid.json",
-        mimeType: "application/json",
-        buffer: Buffer.from("{broken"),
-      });
+    await page.getByLabel("选择学习备份文件").setInputFiles({
+      name: "invalid.json",
+      mimeType: "application/json",
+      buffer: Buffer.from("{broken"),
+    });
     await page.getByRole("button", { name: "确认导入并替换" }).click();
     await page.locator(".backup-error").waitFor();
     assert.match(
@@ -169,41 +167,8 @@ const output = path.resolve("test-results");
     });
     assert.deepEqual(errors, []);
     await context.close();
-    const migration = await browser.newContext();
-    await migration.addInitScript(() => {
-      if (!localStorage.getItem("test-seeded")) {
-        localStorage.setItem(
-          "quiz-game.progress.v1",
-          JSON.stringify({ xp: 140, mistakes: { "0:0": true } }),
-        );
-        localStorage.setItem(
-          "frontend-deep-review-2026-v1",
-          JSON.stringify({
-            notes: { "loop:0": "旧版笔记" },
-            grades: { "loop:0": "weak" },
-          }),
-        );
-        localStorage.setItem("test-seeded", "1");
-      }
-    });
-    const old = await migration.newPage();
-    await old.goto(base + "#/profile");
-    await old.locator(".goal-options").waitFor();
-    const oldDownload = old.waitForEvent("download");
-    await old.getByRole("button", { name: "导出学习备份" }).click();
-    const migrated = JSON.parse(
-      await fs.readFile(await (await oldDownload).path(), "utf8"),
-    );
-    assert.equal(migrated.progress.xp, 140);
-    assert.equal(migrated.progress.records["quiz:0:0"].status, "learning");
-    assert.equal(migrated.progress.records["oral:loop:0"].note, "旧版笔记");
-    assert.ok(migrated.legacyBackup.quiz);
-    assert.ok(
-      await old.evaluate(() => localStorage.getItem("quiz-game.progress.v1")),
-    );
-    await migration.close();
     console.log(
-      "Production browser checks passed: PWA, offline routes, persistence, migration, search, backup, 390/768/1440px layouts.",
+      "Production browser checks passed: PWA, offline routes, persistence, search, backup, 390/768/1440px layouts.",
     );
   } finally {
     await browser.close();

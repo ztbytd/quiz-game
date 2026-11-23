@@ -33,6 +33,7 @@ try {
   }
   if (!ready) throw new Error("Preview did not become ready.");
   for (const file of [
+    "scripts/verify-record-reset.cjs",
     "scripts/verify-browser.cjs",
     "scripts/verify-practice.cjs",
     "scripts/verify-quality.cjs",

@@ -1,69 +1,88 @@
 <script setup lang="ts">
-import {computed, ref} from 'vue';
-import {useRoute, RouterLink} from 'vue-router';
-import {bank, topicById, chainById} from '@/data/content';
-import {useLearningStore} from '@/stores/learning';
-import type {StudyQuestion} from '@/domain/types';
-import AppIcon from '@/components/AppIcon.vue';
+import { computed, ref } from "vue";
+import { useRoute, RouterLink } from "vue-router";
+import { bank, topicById, chainById } from "@/data/content";
+import { useLearningStore } from "@/stores/learning";
+import type { StudyQuestion } from "@/domain/types";
+import AppIcon from "@/components/AppIcon.vue";
 
 const route = useRoute(),
   learning = useLearningStore(),
-  search = ref(''),
-  editingNote = ref('');
+  search = ref(""),
+  editingNote = ref("");
 const tabs = [
-  {id: 'weak', title: '还需练习'},
-  {id: 'due', title: '到期复习'},
-  {id: 'bookmarks', title: '我的收藏'},
-  {id: 'notes', title: '学习笔记'},
+  { id: "weak", title: "还需练习" },
+  { id: "due", title: "到期复习" },
+  { id: "bookmarks", title: "我的收藏" },
+  { id: "notes", title: "学习笔记" },
 ];
-const tab = computed(() => (tabs.some((t) => t.id === route.query.tab) ? String(route.query.tab) : 'weak'));
+const tab = computed(() =>
+  tabs.some((t) => t.id === route.query.tab) ? String(route.query.tab) : "weak",
+);
 function matches(q: StudyQuestion, kind: string) {
   const r = learning.progress.records[q.id];
   if (!r) return false;
-  if (kind === 'bookmarks') return r.bookmarked;
-  if (kind === 'notes') return Boolean(r.note.trim());
-  if (kind === 'due') return Boolean(r.nextReviewAt && new Date(r.nextReviewAt).getTime() <= Date.now());
-  return r.status === 'learning';
+  if (kind === "bookmarks") return r.bookmarked;
+  if (kind === "notes") return Boolean(r.note.trim());
+  if (kind === "due")
+    return Boolean(
+      r.nextReviewAt && new Date(r.nextReviewAt).getTime() <= Date.now(),
+    );
+  return r.status === "learning";
 }
 const counts = computed(() =>
-  Object.fromEntries(tabs.map((t) => [t.id, bank.questions.filter((q) => matches(q, t.id)).length])),
+  Object.fromEntries(
+    tabs.map((t) => [
+      t.id,
+      bank.questions.filter((q) => matches(q, t.id)).length,
+    ]),
+  ),
 );
 const items = computed(() =>
   bank.questions
-    .filter((q) => matches(q, tab.value) || (tab.value === 'notes' && editingNote.value === q.id))
+    .filter(
+      (q) =>
+        matches(q, tab.value) ||
+        (tab.value === "notes" && editingNote.value === q.id),
+    )
     .filter((q) =>
       [q.prompt, learning.getRecord(q.id).note, context(q)]
-        .join(' ')
+        .join(" ")
         .toLocaleLowerCase()
         .includes(search.value.trim().toLocaleLowerCase()),
     )
     .sort((a, b) =>
-      (learning.getRecord(b.id).lastReviewedAt || '').localeCompare(
-        learning.getRecord(a.id).lastReviewedAt || '',
+      (learning.getRecord(b.id).lastReviewedAt || "").localeCompare(
+        learning.getRecord(a.id).lastReviewedAt || "",
       ),
     ),
 );
 function context(q: StudyQuestion) {
-  return q.id.startsWith('oral:')
-    ? chainById.get(q.chainId || '')?.title
-    : topicById.get(q.topicId || '')?.title;
+  return q.id.startsWith("oral:")
+    ? chainById.get(q.chainId || "")?.title
+    : topicById.get(q.topicId || "")?.title;
 }
 function link(q: StudyQuestion) {
   return {
-    path: '/practice',
-    query: q.id.startsWith('oral:')
-      ? {mode: 'oral', chain: q.chainId, question: q.id}
-      : {mode: 'quiz', topic: q.topicId, question: q.id},
+    path: "/practice",
+    query: q.id.startsWith("oral:")
+      ? { mode: "oral", chain: q.chainId, question: q.id }
+      : { mode: "quiz", topic: q.topicId, question: q.id },
   };
 }
 function date(value?: string) {
-  return value ? new Date(value).toLocaleDateString('zh-CN', {month: 'long', day: 'numeric'}) : '尚未练习';
+  return value
+    ? new Date(value).toLocaleDateString("zh-CN", {
+        month: "long",
+        day: "numeric",
+      })
+    : "尚未练习";
 }
 const emptyCopy: Record<string, [string, string]> = {
-  weak: ['暂无待巩固题目', '答题后选择「还需练习」，下次就能集中回顾。'],
-  due: ['今天没有到期的复习', '完成练习并自评后，系统会安排下一次回顾。'],
-  bookmarks: ['暂无收藏题目', '在练习页收藏题目，为自己建立一份重点清单。'],
-  notes: ['暂无笔记', '在题目旁写下自己的表达、例子和待确认的细节。'],
+  weak: ["暂无待巩固题目", "答题后选择「还需练习」，下次就能集中回顾。"],
+  due: ["今天没有到期的复习", "完成练习并自评后，系统会安排下一次回顾。"],
+  bookmarks: ["暂无收藏题目", "在练习页收藏题目，为自己建立一份重点清单。"],
+  notes: ["暂无笔记", "在题目旁写下自己的表达、例子和待确认的细节。"],
 };
 </script>
 
@@ -76,24 +95,45 @@ const emptyCopy: Record<string, [string, string]> = {
       <RouterLink
         v-if="counts.weak"
         class="button button-primary"
-        :to="{path: '/practice', query: {mode: 'review'}}"
+        :to="{ path: '/practice', query: { mode: 'review' } }"
         ><AppIcon name="book" :size="18" />开始复习</RouterLink
       >
     </header>
+    <div v-if="counts.weak" class="panel review-ai-suggestion">
+      <div>
+        <strong>按薄弱题补练</strong>
+        <p class="muted small">
+          根据你标记的 {{ counts.weak }} 道待练习题，补充机制、场景与排错题。
+        </p>
+      </div>
+      <RouterLink
+        class="button button-small"
+        :to="{
+          path: '/generate',
+          query: {
+            scope:
+              '围绕以下我已标记为还需练习的问题，生成不同场景的变式题：' +
+              items
+                .slice(0, 5)
+                .map((q) => q.prompt)
+                .join('；'),
+          },
+        }"
+        >生成补练</RouterLink
+      >
+    </div>
     <div class="review-tabs" aria-label="复习分类">
       <RouterLink
         v-for="t in tabs"
         :key="t.id"
-        :to="{path: '/review', query: {tab: t.id}}"
-        :class="{active: tab === t.id}"
+        :to="{ path: '/review', query: { tab: t.id } }"
+        :class="{ active: tab === t.id }"
         :aria-current="tab === t.id ? 'page' : undefined"
         >{{ t.title }}<span>{{ counts[t.id] }}</span></RouterLink
       >
     </div>
     <div class="review-tools">
-      <p class="muted">
-        {{ items.length }} 个问题，按最近练习排序
-      </p>
+      <p class="muted">{{ items.length }} 个问题，按最近练习排序</p>
       <label class="review-search"
         ><AppIcon name="search" :size="17" /><input
           v-model="search"
@@ -104,21 +144,34 @@ const emptyCopy: Record<string, [string, string]> = {
     </div>
     <div v-if="!items.length" class="empty-state panel">
       <div class="empty-illustration">
-        <AppIcon :name="tab === 'bookmarks' ? 'bookmark' : tab === 'notes' ? 'file' : 'book'" :size="32" />
+        <AppIcon
+          :name="
+            tab === 'bookmarks' ? 'bookmark' : tab === 'notes' ? 'file' : 'book'
+          "
+          :size="32"
+        />
       </div>
-      <h2>{{ search ? '没有匹配的问题' : emptyCopy[tab][0] }}</h2>
-      <p>{{ search ? '换一个关键词，或清除搜索后查看全部。' : emptyCopy[tab][1] }}</p>
-      <button v-if="search" class="button button-quiet" @click="search = ''">清除搜索</button
-      ><RouterLink v-else class="button button-primary" to="/library">浏览题库</RouterLink>
+      <h2>{{ search ? "没有匹配的问题" : emptyCopy[tab][0] }}</h2>
+      <p>
+        {{
+          search ? "换一个关键词，或清除搜索后查看全部。" : emptyCopy[tab][1]
+        }}
+      </p>
+      <button v-if="search" class="button button-quiet" @click="search = ''">
+        清除搜索</button
+      ><RouterLink v-else class="button button-primary" to="/library"
+        >浏览题库</RouterLink
+      >
     </div>
     <div v-else class="review-list">
       <article v-for="q in items" :key="q.id" class="review-item panel">
         <div class="item-top">
-          <span class="item-context">{{ context(q) }}</span
-          ><button
+          <span class="item-context">{{ context(q) }}</span><button
             class="bookmark-button"
-            :class="{selected: learning.getRecord(q.id).bookmarked}"
-            :aria-label="learning.getRecord(q.id).bookmarked ? '取消收藏' : '收藏题目'"
+            :class="{ selected: learning.getRecord(q.id).bookmarked }"
+            :aria-label="
+              learning.getRecord(q.id).bookmarked ? '取消收藏' : '收藏题目'
+            "
             :aria-pressed="learning.getRecord(q.id).bookmarked"
             @click="learning.toggleBookmark(q.id)"
           >
@@ -136,7 +189,12 @@ const emptyCopy: Record<string, [string, string]> = {
             rows="4"
             @focus="editingNote = q.id"
             @blur="editingNote = ''"
-            @input="learning.setNote(q.id, ($event.target as HTMLTextAreaElement).value)"
+            @input="
+              learning.setNote(
+                q.id,
+                ($event.target as HTMLTextAreaElement).value,
+              )
+            "
           />
         </label>
         <p v-else-if="learning.getRecord(q.id).note" class="note-preview">
@@ -148,7 +206,8 @@ const emptyCopy: Record<string, [string, string]> = {
             ><span>{{ date(learning.getRecord(q.id).lastReviewedAt) }}</span>
           </div>
           <RouterLink :to="link(q)"
-            >{{ tab === 'notes' ? '回到题目' : '再练一次' }}<AppIcon name="chevron-right" :size="16"
+            >{{ tab === "notes" ? "回到题目" : "再练一次"
+            }}<AppIcon name="chevron-right" :size="16"
           /></RouterLink>
         </div>
       </article>
@@ -157,6 +216,17 @@ const emptyCopy: Record<string, [string, string]> = {
 </template>
 
 <style scoped>
+.review-ai-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.review-ai-suggestion .button {
+  flex-shrink: 0;
+}
 .review-heading {
   display: flex;
   justify-content: space-between;

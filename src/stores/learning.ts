@@ -1,19 +1,21 @@
 import { computed, onScopeDispose, ref } from "vue";
 import { defineStore } from "pinia";
-import { questionById } from "@/data/content";
+import {
+  questionById,
+  knownQuestionIds,
+  restoreContent,
+  addPersonal,
+  validateBank,
+} from "@/data/content";
 import type { Grade, ProgressSnapshot, StudySession } from "@/domain/types";
 import {
   emptyProgress,
   emptyRecord,
   localDateKey,
-  migrateLegacy,
   parseBackup,
   progressStats,
   reviewRecord,
   validateProgress,
-  LEGACY_QUIZ_KEY,
-  LEGACY_PRACTICE_KEY,
-  type LegacyBackup,
 } from "@/domain/progress";
 import {
   acquireWriterLease,
@@ -21,7 +23,12 @@ import {
   type WriterLease,
 } from "@/infrastructure/progress-repository";
 
-export const PENDING_JOURNAL_KEY = "interview-workbench.v2.pending";
+import {
+  PENDING_JOURNAL_KEY,
+  learningDatabaseName,
+  resetOldLearningRecords,
+} from "../infrastructure/learning-storage";
+export { PENDING_JOURNAL_KEY } from "../infrastructure/learning-storage";
 interface PendingJournal {
   version: 1;
   revision: number;
@@ -32,13 +39,22 @@ export const useLearningStore = defineStore("learning", () => {
   const progress = ref(emptyProgress()),
     ready = ref(false),
     persistError = ref(""),
-    migrationNotice = ref("");
+    storageNotice = ref("");
   const readOnly = ref(false),
     readonlyReason = ref("");
-  const ids = new Set(questionById.keys()),
-    repository = createProgressRepository();
+  const ids = knownQuestionIds;
+  const accountId = ref(
+    typeof localStorage === "undefined"
+      ? ""
+      : localStorage.getItem("zhixu-active-account") || "",
+  );
+  let repository = createProgressRepository(
+    learningDatabaseName(accountId.value),
+  );
+  let pendingJournalKey = accountId.value
+    ? `${PENDING_JOURNAL_KEY}:${accountId.value}`
+    : PENDING_JOURNAL_KEY;
   let initializing: Promise<void> | undefined,
-    backup: LegacyBackup | undefined,
     importing = false;
   let unreadableStoredData: unknown,
     unreadableJournal: string | undefined,
@@ -89,7 +105,7 @@ export const useLearningStore = defineStore("learning", () => {
   }
   const nextRevision = () => (revision = Math.max(revision + 1, Date.now()));
   function readJournal(): PendingJournal | undefined {
-    const raw = localStorage.getItem(PENDING_JOURNAL_KEY);
+    const raw = localStorage.getItem(pendingJournalKey);
     if (!raw) return;
     try {
       const value = JSON.parse(raw) as PendingJournal;
@@ -110,11 +126,11 @@ export const useLearningStore = defineStore("learning", () => {
     }
   }
   function clearJournal(committedRevision: number) {
-    const raw = localStorage.getItem(PENDING_JOURNAL_KEY);
+    const raw = localStorage.getItem(pendingJournalKey);
     if (!raw) return;
     const pending = JSON.parse(raw) as PendingJournal;
     if (pending.version === 1 && pending.revision <= committedRevision)
-      localStorage.removeItem(PENDING_JOURNAL_KEY);
+      localStorage.removeItem(pendingJournalKey);
   }
   function persist() {
     if (recoveryRequired || readOnly.value) return;
@@ -122,7 +138,7 @@ export const useLearningStore = defineStore("learning", () => {
       current = nextRevision();
     try {
       localStorage.setItem(
-        PENDING_JOURNAL_KEY,
+        pendingJournalKey,
         JSON.stringify({
           version: 1,
           revision: current,
@@ -134,31 +150,17 @@ export const useLearningStore = defineStore("learning", () => {
       return;
     }
     void repository
-      .save(snapshot, undefined, current)
+      .save(snapshot, current)
       .then(() => {
         clearJournal(current);
         if (current === revision) persistError.value = "";
       })
       .catch(report);
   }
-  function legacy(): LegacyBackup {
-    try {
-      return {
-        quiz: localStorage.getItem(LEGACY_QUIZ_KEY),
-        practice: localStorage.getItem(LEGACY_PRACTICE_KEY),
-        capturedAt: new Date().toISOString(),
-      };
-    } catch {
-      return {
-        quiz: null,
-        practice: null,
-        capturedAt: new Date().toISOString(),
-      };
-    }
-  }
   async function init() {
     if (initializing) return initializing;
     initializing = (async () => {
+      await restoreContent().catch(() => {});
       lease =
         typeof window === "undefined"
           ? { writable: true, release() {} }
@@ -169,6 +171,7 @@ export const useLearningStore = defineStore("learning", () => {
           ? "已有窗口正在编辑，请关闭原窗口后刷新。"
           : "当前浏览器不支持安全的多窗口保存，请使用新版 Chrome、Edge 或 Safari。";
       try {
+        if (!readOnly.value) await resetOldLearningRecords();
         const stored = await repository.loadState();
         revision = stored.revision;
         let pending: PendingJournal | undefined;
@@ -183,9 +186,9 @@ export const useLearningStore = defineStore("learning", () => {
           progress.value = pending.progress;
           revision = pending.revision;
           if (!readOnly.value) {
-            await repository.save(copy(), undefined, pending.revision);
+            await repository.save(copy(), pending.revision);
             clearJournal(pending.revision);
-            migrationNotice.value = "已恢复上次关闭页面前的最新学习记录。";
+            storageNotice.value = "已恢复上次关闭页面前的最新学习记录。";
           }
         } else if (stored.progress) {
           try {
@@ -198,21 +201,16 @@ export const useLearningStore = defineStore("learning", () => {
               "本机记录格式无法识别，已停止覆盖。请先导出备份，再导入有效备份恢复。当前输入仍可随备份导出。";
           }
         } else {
-          backup = legacy();
-          progress.value = migrateLegacy(backup, ids);
+          progress.value = emptyProgress();
           if (!readOnly.value && !recoveryRequired)
-            await repository.save(copy(), backup, nextRevision());
-          if (backup.quiz || backup.practice)
-            migrationNotice.value =
-              "已保留并迁移旧版错题、笔记和练习记录。旧版原始数据也包含在导出备份中。";
+            await repository.save(copy(), nextRevision());
         }
       } catch (error) {
         if (
           !Object.keys(progress.value.records).length &&
           !progress.value.session
         ) {
-          backup = legacy();
-          if (!revision) progress.value = migrateLegacy(backup, ids);
+          if (!revision) progress.value = emptyProgress();
         }
         report(error);
       } finally {
@@ -300,15 +298,15 @@ export const useLearningStore = defineStore("learning", () => {
   }
   async function exportData() {
     await repository.flush().catch(() => {});
-    const legacyBackup =
-      backup || (await repository.legacyBackup().catch(() => undefined));
     return JSON.stringify(
       {
         app: "interview-workbench",
-        exportVersion: 1,
+        exportVersion: 2,
+        personalQuestions: [...questionById.values()].filter(
+          (q) => q.origin === "ai-private",
+        ),
         exportedAt: new Date().toISOString(),
         progress: copy(),
-        ...(legacyBackup ? { legacyBackup } : {}),
         ...(unreadableStoredData !== undefined ? { unreadableStoredData } : {}),
         ...(unreadableJournal ? { unreadableJournal } : {}),
       },
@@ -317,25 +315,54 @@ export const useLearningStore = defineStore("learning", () => {
     );
   }
   async function importData(text: string) {
-    const validated = parseBackup(text, ids);
+    if (text.length > 12_000_000)
+      throw new Error("备份文件过大，请使用应用导出的 JSON 文件");
+    const payload = JSON.parse(text);
+    const importIds = new Set(ids);
+    if (Array.isArray(payload.personalQuestions)) {
+      validateBank({
+        schemaVersion: 1,
+        questions: payload.personalQuestions,
+        topics: [],
+        groups: [],
+        chains: [],
+      });
+      for (const q of payload.personalQuestions) importIds.add(q.id);
+    }
+    const validated = parseBackup(text, importIds);
     if (!editable())
       throw new Error(readOnly.value ? readonlyReason.value : "正在导入备份");
     importing = true;
     try {
       const current = nextRevision();
-      await repository.save(validated.progress, validated.legacy, current);
+      if (Array.isArray(payload.personalQuestions)) {
+        const questions = payload.personalQuestions.map((q: any) => ({
+          ...q,
+          origin: "ai-private",
+        }));
+        const { cachePersonal } =
+          await import("../infrastructure/content-repository");
+        await cachePersonal(questions);
+      }
+      await repository.save(validated.progress, current);
+      if (Array.isArray(payload.personalQuestions))
+        addPersonal(
+          payload.personalQuestions.map((q: any) => ({
+            ...q,
+            origin: "ai-private",
+          })),
+        );
       progress.value = validated.progress;
       recoveryRequired = false;
       unreadableStoredData = undefined;
       unreadableJournal = undefined;
       try {
-        localStorage.removeItem(PENDING_JOURNAL_KEY);
+        localStorage.removeItem(pendingJournalKey);
       } catch {
         /* IDB revision protects against stale recovery. */
       }
-      if (validated.legacy) backup = validated.legacy;
       persistError.value = "";
-      migrationNotice.value = "备份已导入，学习记录已恢复。";
+      storageNotice.value = "备份已导入，学习记录已恢复。";
     } catch (error) {
       report(error);
       throw error;
@@ -343,12 +370,55 @@ export const useLearningStore = defineStore("learning", () => {
       importing = false;
     }
   }
+  async function switchAccount(next: string) {
+    if (accountId.value === next) return;
+    await repository.flush();
+    const { cachedContent } =
+      await import("../infrastructure/content-repository");
+    const cached = await cachedContent(next || "guest");
+    if (cached.personal) addPersonal(cached.personal);
+    const nextRepo = createProgressRepository(learningDatabaseName(next));
+    const state = await nextRepo.loadState();
+    const beforeJournal = pendingJournalKey;
+    pendingJournalKey = next
+      ? `${PENDING_JOURNAL_KEY}:${next}`
+      : PENDING_JOURNAL_KEY;
+    let pending: PendingJournal | undefined;
+    try {
+      pending = readJournal();
+    } catch (e) {
+      pendingJournalKey = beforeJournal;
+      throw e;
+    }
+    const nextProgress =
+      pending && pending.revision > state.revision
+        ? pending.progress
+        : state.progress
+          ? validateProgress(state.progress, ids)
+          : emptyProgress();
+    repository = nextRepo;
+    revision = Math.max(state.revision, pending?.revision || 0);
+    unreadableStoredData = undefined;
+    unreadableJournal = undefined;
+    recoveryRequired = false;
+    persistError.value = "";
+    accountId.value = next;
+    progress.value = nextProgress;
+    if (next) localStorage.setItem("zhixu-active-account", next);
+    else localStorage.removeItem("zhixu-active-account");
+    if (pending && !readOnly.value) {
+      await repository.save(copy(), revision);
+      clearJournal(revision);
+    }
+  }
   return {
+    accountId,
+    switchAccount,
     progress,
     records,
     ready,
     persistError,
-    migrationNotice,
+    storageNotice,
     readOnly,
     readonlyReason,
     stats,

@@ -4,6 +4,8 @@ import { useRoute, useRouter } from "vue-router";
 import { useRegisterSW } from "virtual:pwa-register/vue";
 import AppIcon from "./components/AppIcon.vue";
 import { useLearningStore } from "./stores/learning";
+import { syncContent } from "./data/content";
+import { useAiStore } from "./stores/ai";
 
 const appBase = import.meta.env.BASE_URL;
 const route = useRoute(),
@@ -25,14 +27,26 @@ const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW({
 const nav = [
   { to: "/", label: "学习工作台", icon: "home" },
   { to: "/library", label: "专题题库", icon: "library" },
+  { to: "/ai", label: "AI", icon: "chat" },
   { to: "/review", label: "复习清单", icon: "review" },
   { to: "/practice?mode=mock", label: "模拟面试", icon: "experiment" },
 ];
 const mobileNav = [
-  ...nav.slice(0, 3),
-  { to: "/profile", label: "我的", icon: "profile" },
+  ...nav.map((item) => ({
+    ...item,
+    label:
+      (
+        {
+          学习工作台: "学习",
+          专题题库: "题库",
+          复习清单: "复习",
+          模拟面试: "模拟",
+        } as Record<string, string>
+      )[item.label] || item.label,
+  })),
 ];
 const focused = computed(() => route.path === "/practice");
+const aiPage = computed(() => route.path.startsWith("/ai"));
 const today = new Intl.DateTimeFormat("zh-CN", {
   month: "long",
   day: "numeric",
@@ -41,7 +55,9 @@ const today = new Intl.DateTimeFormat("zh-CN", {
 function active(to: string) {
   return to.includes("?")
     ? route.path === "/practice" && route.query.mode === "mock"
-    : route.path === to || (to === '/library' && route.path.startsWith('/topics/'));
+    : route.path === to ||
+        (to === "/ai" && route.path.startsWith("/ai/")) ||
+        (to === "/library" && route.path.startsWith("/topics/"));
 }
 function find() {
   router.push({
@@ -104,6 +120,8 @@ onMounted(async () => {
   addEventListener("keydown", shortcut);
   try {
     await learning.init();
+    void syncContent().catch(() => {});
+    void useAiStore().init();
   } catch {
     fatal.value = "读取学习记录时出现问题，请刷新重试。原有记录没有被清除。";
   }
@@ -118,7 +136,7 @@ onUnmounted(() => {
 </script>
 <template>
   <a class="skip-link" href="#main-content">跳转到内容</a>
-  <div class="app-shell" :class="{ 'is-focused': focused }">
+  <div class="app-shell" :class="{ 'is-focused': focused, 'is-ai': aiPage }">
     <aside class="sidebar">
       <RouterLink class="brand" to="/" aria-label="知序，返回学习工作台"
         ><img :src="`${appBase}app-icon.svg`" alt="" width="38" height="38" />
@@ -149,6 +167,7 @@ onUnmounted(() => {
           ><AppIcon name="history" /><span>学习记录</span></RouterLink
         >
       </nav>
+      <div v-if="aiPage" id="ai-history-slot"></div>
       <div class="sidebar-bottom">
         <div class="install-card">
           <div class="install-icon"><AppIcon name="download" :size="22" /></div>

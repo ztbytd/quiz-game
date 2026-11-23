@@ -7,8 +7,6 @@ import {
 } from "../src/domain/session";
 import { bank, questionById } from "../src/data/content";
 import type { LearningRecord } from "../src/domain/types";
-import { readFileSync, readdirSync } from "node:fs";
-import { createContext, runInContext } from "node:vm";
 
 const record = (extra: Partial<LearningRecord> = {}): LearningRecord => ({
   status: "new",
@@ -134,43 +132,6 @@ describe("session planning", () => {
     )!;
     expect(session.questionIds).toContain(chain.questionIds[1]);
     expect(session.questionIds).not.toContain(chain.questionIds[2]);
-  });
-  it("preserves stored answer identities of all 259 legacy objective questions after option rewrites", () => {
-    const context = createContext({});
-    const read = (file: string) =>
-      readFileSync(new URL("../legacy/" + file, import.meta.url), "utf8");
-    runInContext(
-      read("question-bank.js") + "\nconst TOPIC_LEVELS=[];",
-      context,
-    );
-    runInContext(read("project-levels.js"), context);
-    runInContext(read("practice-data.js"), context);
-    for (const file of readdirSync(
-      new URL("../legacy/", import.meta.url),
-    ).filter((file) => file.startsWith("topic-") && file.endsWith(".js")))
-      runInContext(read(file), context);
-    type RawLevel = {
-      id: number;
-      questions: {
-        type: string;
-        answer?: boolean | number;
-        options?: string[];
-      }[];
-    };
-    const levels = JSON.parse(
-      JSON.stringify(runInContext("[...LEVELS,...TOPIC_LEVELS]", context)),
-    ) as RawLevel[];
-    let checked = 0;
-    for (const level of levels)
-      for (const [index, raw] of level.questions.entries()) {
-        if (raw.type === "text") continue;
-        const question = questionById.get(`quiz:${level.id}:${index}`)!;
-        expect(question.correctAnswer).toBe(raw.answer);
-        if (raw.type === "choice")
-          expect(question.choices).toHaveLength(raw.options!.length);
-        checked++;
-      }
-    expect(checked).toBe(259);
   });
   it("balances correct positions across sessions without moving answer identities", () => {
     const choices = bank.questions.filter((q) => q.kind === "choice");

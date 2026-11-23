@@ -1,14 +1,115 @@
 <script setup lang="ts">
-import {computed, nextTick, ref, toRaw, watch} from 'vue';
-import {onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
-import {bank, questionById, chainById} from '../data/content';
-import {useLearningStore} from '../stores/learning';
-import type {Grade, SessionAnswer, StudyQuestion, StudySession} from '../domain/types';
-import {answerLabel, createSession, isCorrect, optionOrder} from '../domain/session';
-import {labs} from '../data/labs';
-import AnswerContent from '../components/AnswerContent.vue';
-import CodeLab from '../components/CodeLab.vue';
-import AppIcon from '../components/AppIcon.vue';
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onBeforeUnmount,
+  ref,
+  toRaw,
+  watch,
+} from "vue";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
+import { bank, questionById, chainById } from "../data/content";
+import { useLearningStore } from "../stores/learning";
+import type {
+  Grade,
+  SessionAnswer,
+  StudyQuestion,
+  StudySession,
+} from "../domain/types";
+import {
+  answerLabel,
+  createSession,
+  isCorrect,
+  optionOrder,
+} from "../domain/session";
+import { labs } from "../data/labs";
+import AnswerContent from "../components/AnswerContent.vue";
+import CodeLab from "../components/CodeLab.vue";
+import AppIcon from "../components/AppIcon.vue";
+const AiView = defineAsyncComponent(() => import("./AiView.vue"));
+const aiOpen = ref(false),
+  aiAction = ref<"assess" | undefined>(),
+  aiQuote = ref(""),
+  selectedQuote = ref("");
+const questionPanel = ref<HTMLElement>(),
+  aiDialog = ref<HTMLElement>();
+let aiTrigger: HTMLElement | undefined;
+let previousOverflow = "";
+watch(
+  aiOpen,
+  (open) => {
+    const root = document.getElementById("app");
+    if (root) root.inert = open;
+    if (open) {
+      previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    } else document.body.style.overflow = previousOverflow;
+  },
+  { flush: "sync" },
+);
+onBeforeUnmount(() => {
+  if (aiOpen.value) {
+    const root = document.getElementById("app");
+    if (root) root.inert = false;
+    document.body.style.overflow = previousOverflow;
+  }
+});
+function captureQuote() {
+  const selection = window.getSelection();
+  selectedQuote.value =
+    selection?.anchorNode &&
+    questionPanel.value?.contains(selection.anchorNode) &&
+    selection.focusNode &&
+    questionPanel.value.contains(selection.focusNode)
+      ? selection.toString().trim().slice(0, 4000)
+      : "";
+}
+async function openAi(event: Event, action?: "assess", quote = "") {
+  aiTrigger = event.currentTarget as HTMLElement;
+  aiAction.value = action;
+  aiQuote.value = quote;
+  aiOpen.value = true;
+  await nextTick();
+  aiDialog.value?.focus();
+}
+function closeAi() {
+  aiOpen.value = false;
+  aiTrigger?.focus({ preventScroll: true });
+}
+function dialogKeys(event: KeyboardEvent) {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeAi();
+  }
+  if (event.key !== "Tab") return;
+  const controls = [
+    ...(aiDialog.value?.querySelectorAll<HTMLElement>(
+      "button:not(:disabled),a[href],input:not(:disabled),textarea:not(:disabled),select",
+    ) || []),
+  ].filter((el) => el.getClientRects().length);
+  const first = controls[0],
+    last = controls.at(-1);
+  if (!first) {
+    event.preventDefault();
+    return;
+  }
+  if (
+    event.shiftKey &&
+    (document.activeElement === first ||
+      document.activeElement === aiDialog.value)
+  ) {
+    event.preventDefault();
+    last?.focus();
+  } else if (
+    !event.shiftKey &&
+    (document.activeElement === last ||
+      document.activeElement === aiDialog.value)
+  ) {
+    event.preventDefault();
+    first.focus();
+  }
+}
 
 const route = useRoute(),
   router = useRouter(),
@@ -18,25 +119,33 @@ const loaded = ref(false),
   missing = ref(false),
   noteOpen = ref(false),
   resumePrompt = ref(false),
-  completionNotice = ref('');
+  completionNotice = ref("");
 const heading = ref<HTMLElement | null>(null);
 const answerPanel = ref<InstanceType<typeof AnswerContent> | null>(null);
 const current = computed(() =>
-  session.value ? questionById.get(session.value.questionIds[session.value.index]!) : undefined,
+  session.value
+    ? session.value.questionSnapshots?.[
+        session.value.questionIds[session.value.index]!
+      ] || questionById.get(session.value.questionIds[session.value.index]!)
+    : undefined,
 );
 const answer = computed<SessionAnswer | undefined>(() =>
   current.value ? session.value?.answers[current.value.id] : undefined,
 );
 const completed = computed(() => !!session.value?.completedAt);
-const mock = computed(() => session.value?.mode === 'mock');
+const mock = computed(() => session.value?.mode === "mock");
 const questionCount = computed(() => session.value?.questionIds.length || 0);
 const answeredCount = computed(
-  () => Object.values(session.value?.answers || {}).filter((item) => item.revealed).length,
+  () =>
+    Object.values(session.value?.answers || {}).filter((item) => item.revealed)
+      .length,
 );
 const progress = computed(() =>
   questionCount.value ? (answeredCount.value / questionCount.value) * 100 : 0,
 );
-const record = computed(() => (current.value ? store.getRecord(current.value.id) : undefined));
+const record = computed(() =>
+  current.value ? store.getRecord(current.value.id) : undefined,
+);
 const options = computed(() =>
   current.value && session.value
     ? optionOrder(current.value, session.value.id, session.value.optionOrders)
@@ -45,15 +154,19 @@ const options = computed(() =>
 const hasResponse = computed(
   () =>
     !!answer.value &&
-    (current.value?.kind === 'oral' || mock.value
+    (current.value?.kind === "oral" || mock.value
       ? !!answer.value.text.trim()
       : answer.value.pick !== undefined),
 );
 const canContinue = computed(
-  () => !!answer.value?.revealed && (current.value?.kind !== 'oral' || !!answer.value.grade),
+  () =>
+    !!answer.value?.revealed &&
+    (current.value?.kind !== "oral" || !!answer.value.grade),
 );
 const labId = computed(() =>
-  current.value?.chainId && labs[current.value.chainId] ? current.value.chainId : '',
+  current.value?.chainId && labs[current.value.chainId]
+    ? current.value.chainId
+    : "",
 );
 const context = computed(() => {
   if (!current.value?.chainId || !current.value.stepIndex) return [];
@@ -74,11 +187,12 @@ const summaryQuestions = computed(
 const summaryCorrect = computed(
   () =>
     summaryQuestions.value.filter(
-      (q) => q.kind !== 'oral' && isCorrect(q, session.value?.answers[q.id]?.pick),
+      (q) =>
+        q.kind !== "oral" && isCorrect(q, session.value?.answers[q.id]?.pick),
     ).length,
 );
 const summaryChoiceCount = computed(
-  () => summaryQuestions.value.filter((q) => q.kind !== 'oral').length,
+  () => summaryQuestions.value.filter((q) => q.kind !== "oral").length,
 );
 const summaryMinutes = computed(() => {
   if (!session.value) return 0;
@@ -99,30 +213,30 @@ function ensureAnswer() {
   if (!session.value || !current.value) return;
   if (!session.value.answers[current.value.id])
     session.value.answers[current.value.id] = {
-      text: store.getRecord(current.value.id).draft || '',
+      text: store.getRecord(current.value.id).draft || "",
       revealed: false,
     };
 }
 function queryValue(key: string) {
   const value = route.query[key];
-  return typeof value === 'string' ? value : undefined;
+  return typeof value === "string" ? value : undefined;
 }
 function build() {
   missing.value = false;
   noteOpen.value = false;
   const previous = store.progress.session;
-  if (queryValue('resume') === '1' && previous) {
+  if (queryValue("resume") === "1" && previous) {
     session.value = structuredClone(toRaw(previous));
   } else {
     session.value = createSession(
       bank,
       {
-        mode: queryValue('mode'),
-        topic: queryValue('topic'),
-        section: queryValue('section'),
-        chain: queryValue('chain'),
-        question: queryValue('question'),
-        filter: queryValue('filter'),
+        mode: queryValue("mode"),
+        topic: queryValue("topic"),
+        section: queryValue("section"),
+        chain: queryValue("chain"),
+        question: queryValue("question"),
+        filter: queryValue("filter"),
         dailyGoal: store.progress.dailyGoal,
       },
       store.progress.records,
@@ -130,7 +244,9 @@ function build() {
   }
   missing.value = !session.value;
   if (session.value) {
-    session.value.questionIds = session.value.questionIds.filter((id) => questionById.has(id));
+    session.value.questionIds = session.value.questionIds.filter((id) =>
+      questionById.has(id),
+    );
     session.value.index = Math.min(
       session.value.index,
       Math.max(0, session.value.questionIds.length - 1),
@@ -147,31 +263,40 @@ function build() {
 watch(
   () => route.fullPath,
   async () => {
-    if (route.path !== '/practice') return;
+    if (route.path !== "/practice") return;
     loaded.value = false;
     await store.init();
     const previous = store.progress.session;
     // An unfinished session is resumed when revisiting exactly the same queue request.
-    const requestedQuestion = queryValue('question');
-    const requestedTopic = bank.topics.find((topic) => topic.id === queryValue('topic'));
-    const requestedIds = queryValue('section')
-      ? requestedTopic?.sections.find((section) => section.id === queryValue('section'))
-          ?.questionIds
+    const requestedQuestion = queryValue("question");
+    const requestedTopic = bank.topics.find(
+      (topic) => topic.id === queryValue("topic"),
+    );
+    const requestedIds = queryValue("section")
+      ? requestedTopic?.sections.find(
+          (section) => section.id === queryValue("section"),
+        )?.questionIds
       : requestedTopic?.questionIds;
     const matching =
       previous &&
       !previous.completedAt &&
-      !requestedQuestion &&
-      ((queryValue('topic') &&
-        requestedIds?.length === previous.questionIds.length &&
-        previous.questionIds.every((id, index) => id === requestedIds?.[index])) ||
-        (queryValue('chain') &&
-          previous.questionIds.every(
-            (id) => questionById.get(id)?.chainId === queryValue('chain'),
-          )) ||
-        (queryValue('mode') === 'mock' && previous.mode === 'mock') ||
-        (queryValue('mode') === 'daily' && previous.title === '今日练习'));
-    if (matching && queryValue('resume') !== '1') {
+      ((requestedQuestion &&
+        previous.questionIds.length === 1 &&
+        previous.questionIds[0] === requestedQuestion) ||
+        (!requestedQuestion &&
+          ((queryValue("topic") &&
+            requestedIds?.length === previous.questionIds.length &&
+            previous.questionIds.every(
+              (id, index) => id === requestedIds?.[index],
+            )) ||
+            (queryValue("chain") &&
+              previous.questionIds.every(
+                (id) => questionById.get(id)?.chainId === queryValue("chain"),
+              )) ||
+            (queryValue("mode") === "mock" && previous.mode === "mock") ||
+            (queryValue("mode") === "daily" &&
+              previous.title === "今日练习"))));
+    if (matching && queryValue("resume") !== "1") {
       session.value = structuredClone(toRaw(previous));
       ensureAnswer();
       resumePrompt.value = true;
@@ -181,13 +306,15 @@ watch(
     }
     loaded.value = true;
   },
-  {immediate: true},
+  { immediate: true },
 );
 watch(
   () => current.value?.id,
   () => {
     ensureAnswer();
     noteOpen.value = false;
+    aiOpen.value = false;
+    selectedQuote.value = "";
   },
 );
 onBeforeRouteLeave(() => persist());
@@ -204,11 +331,12 @@ function draft(event: Event) {
   persist();
 }
 async function reveal() {
-  if (!current.value || !answer.value || !hasResponse.value || mock.value) return;
+  if (!current.value || !answer.value || !hasResponse.value || mock.value)
+    return;
   answer.value.revealed = true;
-  if (current.value.kind !== 'oral') {
+  if (current.value.kind !== "oral") {
     const correct = isCorrect(current.value, answer.value.pick);
-    answer.value.grade = correct ? 'good' : 'again';
+    answer.value.grade = correct ? "good" : "again";
     store.grade(current.value.id, answer.value.grade, correct);
   }
   persist();
@@ -223,8 +351,8 @@ function grade(value: Grade) {
 }
 async function focusQuestion() {
   await nextTick();
-  window.scrollTo({top: 0, behavior: 'instant'});
-  heading.value?.focus({preventScroll: true});
+  window.scrollTo({ top: 0, behavior: "instant" });
+  heading.value?.focus({ preventScroll: true });
 }
 async function jump(index: number) {
   if (!session.value || mock.value) return;
@@ -244,11 +372,12 @@ async function next() {
     const unfinished = session.value.questionIds.findIndex((id) => {
       const item = session.value?.answers[id];
       return (
-        !item?.revealed || (!mock.value && questionById.get(id)?.kind === 'oral' && !item.grade)
+        !item?.revealed ||
+        (!mock.value && questionById.get(id)?.kind === "oral" && !item.grade)
       );
     });
     if (unfinished !== -1) {
-      completionNotice.value = '还有未完成的题目，已回到第一道待答题。';
+      completionNotice.value = "还有未完成的题目，已回到第一道待答题。";
       session.value.index = unfinished;
       ensureAnswer();
       persist();
@@ -267,7 +396,7 @@ async function next() {
 }
 function leave() {
   persist();
-  router.push('/');
+  router.push("/");
 }
 function newRound() {
   resumePrompt.value = false;
@@ -283,39 +412,53 @@ function summaryGrade(id: string, value: Grade) {
   persist();
 }
 function sourceLabel(question: StudyQuestion) {
-  return question.kind === 'oral' ? '口述题' : question.kind === 'boolean' ? '判断题' : '单选题';
+  return question.kind === "oral"
+    ? "口述题"
+    : question.kind === "boolean"
+      ? "判断题"
+      : "单选题";
 }
 </script>
 
 <template>
-  <div v-if="!loaded" class="practice-loading panel" role="status">正在准备练习…</div>
+  <div v-if="!loaded" class="practice-loading panel" role="status">
+    正在准备练习…
+  </div>
   <div v-else-if="missing || !session" class="practice-empty panel">
     <AppIcon name="check-circle" :size="40" />
     <h1>这里暂时没有待练习的题</h1>
     <p>可以先从题库选择一个方向，或完成一轮练习后回来复习。</p>
-    <RouterLink to="/library" class="button button-primary">浏览题库</RouterLink>
+    <RouterLink to="/library" class="button button-primary"
+      >浏览题库</RouterLink
+    >
   </div>
   <div v-else-if="completed" class="practice-page">
     <div class="practice-top">
-      <button class="back-link" @click="leave"><AppIcon name="back" :size="16" />回到学习台</button
+      <button class="back-link" @click="leave">
+        <AppIcon name="back" :size="16" />回到学习台</button
       ><span class="muted">练习复盘</span>
     </div>
     <section class="summary-hero panel">
       <div class="summary-mark"><AppIcon name="check" :size="30" /></div>
       <h1 ref="heading" tabindex="-1">练习完成</h1>
-      <p>{{ session.title }} · {{ questionCount }} 道题 · {{ summaryMinutes }} 分钟</p>
+      <p>
+        {{ session.title }} · {{ questionCount }} 道题 ·
+        {{ summaryMinutes }} 分钟
+      </p>
       <div class="summary-stats">
         <div>
           <strong>{{ answeredCount }}</strong><span>已作答</span>
         </div>
         <div v-if="summaryChoiceCount && !mock">
           <strong
-            >{{ summaryCorrect }}<small>/{{ summaryChoiceCount }}</small></strong
+            >{{ summaryCorrect
+            }}<small>/{{ summaryChoiceCount }}</small></strong
           ><span>客观题答对</span>
         </div>
         <div>
           <strong>{{
-            Object.values(session.answers).filter((a) => a.grade === 'again').length
+            Object.values(session.answers).filter((a) => a.grade === "again")
+              .length
           }}</strong><span>需要再练</span>
         </div>
       </div>
@@ -323,8 +466,11 @@ function sourceLabel(question: StudyQuestion) {
         对照参考答案自评。这里记录的是你的练习结果，不是 AI 自动评分。
       </p>
       <div class="summary-actions">
-        <RouterLink to="/review" class="button button-primary">安排复习</RouterLink
-        ><RouterLink to="/library" class="button button-quiet">继续探索题库</RouterLink>
+        <RouterLink to="/review" class="button button-primary"
+          >安排复习</RouterLink
+        ><RouterLink to="/library" class="button button-quiet"
+          >继续探索题库</RouterLink
+        >
       </div>
     </section>
     <div class="section-heading">
@@ -336,23 +482,23 @@ function sourceLabel(question: StudyQuestion) {
       class="recap-item panel"
     >
       <summary>
-        <span class="recap-number">{{ String(index + 1).padStart(2, '0') }}</span><span>{{
-          question.prompt
-        }}</span
+        <span class="recap-number">{{
+          String(index + 1).padStart(2, "0")
+        }}</span><span>{{ question.prompt }}</span
         ><span class="recap-status">{{
-          session.answers[question.id]?.grade === 'again'
-            ? '需复习'
+          session.answers[question.id]?.grade === "again"
+            ? "需复习"
             : session.answers[question.id]?.grade
-              ? '已记录'
-              : '待自评'
+              ? "已记录"
+              : "待自评"
         }}</span>
       </summary>
       <div class="recap-body">
         <h3>我的回答</h3>
         <p class="my-response">
           {{
-            mock || question.kind === 'oral'
-              ? session.answers[question.id]?.text || '未填写'
+            mock || question.kind === "oral"
+              ? session.answers[question.id]?.text || "未填写"
               : answerLabel(question, session.answers[question.id]?.pick)
           }}
         </p>
@@ -360,8 +506,8 @@ function sourceLabel(question: StudyQuestion) {
         <div class="self-grade">
           <span>{{
             session.answers[question.id]?.grade
-              ? '自评已记录，重新练习可更新掌握情况'
-              : '这题讲清楚了吗？'
+              ? "自评已记录，重新练习可更新掌握情况"
+              : "这题讲清楚了吗？"
           }}</span><button
             class="button button-quiet"
             :disabled="!!session.answers[question.id]?.grade"
@@ -387,12 +533,16 @@ function sourceLabel(question: StudyQuestion) {
   </div>
   <div v-else-if="current && answer" class="practice-page">
     <div class="practice-top">
-      <button class="back-link" @click="leave"><AppIcon name="back" :size="16" />保存并退出</button
-      ><span class="muted">{{ mock ? '模拟面试' : '专注练习' }}</span
-      ><span class="saved-label"><AppIcon name="check" :size="14" />进度自动保存</span>
+      <button class="back-link" @click="leave">
+        <AppIcon name="back" :size="16" />保存并退出</button
+      ><span class="muted">{{ mock ? "模拟面试" : "专注练习" }}</span
+      ><span class="saved-label"
+        ><AppIcon name="check" :size="14" />进度自动保存</span
+      >
     </div>
     <div v-if="resumePrompt" class="resume-banner">
-      <span>已接上上次的练习进度。</span><button @click="newRound">重新开始这一轮</button
+      <span>已接上上次的练习进度。</span
+      ><button @click="newRound">重新开始这一轮</button
       ><button aria-label="关闭继续提示" @click="resumePrompt = false">
         <AppIcon name="close" :size="14" />
       </button>
@@ -401,10 +551,19 @@ function sourceLabel(question: StudyQuestion) {
       {{ completionNotice }}
     </p>
     <div class="practice-grid">
-      <main class="question-panel panel">
+      <main
+        ref="questionPanel"
+        class="question-panel panel"
+        @mouseup="captureQuote"
+        @keyup.shift="captureQuote"
+      >
         <div class="question-meta">
-          <span class="tag">{{ sourceLabel(current) }}</span><span>{{ session.title }}</span
-          ><span class="question-counter">{{ session.index + 1 }} / {{ questionCount }}</span>
+          <span class="tag">{{ sourceLabel(current) }}</span><span>{{
+            session.title
+          }}</span
+          ><span class="question-counter"
+            >{{ session.index + 1 }} / {{ questionCount }}</span
+          >
         </div>
         <div
           class="practice-progress"
@@ -414,7 +573,7 @@ function sourceLabel(question: StudyQuestion) {
           aria-valuemin="0"
           aria-label="本轮作答进度"
         >
-          <span :style="{width: progress + '%'}" />
+          <span :style="{ width: progress + '%' }" />
         </div>
         <h1 ref="heading" tabindex="-1" class="question-prompt">
           {{ current.prompt }}
@@ -423,13 +582,19 @@ function sourceLabel(question: StudyQuestion) {
           <summary>查看前置问题</summary>
           <p v-for="(text, index) in context" :key="index">{{ text }}</p>
         </details>
+        <RouterLink
+          v-if="mock"
+          class="button button-small"
+          :to="{ path: '/ai', query: { mode: 'interview' } }"
+          >开始 AI 动态模拟</RouterLink
+        >
         <p v-if="mock" class="mock-notice">
           <AppIcon name="clock" :size="17" />先独立作答，结束后统一复盘答案。
         </p>
         <div
           v-if="current.kind !== 'oral' && !mock"
           class="choices"
-          :class="{binary: current.kind === 'boolean'}"
+          :class="{ binary: current.kind === 'boolean' }"
         >
           <button
             v-for="(value, index) in options"
@@ -438,14 +603,21 @@ function sourceLabel(question: StudyQuestion) {
             :class="{
               picked: answer.pick === value,
               right: answer.revealed && value === current.correctAnswer,
-              wrong: answer.revealed && answer.pick === value && value !== current.correctAnswer,
+              wrong:
+                answer.revealed &&
+                answer.pick === value &&
+                value !== current.correctAnswer,
             }"
             :disabled="answer.revealed"
             :aria-pressed="answer.pick === value"
             @click="pick(value)"
           >
             <span class="choice-letter">{{
-              current.kind === 'boolean' ? (value ? '✓' : '×') : String.fromCharCode(65 + index)
+              current.kind === "boolean"
+                ? value
+                  ? "✓"
+                  : "×"
+                : String.fromCharCode(65 + index)
             }}</span><span>{{ answerLabel(current, value) }}</span
             ><AppIcon
               v-if="answer.revealed && value === current.correctAnswer"
@@ -474,22 +646,27 @@ function sourceLabel(question: StudyQuestion) {
             {{
               mock
                 ? session.index === questionCount - 1
-                  ? '结束并复盘'
-                  : '记录并继续'
-                : '提交并查看解析'
+                  ? "结束并复盘"
+                  : "记录并继续"
+                : "提交并查看解析"
             }}</button><span v-if="!hasResponse || mock" class="muted">{{
-            !hasResponse ? '完成作答后查看参考答案' : '本轮答案将在结束后显示'
+            !hasResponse ? "完成作答后查看参考答案" : "本轮答案将在结束后显示"
           }}</span>
         </div>
         <template v-if="answer.revealed && !mock">
           <div
             v-if="current.kind !== 'oral'"
             class="answer-feedback"
-            :class="{incorrect: !isCorrect(current, answer.pick)}"
+            :class="{ incorrect: !isCorrect(current, answer.pick) }"
           >
-            <AppIcon :name="isCorrect(current, answer.pick) ? 'check-circle' : 'bulb'" :size="21" />
+            <AppIcon
+              :name="isCorrect(current, answer.pick) ? 'check-circle' : 'bulb'"
+              :size="21"
+            />
             <div>
-              <strong>{{ isCorrect(current, answer.pick) ? '回答正确' : '已加入待复习' }}</strong>
+              <strong>{{
+                isCorrect(current, answer.pick) ? "回答正确" : "已加入待复习"
+              }}</strong>
               <p v-if="!isCorrect(current, answer.pick)">
                 正确答案：{{ answerLabel(current, current.correctAnswer) }}
               </p>
@@ -497,50 +674,86 @@ function sourceLabel(question: StudyQuestion) {
           </div>
           <AnswerContent ref="answerPanel" :question="current" />
           <div v-if="current.kind === 'oral'" class="self-grade">
-            <span>{{ answer.grade ? '自评已记录' : '对照参考答案自评' }}</span><button
+            <span>{{
+              answer.grade ? "自评已记录" : "对照参考答案自评"
+            }}</span><button
               class="button button-quiet"
               :disabled="!!answer.grade"
-              :class="{selected: answer.grade === 'again'}"
+              :class="{ selected: answer.grade === 'again' }"
               @click="grade('again')"
             >
               还需练习</button
             ><button
               class="button button-quiet"
               :disabled="!!answer.grade"
-              :class="{selected: answer.grade === 'good'}"
+              :class="{ selected: answer.grade === 'good' }"
               @click="grade('good')"
             >
               基本掌握</button
             ><button
               class="button button-primary"
               :disabled="!!answer.grade"
-              :class="{selected: answer.grade === 'easy'}"
+              :class="{ selected: answer.grade === 'easy' }"
               @click="grade('easy')"
             >
               能独立讲清
             </button>
           </div>
-          <div v-if="current.chainId && current.id.startsWith('quiz:')" class="followup-link">
+          <div
+            v-if="current.chainId && current.id.startsWith('quiz:')"
+            class="followup-link"
+          >
             <AppIcon name="bulb" :size="18" /><RouterLink
               :to="{
                 path: '/practice',
-                query: {mode: 'oral', chain: current.chainId},
+                query: { mode: 'oral', chain: current.chainId },
               }"
               >继续练：{{ chainById.get(current.chainId)?.title }}</RouterLink
             >
           </div>
         </template>
+        <div v-if="!mock" class="practice-ai-tools">
+          <button class="button button-small" @click="openAi($event)">
+            <AppIcon name="chat" :size="17" />问 AI
+          </button>
+          <button
+            v-if="answer.revealed"
+            class="button button-small"
+            @click="openAi($event, 'assess')"
+          >
+            点评回答
+          </button>
+          <button
+            v-if="selectedQuote"
+            class="button button-small"
+            @mousedown.prevent
+            @click="openAi($event, undefined, selectedQuote)"
+          >
+            引用选中内容
+          </button>
+          <RouterLink
+            class="tool-action"
+            :to="{ path: '/generate', query: { scope: current.prompt } }"
+            >补充练习</RouterLink
+          >
+        </div>
         <div class="question-tools">
           <button
             class="tool-action"
-            :class="{active: record?.bookmarked}"
+            :class="{ active: record?.bookmarked }"
             @click="store.toggleBookmark(current.id)"
           >
             <AppIcon name="bookmark" :size="17" />{{
-              record?.bookmarked ? '已收藏' : '收藏这题'
+              record?.bookmarked ? "已收藏" : "收藏这题"
             }}</button
-          ><button class="tool-action" :class="{active: noteOpen}" @click="noteOpen = !noteOpen">
-            <AppIcon name="document" :size="17" />我的笔记{{ record?.note ? ' · 已记录' : '' }}
+          ><button
+            class="tool-action"
+            :class="{ active: noteOpen }"
+            @click="noteOpen = !noteOpen"
+          >
+            <AppIcon name="document" :size="17" />我的笔记{{
+              record?.note ? " · 已记录" : ""
+            }}
           </button>
         </div>
         <div v-if="noteOpen" class="note-editor">
@@ -549,7 +762,12 @@ function sourceLabel(question: StudyQuestion) {
             id="practice-note"
             :value="record?.note"
             placeholder="例如：先说明前提，再推导执行顺序。"
-            @input="store.setNote(current.id, ($event.target as HTMLTextAreaElement).value)"
+            @input="
+              store.setNote(
+                current.id,
+                ($event.target as HTMLTextAreaElement).value,
+              )
+            "
           />
         </div>
         <div v-if="!mock" class="question-navigation">
@@ -559,9 +777,17 @@ function sourceLabel(question: StudyQuestion) {
             @click="jump(session.index - 1)"
           >
             <AppIcon name="arrow-left" :size="16" />上一题</button
-          ><button class="button button-primary" :disabled="!canContinue" @click="next">
-            {{ session.index === questionCount - 1 ? '完成并复盘' : '下一题'
-            }}<AppIcon v-if="session.index < questionCount - 1" name="arrow-right" :size="16" />
+          ><button
+            class="button button-primary"
+            :disabled="!canContinue"
+            @click="next"
+          >
+            {{ session.index === questionCount - 1 ? "完成并复盘" : "下一题"
+            }}<AppIcon
+              v-if="session.index < questionCount - 1"
+              name="arrow-right"
+              :size="16"
+            />
           </button>
         </div>
       </main>
@@ -570,7 +796,9 @@ function sourceLabel(question: StudyQuestion) {
           <h2>本轮练习</h2>
           <p class="outline-description">{{ session.title }}</p>
           <div class="outline-count">
-            <strong>{{ answeredCount }}</strong><span>/ {{ questionCount }} 已作答</span>
+            <strong>{{ answeredCount }}</strong><span
+              >/ {{ questionCount }} 已作答</span
+            >
           </div>
           <div v-if="!mock" class="question-dots">
             <button
@@ -588,14 +816,94 @@ function sourceLabel(question: StudyQuestion) {
               {{ index + 1 }}
             </button>
           </div>
-          <p v-else class="outline-description">模拟面试按顺序作答，避免提前查看后续问题与答案。</p>
+          <p v-else class="outline-description">
+            模拟面试按顺序作答，避免提前查看后续问题与答案。
+          </p>
         </section>
       </aside>
     </div>
+    <Teleport to="body">
+      <div
+        v-if="aiOpen && current"
+        class="practice-ai-backdrop"
+        @click.self="closeAi"
+      >
+        <aside
+          ref="aiDialog"
+          class="practice-ai-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label="题目 AI 助手"
+          tabindex="-1"
+          @keydown="dialogKeys"
+        >
+          <AiView
+            embedded
+            :question="current"
+            :answer-text="
+              current.kind === 'oral' || mock
+                ? answer?.text
+                : answerLabel(current, answer?.pick)
+            "
+            :quote="aiQuote"
+            :initial-action="aiAction"
+            @close="closeAi"
+          />
+        </aside>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
+.practice-ai-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #15281945;
+  display: flex;
+  justify-content: flex-end;
+}
+.practice-ai-dialog {
+  width: min(600px, 100%);
+  height: 100dvh;
+  background: var(--surface);
+  box-shadow: -12px 0 50px #15281922;
+  outline: none;
+}
+.practice-ai-dialog :deep(.ai-page) {
+  height: 100dvh;
+  padding-bottom: 0;
+}
+.practice-ai-dialog :deep(.ai-page.is-empty .ai-transcript) {
+  flex: 1;
+  max-height: none;
+}
+.practice-ai-dialog :deep(.ai-conversation-width) {
+  width: 100%;
+  padding-left: 22px;
+  padding-right: 22px;
+}
+.practice-ai-dialog :deep(.ai-header) {
+  gap: 8px;
+  padding: 12px 18px;
+}
+.practice-ai-dialog :deep(.ai-header > strong) {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.practice-ai-dialog :deep(.ai-starters) {
+  display: none;
+}
+.practice-ai-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
 .practice-page {
   max-width: 1120px;
   margin: 0 auto;

@@ -5,12 +5,10 @@ import {
   emptyProgress,
   emptyRecord,
   localDateKey,
-  migrateLegacy,
   parseBackup,
   progressStats,
   reviewRecord,
   validateProgress,
-  type LegacyBackup,
 } from "../src/domain/progress";
 import {
   acquireWriterLease,
@@ -21,11 +19,6 @@ import type { ProgressSnapshot, StudySession } from "../src/domain/types";
 
 const ids = new Set(["quiz:0:0", "quiz:0:1", "oral:loop:0", "oral:loop:1"]);
 const now = new Date("2026-11-23T10:00:00+08:00");
-const makeBackup = (quiz: unknown, practice: unknown): LegacyBackup => ({
-  quiz: quiz === null ? null : JSON.stringify(quiz),
-  practice: practice === null ? null : JSON.stringify(practice),
-  capturedAt: now.toISOString(),
-});
 const session: StudySession = {
   id: "s1",
   title: "测试",
@@ -35,95 +28,6 @@ const session: StudySession = {
   answers: {},
   startedAt: now.toISOString(),
 };
-describe("versioned content migration", () => {
-  it("preserves mistakes, notes, draft, evidence, programs and XP without inventing activity", () => {
-    const backup = makeBackup(
-      { xp: 140, mistakes: { "0:0": true, "999:0": true } },
-      {
-        grades: { "loop:0": "ok", "loop:1": "weak" },
-        notes: { "loop:0": "一份旧答案" },
-        programs: { lru: "function lru(){}" },
-        resumeEvidence: { mysql: "真实慢查询记录" },
-      },
-    );
-    const p = migrateLegacy(backup, ids);
-    expect(p.records["quiz:0:0"].status).toBe("learning");
-    expect(p.records["quiz:999:0"]).toBeUndefined();
-    expect(p.records["oral:loop:0"]).toMatchObject({
-      status: "mastered",
-      note: "一份旧答案",
-      draft: "一份旧答案",
-    });
-    expect(p.records["oral:loop:1"].status).toBe("learning");
-    expect(p.code.lru).toContain("lru");
-    expect(p.evidence.mysql).toBe("真实慢查询记录");
-    expect(p.xp).toBe(140);
-    expect(p.activity).toEqual({});
-    expect(progressStats(p, now).studyDays).toBe(0);
-  });
-  it("recovers the exact legacy quiz index and boolean selection", () => {
-    const p = migrateLegacy(
-      makeBackup(
-        {
-          run: {
-            keys: ["0:0", "0:1"],
-            index: 1,
-            pick: false,
-            answered: true,
-            draft: "草稿",
-          },
-        },
-        null,
-      ),
-      ids,
-    );
-    expect(p.session).toMatchObject({
-      mode: "quiz",
-      index: 1,
-      questionIds: ["quiz:0:0", "quiz:0:1"],
-    });
-    expect(p.session?.answers["quiz:0:1"]).toEqual({
-      pick: false,
-      revealed: true,
-      text: "草稿",
-    });
-  });
-  it("recovers blind mock replies without exposing answers before completion", () => {
-    const p = migrateLegacy(
-      makeBackup(null, {
-        session: {
-          mode: "mock",
-          title: "模拟面试",
-          queue: ["loop:0", "loop:1"],
-          index: 1,
-          replies: { "loop:0": "我的回答" },
-          opened: now.getTime(),
-        },
-      }),
-      ids,
-    );
-    expect(p.session?.mode).toBe("mock");
-    expect(p.session?.answers["oral:loop:0"]).toEqual({
-      text: "我的回答",
-      revealed: false,
-    });
-    expect(p.session?.completedAt).toBeUndefined();
-  });
-  it("keeps malformed old content available as a raw backup without crashing migration", () => {
-    const backup = {
-      quiz: "{ broken",
-      practice: null,
-      capturedAt: now.toISOString(),
-    };
-    expect(migrateLegacy(backup, ids).records).toEqual({});
-    expect(backup.quiz).toBe("{ broken");
-  });
-  it("does not manufacture per-question mastery from level stars", () => {
-    const p = migrateLegacy(makeBackup({ stars: { 0: 3 } }, null), ids);
-    expect(p.records).toEqual({});
-  });
-});
-
 describe("review schedule and honest statistics", () => {
   it("schedules an incorrect answer for retry even if an easy grade is supplied", () => {
     const r = reviewRecord(emptyRecord(), "easy", now, false);
@@ -185,7 +89,7 @@ describe("backup validation", () => {
     original.records["quiz:0:0"] = reviewRecord(emptyRecord(), "good", now);
     const payload = {
       app: "interview-workbench",
-      exportVersion: 1,
+      exportVersion: 2,
       progress: original,
     };
     expect(parseBackup(JSON.stringify(payload), ids).progress).toEqual(
@@ -225,12 +129,6 @@ describe("IndexedDB boundary", () => {
     await Promise.all([repo.save(first), repo.save(second)]);
     expect(((await repo.load()) as { xp: number }).xp).toBe(20);
   });
-  it("stores original legacy payload and snapshot together", async () => {
-    const repo = createProgressRepository("test-backup-" + Math.random()),
-      backup = makeBackup({ unknown: "kept" }, null);
-    await repo.save(emptyProgress(), backup);
-    expect(await repo.legacyBackup()).toEqual(backup);
-  });
   it("rejects a stale revision arriving from another connection after a newer commit", async () => {
     const name = "test-revision-" + Math.random(),
       oldConnection = createProgressRepository(name),
@@ -239,8 +137,8 @@ describe("IndexedDB boundary", () => {
       newer = emptyProgress();
     older.dailyGoal = 5;
     newer.dailyGoal = 20;
-    await newConnection.save(newer, undefined, 200);
-    await oldConnection.save(older, undefined, 100);
+    await newConnection.save(newer, 200);
+    await oldConnection.save(older, 100);
     expect(await oldConnection.loadState()).toMatchObject({
       revision: 200,
       progress: { dailyGoal: 20 },
@@ -385,7 +283,7 @@ describe("learning store import and completion", () => {
     });
     expect(await repo.load()).toEqual(latest);
     expect(localStorage.getItem(PENDING_JOURNAL_KEY)).toBeNull();
-    expect(store.migrationNotice).toContain("已恢复");
+    expect(store.storageNotice).toContain("已恢复");
   });
   it("never lets a stale journal replace a newer committed backup import", async () => {
     const repo = createProgressRepository(),
@@ -394,7 +292,7 @@ describe("learning store import and completion", () => {
       older = emptyProgress();
     newer.dailyGoal = 40;
     older.dailyGoal = 5;
-    await repo.save(newer, undefined, previous.revision + 2);
+    await repo.save(newer, previous.revision + 2);
     localStorage.setItem(
       PENDING_JOURNAL_KEY,
       JSON.stringify({
@@ -488,7 +386,7 @@ describe("learning store import and completion", () => {
     await store.importData(
       JSON.stringify({
         app: "interview-workbench",
-        exportVersion: 1,
+        exportVersion: 2,
         progress: emptyProgress(),
       }),
     );

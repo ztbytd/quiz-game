@@ -1,131 +1,68 @@
 # 架构说明
 
-## 目标与当前边界
+知序采用 Vue 响应式 Web + PWA、TypeScript API、后台任务和 PostgreSQL。公共题库以发布清单保存，浏览器同步并缓存内容。聊天、生成题、审核与全局笔记保存在服务端；学习进度按本机账号隔离保存。
 
-知序是部署在现有 `/quiz/` 路径的响应式 Web + PWA。当前采用浏览器本机数据架构：静态题库随版本发布，学习状态由 Pinia 管理，IndexedDB 保存快照，Service Worker 缓存应用资源。服务器只提供静态文件。
+本文描述当前代码。详细功能设计见 [AI 学习方案](./ai-learning-plan.md)。
 
-此阶段把练习、数据规则和浏览器设施分开，使界面调整、题库维护和未来数据服务接入可以分别推进。当前未实现用户账号、远程 API、云端同步、多人协作或 LLM 评分。
-
-## 模块边界
+## 运行结构
 
 ```mermaid
-flowchart TD
-  Views[页面与组件] --> Store[Pinia 学习用例]
-  Views --> Content[题库查询索引]
-  Views --> Session[会话选题规则]
-  Store --> Progress[复习规则 / 校验 / 迁移]
-  Store --> Repo[ProgressRepository]
-  Repo --> IDB[(浏览器 IndexedDB)]
-  Content --> Bank[bank.json]
-  Session --> Bank
-  Lab[CodeLab] --> Runner[隔离 iframe + Worker]
-  SW[Service Worker] --> Cache[(静态资源缓存)]
+flowchart TB
+  UI[Vue 与 Pinia] --> Local[IndexedDB 学习与内容缓存]
+  UI --> API[Fastify 同源 API]
+  API --> PG[(PostgreSQL)]
+  Worker[持久任务 Worker] --> PG
+  Worker --> Provider[GPT 6.1 模型适配器]
+  Worker --> Check[结构检查与内容复核]
+  Check --> PG
 ```
 
-| 模块 | 责任与依赖 |
-| --- | --- |
-| `src/domain/types.ts` | 题库、学习记录、会话和快照的共同契约 |
-| `src/data/content.ts` | 载入并深冻结题库，建立题目、专题、追问链、分组索引 |
-| `src/domain/session.ts` | 每日练习、专题练习、追问、复习和模拟面试选题；稳定选项排序与判题 |
-| `src/domain/progress.ts` | 自评后的状态与日期、统计、旧数据迁移、备份校验；不调用浏览器存储 |
-| `src/infrastructure/progress-repository.ts` | IndexedDB 读写、写入序列化、原始旧数据保存和等待写入完成 |
-| `src/stores/learning.ts` | 初始化、编辑、评分、会话保存、统计暴露、导入导出与错误状态 |
-| `src/views/` | 路由参数、用户输入、列表与页面布局；通过 store 改学习状态 |
-| `src/components/AnswerContent.vue` | 展示答案、原理、例子、追问和来源，作为文本渲染 |
-| `src/infrastructure/code-runner.ts` | 隔离手写代码运行、限制单次执行时间、校验返回结果 |
-| `src/App.vue` | 应用壳、导航、全局搜索、安装、联网状态和版本更新提示 |
+开发环境可使用嵌入式 PGlite 运行相同 SQL，数据位于忽略提交的 `server/data/`。生产环境必须设置 `DATABASE_URL`，使用独立 PostgreSQL。`SERVICE_ROLE=api` 接收请求；`SERVICE_ROLE=worker` 处理后台任务；本地未指定角色时同时运行两者。
 
-页面不直接读写 IndexedDB。领域规则可以在 Node 测试环境中验证，仓储通过 `fake-indexeddb` 验证。当前使用一个 Pinia 学习 store；它承担应用编排，不把渲染布局或代码执行细节放入其中。
+## 模块职责
 
-## 内容模型
+| 模块                                       | 职责                                             |
+| ------------------------------------------ | ------------------------------------------------ |
+| `packages/contracts/ai.ts`                 | 请求与模型输出的 Zod 契约和共享类型              |
+| `server/db.ts`                             | 数据库连接、事务和表结构初始化                   |
+| `server/app.ts`                            | 身份、对话、任务、用量、候选题、审核、发布和笔记 |
+| `server/provider.ts`                       | Chat Completions 流式与 JSON 调用                |
+| `server/prompts.ts`                        | 分任务提示词及版本                               |
+| `server/quality.ts`                        | 近似重复识别与独立内容复核                       |
+| `src/data/content.ts`                      | 内容激活、公共与个人同步、查询索引               |
+| `src/infrastructure/content-repository.ts` | 题库清单、归档与账号内容缓存                     |
+| `src/stores/ai.ts`                         | 身份、会话、消息、生成任务及恢复                 |
+| `src/stores/learning.ts`                   | 作答、笔记、自评、账号本地状态和备份             |
+| `src/domain/`                              | 选题、判题、复习规则、内容及快照校验             |
 
-`Bank` 的 `schemaVersion` 为 `1`，内容版本为 `2026.11.23-quality.1`。规模为 1011 道独立题目、31 个专题、30 个追问分组、163 条追问链和 30 项简历对照。
+页面通过 store 和仓储操作数据。模型密钥只存在服务端私有配置中，不进入前端构建或 API 响应。
 
-| 结构 | 主要字段 |
-| --- | --- |
-| `StudyQuestion` | `id`、`kind`、`prompt`、`choices`、`correctAnswer`、`explanation`、`detail`、`topicId` / `chainId` |
-| `Topic` | `id`、标题、描述、难度、分类、封面参数、`questionIds`、`sections` |
-| `TopicSection` | `id`、标题、类型（基础/追问/应用）、按学习顺序排列的 `questionIds` |
-| `Chain` | `id`、标题、`groupId`、有顺序的 `questionIds`、检查点与来源 |
-| `Group` | `id`、标题、`chainIds` |
-| `CoverageItem` | 原简历对照字段：依据、已有/新增链引用、需核实项和证据提示 |
+## 内容和学习状态
 
-题目 ID 延续旧内容定位：专题题为 `quiz:<原关卡 ID>:<题目序号>`，口述题为 `oral:<追问链 ID>:<步骤序号>`。这些 ID 同时用作学习记录外键。应新增新 ID，保留已有题目的 ID；删除或重编号题目时需要配套记录迁移策略。
+公共发布清单不可变。维护者审核固定版本的候选题，再通过事务把题目和目录一起发布。恢复历史内容会创建新清单，保留发布历史。新增内容不需要重新构建前端。
 
-专题目录 `/topics/:id` 把原基础题、相关追问链和新增场景组织在一起。专题的 `questionIds` 是章节题目按顺序去重后的集合；跨专题允许引用同一题，掌握状态和笔记共享。`/practice?topic=...&section=...` 创建单章会话，未指定章节时练习整个专题。切换章节按完整队列识别，只有相同队列才恢复上次进度。
+个人生成默认私有。结构检查、近似重复检查和第二次模型复核产生逐题结果；仍需修订的题目不能直接保存为练习。通过检查的个人题显示“AI 生成 · 待复核”，公共发布仍需维护者审核。
 
-`explanation` 保存可直接阅读的主回答，`detail` 保存按需展开的原理、示例、代码、适用条件、追问与来源。内容校验覆盖引用、章节顺序、选项与答案合法性、HTTPS 来源结构，以及正确项的长度偏向；语义正确性与干扰项质量仍需内容审阅。
+题目修订保存到 `candidate_versions`。练习开始时固定 `questionSnapshots` 与选项排列，内容更新后，原会话仍按原题和答案恢复。显示位置与原始选项身份分开，每轮均衡正确位置。
 
-新增场景使用 `quiz:<专题 ID>:supplement-<语义标识>`。每轮练习按选项数分组，均衡分配正确项位置后打散，再打散干扰项。最终排列保存到会话的可选字段 `optionOrders`，选中值始终是题库中的原始答案索引。旧会话没有该字段时继续使用原来的确定性打散算法；备份导入校验排列合法性，显示时再次核对它与当前题目的选项数量是否一致。
+IndexedDB 保存学习快照和内容。写入串行执行，修订号阻止旧写入覆盖新结果；同步待写日志保护立即刷新场景。Web Locks 限制同源同时只有一个编辑窗口。用户自评与 AI 点评分开，点评不直接改写掌握状态。
 
-`scripts/export-content.mjs` 是从可信旧版目录一次性导入的工具，会执行旧数据脚本。它不是任意外部题库的安全导入器，也不是日常构建步骤。当前应直接维护 `bank.json`，原始数据保留在 `legacy/` 供追溯和回归校验。
+学习快照版本为 3，存储在 `zhixu-learning-v3` 及账号子库，备份格式版本为 2。根据本次清理要求，首次启动一次性删除旧学习记录库与旧待写日志，保留 `zhixu-content-v1` 中的公共和个人题库。完成标记防止之后启动时再次清空新记录；旧备份不自动导入。
 
-## 学习状态与会话
+## 身份和任务
 
-`ProgressSnapshot.version` 为 `2`：
+账号采用邀请注册。密码使用带随机盐的 scrypt，会话令牌保存哈希。生产 Cookie 使用 Secure、HttpOnly 和 SameSite，写接口校验 Origin 与 CSRF。会话、任务、候选和笔记均校验所有者；维护操作校验管理员权限。
 
-```text
-records[questionId] → status / attempts / correct / note / draft / bookmarked
-                      lastReviewedAt / nextReviewAt
-session             → 当前会话，可为空
-history             → 会话记录，完成会话按 ID 更新，最多保留 500 条
-evidence[itemId]     → 简历项目证据笔记
-code[labId]          → 手写代码草稿
-dailyGoal           → 每日目标，默认 10，合法范围 1～100
-activity[本地日期]   → 当天评分次数
-xp                  → 累计积分
-migratedAt          → 可选的旧数据迁移时间
-```
+一次用户操作对应一个幂等键。数据库事务预留额度并入队，Worker 领取后释放事务再调用模型。行锁与 `SKIP LOCKED` 协调任务领取，递增执行令牌阻止过期结果覆盖新执行。
 
-`LearningRecord.status` 为 `new`、`learning` 或 `mastered`。当前复习规则是简单、可解释的固定间隔：还需练习或客观题答错安排 10 分钟后；掌握安排 1 天后；熟练安排 3 天后。它不是 SM-2、FSRS 或基于模型的掌握概率预测。口述题以用户自评为依据。
+任务支持等待、执行、完成、部分完成、失败、取消和结果待确认。明确被上游拒绝的请求释放预留；无法确定是否执行的请求保留保守用量，不自动重复付费调用。首版额度按 tokens 和 UTC 日界统计，尚未接入货币账单对账。
 
-`StudySession` 保存题目队列、当前下标、每题回答/选项/展示状态/自评以及开始、完成时间。选项展示顺序由会话 ID 与题目 ID 决定，刷新后保持一致；判题使用原始答案索引，判断题的 `false` 不是未作答。
+SSE 发送数据库中的完整任务快照。重连读取最新状态，不重新生成；首版没有逐事件历史重放。文本定期落库，结构化题目通过检查后才启用保存和练习。
 
-每日练习优先加入薄弱和到期题，再补充新题，避免将未学过前置问题的追问单独加入。模拟面试从不同分组各选一条链的开场题，共 12 题；回答阶段隐藏参考答案，完成后回看与自评。普通复习队列上限为 30 题。
+## 交互和运行边界
 
-## 持久化、恢复与兼容
+独立 AI Tab 与题目入口共用会话。正式模拟最多 6 组主问题、每组 2 次追问、20 分钟，结束后复盘。练习追问、自由答疑和模拟采用不同动作。模型消息使用受限 Markdown，关闭原始 HTML 与远程图片自动加载；服务器不执行模型生成的任意代码。
 
-IndexedDB 数据库为 `interview-workbench-v2`，数据库版本为 `1`，对象仓库为 `state`。`progress` 保存学习快照，`revision` 保存单调递增的提交版本，`legacy-backup` 保存旧版原始载荷。仓储将快照复制后串行写入，拒绝比已提交版本更旧的写入；`flush()` 用于等待队列。
+前端入口为 `/quiz/`，API 为 `/quiz/api/v1/`。代理优先匹配 API，Service Worker 排除 API 导航回退，私有接口不进入公共缓存。
 
-每次编辑先同步写入 `localStorage` 的 `interview-workbench.v2.pending`，内容为日志版本、提交版本和完整学习快照，再异步写入 IndexedDB。事务完成后清理不比已提交版本新的日志。启动时比较日志与数据库版本，恢复较新的有效日志，解决输入后立即刷新时异步事务尚未提交的问题。无法识别的待保存日志会触发恢复保护并保留原始内容用于导出。
-
-浏览器通过 Web Locks 的 `interview-workbench-v2-writer` 独占锁限制同源只有一个编辑窗口。未获得锁的窗口显示只读提示和备份入口，不进入编辑页面；关闭原窗口后刷新重试。离开页面释放锁。不支持 Web Locks 的浏览器也进入受限状态，避免无协调写入。该机制防止并行覆盖，不提供多窗口状态合并或实时协作。
-
-初次启动且不存在新版数据时，读取同源 `localStorage` 的两个旧键：
-
-- `quiz-game.progress.v1`：错题、XP 与未完成的专题练习。
-- `frontend-deep-review-2026-v1`：口述自评、笔记、草稿、简历证据、代码与口述/模拟会话。
-
-迁移只关联仍存在的题目，保留原始载荷，不删除旧键。旧关卡星级不转换成逐题掌握度，旧数据没有的学习日历不会被推算。已存在的新版数据优先使用，重复启动不重复迁移。
-
-保存失败会在应用壳显示错误，内存中的当前输入仍可导出。发现无法识别的已有快照时停止覆盖，并允许导出该原始数据和当前临时输入；用户导入有效备份后解除恢复状态。
-
-备份外层包含 `app: "interview-workbench"`、`exportVersion: 1`、导出时间、`progress` 和可选 `legacyBackup`。导入先完整校验版本、字段、长度、题目引用、日期、会话、统计范围及危险键名，再持久化并替换内存状态。界面提供替换确认。导出会等待待写入队列，并在持久化失败时保留内存数据以供恢复。
-
-数据属于浏览器的站点存储。相同服务器使用不同域名、IP、协议或端口访问时可能属于不同来源；跨来源迁移应使用 JSON 备份。同一浏览器的安装版 PWA 仍受浏览器存储生命周期管理。目前没有多标签页冲突合并机制，也没有跨设备同步协议。
-
-## PWA 与发布
-
-Vite 构建基路径、manifest 范围和应用入口统一为 `/quiz/`。Vue Router 使用 Hash 路由，不要求静态服务为每个页面额外配置回退。旧 `#map`、`#home`、`#quiz` 等入口做兼容归一化或跳转。
-
-`vite-plugin-pwa` 生成 Service Worker，Workbox 预缓存 JS、CSS、HTML、SVG、PNG、JSON 和字体文件。首次联网完成缓存后，核心题库与学习功能可离线使用；外部来源网页仍需联网。离线能力依赖支持 Service Worker 的安全上下文及浏览器正常存储权限。
-
-更新采用提示模式：新资源准备好后显示更新入口，点击「保存并更新」等待当前写入，再激活新版本并刷新。旧缓存由 Workbox 清理。应用资源缓存与学习 IndexedDB 分开管理，资源更新不通过删除数据库实现。
-
-服务器交付物为 `dist/`。保持现有 HTTPS → Caddy → Nginx 静态路径，构建环境需要 Node，线上静态服务无需 Node 进程。部署应完整发布资源并保留上一版，避免 HTML、Service Worker 与哈希资源处于混合版本。
-
-`scripts/deploy-release.py` 接收归档路径、归档 SHA-256、基线 JSON 路径、基线 SHA-256 和发布提交 ID。它拒绝路径穿越、符号链接或其他非普通归档成员，核对当前线上目录的完整文件清单与哈希，然后写入同级备用目录。发布使用 Linux `renameat2(RENAME_EXCHANGE)` 原子交换 `/var/www/quiz` 和备用目录；前一版本保留在备用目录，发布后校验失败则反向交换恢复。整个流程仅处理该静态站点目录。
-
-初次迁移基线对应旧版 `0fa092c`，基线清单可以声明 `normalize_crlf: true`，仅用于消除旧文本行尾差异；新版本哈希始终按实际字节计算。脚本不自行获取 SSH 凭据，也不自动接受线上未知变更。`public/third-party-notices.txt` 随 `dist/` 一起发布，保留第三方许可文本。
-
-## 代码练习边界
-
-代码运行器只处理本应用 `labs` 配置的练习用例，单次代码长度限制为 100,000 个字符。运行位于仅允许脚本的 sandbox iframe 内，由 Worker 执行；iframe 使用限制连接的 CSP，主页面以消息来源和随机通道校验结果。超时 3 秒销毁运行环境，用户也可停止。它不提供服务器执行、npm 依赖安装或通用在线判题服务。
-
-## 验证与扩展
-
-运行 `npm run content:validate`、`npm test` 和 `npm run build`。测试覆盖旧版数据迁移、导入失败不覆盖、未知版本保护、IDB 写入顺序与失败、真实统计、选项身份、原始客观题答案一致性、每日选题与模拟题分组。
-
-`npm run test:e2e` 启动 4176 端口生产预览，顺序运行 `test:browser` 与 `test:practice`，完成后关闭预览服务。需要 Playwright Chromium，或设置 `CHROME_PATH` 使用本机 Chrome；截图等产物在 `test-results/`。浏览器脚本覆盖页面、学习记录、备份、响应式、离线与练习流程。发布验收仍需检查真实设备的安装流程和新旧 Service Worker 切换。
-
-后续接入 API 时，可在现有仓储边界上增加远程适配器，并保持领域模型不依赖 HTTP。需要新增认证、服务器版本号、幂等写入、离线操作队列、冲突解决和跨设备同步状态；这些能力当前尚未实现。若接入 AI 口述点评，应通过独立服务端代理管理密钥，分别保存用户回答、模型建议和用户自评，不把模型建议直接视为掌握结论。
+`Dockerfile.ai` 与 `compose.ai.yml` 提供 API、Worker、PostgreSQL 的部署结构。真实模型可用性、生产数据库、代理和备份恢复需要在目标环境验收。当前学习进度仍在本机，自动跨设备同步尚未实现。

@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+test-results
+server/data
+**/.env*
+*.local
+work
+legacy

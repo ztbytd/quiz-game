@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import {computed} from 'vue';
-import {RouterLink, useRoute} from 'vue-router';
-import {topicById, questionById} from '@/data/content';
-import {useLearningStore} from '@/stores/learning';
-import type {TopicSection} from '@/domain/types';
+import { computed } from "vue";
+import { RouterLink, useRoute } from "vue-router";
+import { topicById, questionById } from "@/data/content";
+import { useLearningStore } from "@/stores/learning";
+import type { TopicSection } from "@/domain/types";
 const route = useRoute();
 const learning = useLearningStore();
 const topic = computed(() => topicById.get(String(route.params.id)));
 const mastered = (ids: string[]) =>
-  ids.filter((id) => learning.getRecord(id).status === 'mastered').length;
+  ids.filter((id) => learning.getRecord(id).status === "mastered").length;
 const labels = {
-  foundation: '基础',
-  chain: '深入追问',
-  application: '应用与取舍',
+  foundation: "基础",
+  chain: "深入追问",
+  application: "应用与取舍",
 };
 function practice(section?: TopicSection, question?: string) {
   return {
-    path: '/practice',
+    path: "/practice",
     query: {
-      mode: 'quiz',
+      mode: "quiz",
       topic: topic.value?.id,
       section: section?.id,
       question,
@@ -35,7 +35,14 @@ function practice(section?: TopicSection, question?: string) {
         <h1>{{ topic.title }}</h1>
         <p class="muted">{{ topic.description }}</p>
       </div>
-      <RouterLink :to="practice()" class="button button-primary">练习整个专题</RouterLink>
+      <RouterLink :to="practice()" class="button button-primary"
+        >练习整个专题</RouterLink
+      >
+      <RouterLink
+        :to="{ path: '/generate', query: { scope: topic.title } }"
+        class="button"
+        >补充练习</RouterLink
+      >
     </header>
     <div class="topic-overview panel">
       <span
@@ -49,16 +56,25 @@ function practice(section?: TopicSection, question?: string) {
       >
     </div>
     <div class="chapter-list">
-      <section v-for="(section, index) in topic.sections" :key="section.id" class="chapter panel">
+      <section
+        v-for="(section, index) in topic.sections"
+        :key="section.id"
+        class="chapter panel"
+      >
         <div class="chapter-heading">
           <div>
-            <span class="chapter-meta">第 {{ index + 1 }} 章 · {{ labels[section.kind] }}</span>
+            <span class="chapter-meta"
+              >第 {{ index + 1 }} 章 · {{ labels[section.kind] }}</span
+            >
             <h2>{{ section.title }}</h2>
           </div>
-          <RouterLink :to="practice(section)" class="button button-secondary">练习本章</RouterLink>
+          <RouterLink :to="practice(section)" class="button button-secondary"
+            >练习本章</RouterLink
+          >
         </div>
         <p class="muted chapter-progress">
-          {{ section.questionIds.length }} 道题 · 已掌握 {{ mastered(section.questionIds) }} 题
+          {{ section.questionIds.length }} 道题 · 已掌握
+          {{ mastered(section.questionIds) }} 题
         </p>
         <details>
           <summary>查看本章题目</summary>
@@ -67,7 +83,9 @@ function practice(section?: TopicSection, question?: string) {
               <RouterLink :to="practice(section, id)">{{
                 questionById.get(id)?.prompt
               }}</RouterLink>
-              <span v-if="learning.getRecord(id).status === 'mastered'" class="mastered"
+              <span
+                v-if="learning.getRecord(id).status === 'mastered'"
+                class="mastered"
                 >已掌握</span
               >
             </li>
