@@ -212,7 +212,7 @@ const tones = ["sage", "blue", "peach", "lavender"];
             <RouterLink
               v-for="(topic, i) in featured"
               :key="topic.id"
-              :to="`/practice?mode=quiz&topic=${topic.id}`"
+              :to="`/topics/${topic.id}`"
               class="subject-card"
               ><div class="subject-cover" :class="tones[i]">
                 <span class="cover-category">{{ topic.category }}</span>
@@ -349,7 +349,7 @@ const tones = ["sage", "blue", "peach", "lavender"];
         <div class="library-note">
           <AppIcon name="book" :size="18" />
           <p>
-            {{ quizQuestions.length }} 道基础题 ·
+            {{ quizQuestions.length }} 道基础与场景题 ·
             {{ oralQuestions.length }} 个口述问题
           </p>
         </div>

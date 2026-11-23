@@ -148,6 +148,20 @@ function validateSession(
     )
       return fail("自评结果");
   }
+  if (raw.optionOrders !== undefined) {
+    if (!object(raw.optionOrders)) return fail("选项顺序");
+    for (const [id, order] of Object.entries(raw.optionOrders)) {
+      if (
+        !raw.questionIds.includes(id) ||
+        !Array.isArray(order) ||
+        order.length < 2 ||
+        order.length > 100 ||
+        new Set(order).size !== order.length ||
+        order.some((value) => !integer(value, order.length - 1))
+      )
+        return fail("选项顺序");
+    }
+  }
   return structuredClone(raw) as unknown as StudySession;
 }
 

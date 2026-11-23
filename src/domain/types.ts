@@ -31,6 +31,13 @@ export interface Topic {
   category: string;
   color: string;
   symbol: string;
+  sections: TopicSection[];
+}
+export interface TopicSection {
+  id: string;
+  title: string;
+  kind: "foundation" | "chain" | "application";
+  questionIds: string[];
 }
 export interface Chain {
   id: string;
@@ -84,6 +91,7 @@ export interface StudySession {
   answers: Record<string, SessionAnswer>;
   startedAt: string;
   completedAt?: string;
+  optionOrders?: Record<string, number[]>;
 }
 export interface ProgressSnapshot {
   version: 2;

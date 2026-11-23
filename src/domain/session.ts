@@ -29,12 +29,58 @@ export function shuffled<T>(items: readonly T[], seed: string): T[] {
 export function optionOrder(
   question: StudyQuestion,
   sessionId: string,
+  orders?: StudySession["optionOrders"],
 ): (number | boolean)[] {
   if (question.kind === "boolean") return [true, false];
+  const saved = orders?.[question.id];
+  if (
+    saved &&
+    saved.length === question.choices?.length &&
+    new Set(saved).size === saved.length &&
+    saved.every(
+      (index) => Number.isInteger(index) && index >= 0 && index < saved.length,
+    )
+  )
+    return [...saved];
   return shuffled(
     (question.choices || []).map((_, index) => index),
     sessionId + question.id,
   );
+}
+
+/** Balance positions across the complete session, then randomize their order. */
+export function planOptionOrders(
+  questions: StudyQuestion[],
+  seed: string,
+): Record<string, number[]> {
+  const orders: Record<string, number[]> = {};
+  const groups = new Map<number, StudyQuestion[]>();
+  for (const question of questions) {
+    if (question.kind !== "choice" || !question.choices?.length) continue;
+    const size = question.choices.length;
+    groups.set(size, [...(groups.get(size) || []), question]);
+  }
+  for (const [size, group] of groups) {
+    const labels = shuffled(
+      Array.from({ length: size }, (_, i) => i),
+      seed + ":labels:" + size,
+    );
+    const positions = shuffled(
+      group.map((_, i) => labels[i % size]!),
+      seed + ":positions:" + size,
+    );
+    group.forEach((question, index) => {
+      const wrong = shuffled(
+        question
+          .choices!.map((_, i) => i)
+          .filter((i) => i !== question.correctAnswer),
+        seed + ":distractors:" + question.id,
+      );
+      wrong.splice(positions[index]!, 0, question.correctAnswer as number);
+      orders[question.id] = wrong;
+    });
+  }
+  return orders;
 }
 
 export function isCorrect(
@@ -51,6 +97,7 @@ export function isCorrect(
 export interface SessionRequest {
   mode?: string;
   topic?: string;
+  section?: string;
   chain?: string;
   question?: string;
   filter?: string;
@@ -67,6 +114,11 @@ export function createSession(
   const known = new Map(
     bank.questions.map((question) => [question.id, question]),
   );
+  if (
+    (request.section && !request.topic) ||
+    (request.question && !known.has(request.question))
+  )
+    return null;
   let queue: string[] = [];
   let title = "自主练习";
   let mode: StudySession["mode"] = "quiz";
@@ -136,8 +188,12 @@ export function createSession(
   } else if (request.topic) {
     const topic = bank.topics.find((item) => item.id === request.topic);
     if (topic) {
-      queue = [...topic.questionIds];
-      title = topic.title;
+      const section = request.section
+        ? topic.sections.find((s) => s.id === request.section)
+        : undefined;
+      if (request.section && !section) return null;
+      queue = [...(section?.questionIds || topic.questionIds)];
+      title = section ? `${topic.title} · ${section.title}` : topic.title;
     }
   }
   if (request.question && known.has(request.question)) {
@@ -167,6 +223,10 @@ export function createSession(
     questionIds: queue,
     index: request.question ? Math.max(0, queue.indexOf(request.question)) : 0,
     answers: {},
+    optionOrders: planOptionOrders(
+      queue.map((id) => known.get(id)!),
+      id,
+    ),
     startedAt: now.toISOString(),
   };
 }

@@ -28,34 +28,37 @@ async function copy(code: string) {
 </script>
 
 <template>
-  <section class="answer-content" aria-label="参考答案">
+  <section :key="question.id" class="answer-content" aria-label="参考答案">
     <div class="answer-title">
       <h2 ref="heading" tabindex="-1">参考答案</h2>
     </div>
     <p class="answer-text">{{ explanation[0] }}</p>
-    <pre v-if="explanation.length > 1" tabindex="0"><code>{{ explanation.slice(1).join('\n') }}</code></pre>
-    <section v-if="question.detail?.principle" class="answer-section">
-      <h3>原理与过程</h3>
+    <pre
+      v-if="explanation.length > 1"
+      tabindex="0"
+    ><code>{{ explanation.slice(1).join('\n') }}</code></pre>
+    <details v-if="question.detail?.principle" class="answer-section">
+      <summary>原理与过程</summary>
       <p>{{ question.detail.principle }}</p>
-    </section>
-    <section v-if="question.detail?.example" class="answer-section">
-      <h3>例子与推演</h3>
+    </details>
+    <details v-if="question.detail?.example" class="answer-section">
+      <summary>例子与推演</summary>
       <p>{{ question.detail.example }}</p>
-    </section>
-    <section v-if="question.detail?.code" class="answer-section">
+    </details>
+    <details v-if="question.detail?.code" class="answer-section">
+      <summary>实现代码</summary>
       <div class="code-heading">
-        <h3>实现代码</h3>
         <button class="button button-quiet copy-button" @click="copy(question.detail.code)">
           {{ copied ? '已复制' : '复制代码' }}
         </button>
       </div>
       <pre tabindex="0"><code>{{ question.detail.code }}</code></pre>
       <p class="code-note">长代码可以左右滑动查看</p>
-    </section>
-    <section v-if="question.detail?.pitfalls" class="answer-section boundary">
-      <h3>边界与易错点</h3>
+    </details>
+    <details v-if="question.detail?.pitfalls" class="answer-section">
+      <summary>适用条件与易错点</summary>
       <p>{{ question.detail.pitfalls }}</p>
-    </section>
+    </details>
     <section v-if="question.detail?.followups?.length" class="answer-section">
       <h3>继续追问</h3>
       <details v-for="([prompt, answer], index) in question.detail.followups" :key="index">
@@ -63,12 +66,19 @@ async function copy(code: string) {
         <p>{{ answer }}</p>
       </details>
     </section>
-    <section v-if="sources.length" class="answer-section references">
-      <h3>核对资料</h3>
-      <a v-for="[title, url] in sources" :key="url" :href="url" target="_blank" rel="noopener noreferrer">{{
-        title
-      }}</a>
-    </section>
+    <details v-if="sources.length" class="answer-section references">
+      <summary>核对资料</summary>
+      <div class="reference-links">
+        <a
+          v-for="[title, url] in sources"
+          :key="url"
+          :href="url"
+          target="_blank"
+          rel="noopener noreferrer"
+          >{{ title }}</a
+        >
+      </div>
+    </details>
   </section>
 </template>
 
@@ -97,7 +107,7 @@ async function copy(code: string) {
   color: var(--text, #24372e);
 }
 .answer-section {
-  margin-top: 28px;
+  margin-top: 12px;
 }
 .answer-section h3 {
   font-size: 1rem;
@@ -126,7 +136,7 @@ async function copy(code: string) {
 .code-heading {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
 }
 .code-heading h3 {
@@ -147,10 +157,11 @@ async function copy(code: string) {
   background: #faf8f2;
   padding: 17px 20px;
 }
-.references {
+.reference-links {
   display: flex;
   flex-direction: column;
   gap: 9px;
+  padding-top: 14px;
 }
 .references a {
   font-size: 0.875rem;

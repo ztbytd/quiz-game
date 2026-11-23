@@ -35,6 +35,7 @@ try {
   for (const file of [
     "scripts/verify-browser.cjs",
     "scripts/verify-practice.cjs",
+    "scripts/verify-quality.cjs",
     "scripts/verify-update.cjs",
   ]) {
     await new Promise((resolve, reject) => {

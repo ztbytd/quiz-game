@@ -162,6 +162,24 @@ describe("review schedule and honest statistics", () => {
 });
 
 describe("backup validation", () => {
+  it("round-trips balanced choice orders and rejects malformed permutations", () => {
+    const p = emptyProgress();
+    p.session = { ...session, optionOrders: { "quiz:0:0": [2, 0, 3, 1] } };
+    expect(
+      validateProgress(JSON.parse(JSON.stringify(p)), ids).session,
+    ).toEqual(p.session);
+    for (const order of [
+      [0, 0, 2, 3],
+      [0, 1, 2, 7],
+      [-1, 0, 1, 2],
+      [0, 1.5, 2, 3],
+    ]) {
+      p.session.optionOrders = { "quiz:0:0": order };
+      expect(() => validateProgress(p, ids)).toThrow("选项顺序");
+    }
+    p.session.optionOrders = { "quiz:0:1": [0, 1, 2, 3] };
+    expect(() => validateProgress(p, ids)).toThrow("选项顺序");
+  });
   it("accepts a round trip and rejects bad records before changing caller state", () => {
     const original = emptyProgress();
     original.records["quiz:0:0"] = reviewRecord(emptyRecord(), "good", now);

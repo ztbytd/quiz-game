@@ -10,6 +10,11 @@ export const router = createRouter({
       meta: { title: "专题题库" },
     },
     {
+      path: "/topics/:id",
+      component: () => import("./views/TopicView.vue"),
+      meta: { title: "专题目录" },
+    },
+    {
       path: "/practice",
       component: () => import("./views/PracticeView.vue"),
       meta: { title: "专注练习" },

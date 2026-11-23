@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createSession, isCorrect, optionOrder } from "../src/domain/session";
+import {
+  createSession,
+  isCorrect,
+  optionOrder,
+  planOptionOrders,
+} from "../src/domain/session";
 import { bank, questionById } from "../src/data/content";
 import type { LearningRecord } from "../src/domain/types";
 import { readFileSync, readdirSync } from "node:fs";
@@ -130,7 +135,7 @@ describe("session planning", () => {
     expect(session.questionIds).toContain(chain.questionIds[1]);
     expect(session.questionIds).not.toContain(chain.questionIds[2]);
   });
-  it("preserves the original answer indices and option ordering of all 259 objective questions", () => {
+  it("preserves stored answer identities of all 259 legacy objective questions after option rewrites", () => {
     const context = createContext({});
     const read = (file: string) =>
       readFileSync(new URL("../legacy/" + file, import.meta.url), "utf8");
@@ -162,11 +167,58 @@ describe("session planning", () => {
         const question = questionById.get(`quiz:${level.id}:${index}`)!;
         expect(question.correctAnswer).toBe(raw.answer);
         if (raw.type === "choice")
-          expect(question.choices).toEqual(
-            raw.options!.map((option) => option.replace(/^[A-D]\)\s*/, "")),
-          );
+          expect(question.choices).toHaveLength(raw.options!.length);
         checked++;
       }
     expect(checked).toBe(259);
+  });
+  it("balances correct positions across sessions without moving answer identities", () => {
+    const choices = bank.questions.filter((q) => q.kind === "choice");
+    const seen = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      const seed = `sample-${i}`;
+      const questions = choices.slice(i, i + 13);
+      const orders = planOptionOrders(questions, seed);
+      const counts = [0, 0, 0, 0];
+      for (const question of questions) {
+        const order = optionOrder(question, seed, orders);
+        expect([...order].sort()).toEqual([0, 1, 2, 3]);
+        counts[order.indexOf(question.correctAnswer!)]!++;
+        expect(
+          optionOrder(question, seed, JSON.parse(JSON.stringify(orders))),
+        ).toEqual(order);
+      }
+      expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
+      seen.add(JSON.stringify(orders[questions[0]!.id]));
+    }
+    expect(seen.size).toBeGreaterThan(8);
+  });
+  it("plans exactly one selected chapter and keeps its follow-ups in context", () => {
+    const topic = bank.topics.find((t) => t.id === "7")!;
+    for (const section of topic.sections) {
+      const session = createSession(
+        bank,
+        { topic: topic.id, section: section.id },
+        {},
+      )!;
+      expect(session.questionIds).toEqual(section.questionIds);
+      expect(session.title).toContain(section.title);
+      expect(session.optionOrders).toBeDefined();
+    }
+    expect(
+      createSession(bank, { topic: "7", section: "missing" }, {}),
+    ).toBeNull();
+    expect(createSession(bank, { section: "foundation" }, {})).toBeNull();
+  });
+  it("falls back safely when a restored option permutation does not match the question", () => {
+    const question = bank.questions.find((q) => q.kind === "choice")!;
+    for (const invalid of [
+      [0, 0, 2, 3],
+      [0, 1, 2, 9],
+      [0, 1],
+    ])
+      expect(optionOrder(question, "old", { [question.id]: invalid })).toEqual(
+        optionOrder(question, "old"),
+      );
   });
 });

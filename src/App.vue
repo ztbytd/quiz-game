@@ -41,7 +41,7 @@ const today = new Intl.DateTimeFormat("zh-CN", {
 function active(to: string) {
   return to.includes("?")
     ? route.path === "/practice" && route.query.mode === "mock"
-    : route.path === to;
+    : route.path === to || (to === '/library' && route.path.startsWith('/topics/'));
 }
 function find() {
   router.push({

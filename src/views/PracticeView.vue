@@ -38,7 +38,9 @@ const progress = computed(() =>
 );
 const record = computed(() => (current.value ? store.getRecord(current.value.id) : undefined));
 const options = computed(() =>
-  current.value && session.value ? optionOrder(current.value, session.value.id) : [],
+  current.value && session.value
+    ? optionOrder(current.value, session.value.id, session.value.optionOrders)
+    : [],
 );
 const hasResponse = computed(
   () =>
@@ -75,7 +77,9 @@ const summaryCorrect = computed(
       (q) => q.kind !== 'oral' && isCorrect(q, session.value?.answers[q.id]?.pick),
     ).length,
 );
-const summaryChoiceCount = computed(() => summaryQuestions.value.filter((q) => q.kind !== 'oral').length);
+const summaryChoiceCount = computed(
+  () => summaryQuestions.value.filter((q) => q.kind !== 'oral').length,
+);
 const summaryMinutes = computed(() => {
   if (!session.value) return 0;
   return Math.max(
@@ -115,6 +119,7 @@ function build() {
       {
         mode: queryValue('mode'),
         topic: queryValue('topic'),
+        section: queryValue('section'),
         chain: queryValue('chain'),
         question: queryValue('question'),
         filter: queryValue('filter'),
@@ -126,7 +131,10 @@ function build() {
   missing.value = !session.value;
   if (session.value) {
     session.value.questionIds = session.value.questionIds.filter((id) => questionById.has(id));
-    session.value.index = Math.min(session.value.index, Math.max(0, session.value.questionIds.length - 1));
+    session.value.index = Math.min(
+      session.value.index,
+      Math.max(0, session.value.questionIds.length - 1),
+    );
     if (!session.value.questionIds.length) {
       session.value = null;
       missing.value = true;
@@ -145,14 +153,22 @@ watch(
     const previous = store.progress.session;
     // An unfinished session is resumed when revisiting exactly the same queue request.
     const requestedQuestion = queryValue('question');
+    const requestedTopic = bank.topics.find((topic) => topic.id === queryValue('topic'));
+    const requestedIds = queryValue('section')
+      ? requestedTopic?.sections.find((section) => section.id === queryValue('section'))
+          ?.questionIds
+      : requestedTopic?.questionIds;
     const matching =
       previous &&
       !previous.completedAt &&
       !requestedQuestion &&
       ((queryValue('topic') &&
-        previous.questionIds.some((id) => questionById.get(id)?.topicId === queryValue('topic'))) ||
+        requestedIds?.length === previous.questionIds.length &&
+        previous.questionIds.every((id, index) => id === requestedIds?.[index])) ||
         (queryValue('chain') &&
-          previous.questionIds.every((id) => questionById.get(id)?.chainId === queryValue('chain'))) ||
+          previous.questionIds.every(
+            (id) => questionById.get(id)?.chainId === queryValue('chain'),
+          )) ||
         (queryValue('mode') === 'mock' && previous.mode === 'mock') ||
         (queryValue('mode') === 'daily' && previous.title === '今日练习'));
     if (matching && queryValue('resume') !== '1') {
@@ -227,7 +243,9 @@ async function next() {
   if (session.value.index === session.value.questionIds.length - 1) {
     const unfinished = session.value.questionIds.findIndex((id) => {
       const item = session.value?.answers[id];
-      return !item?.revealed || (!mock.value && questionById.get(id)?.kind === 'oral' && !item.grade);
+      return (
+        !item?.revealed || (!mock.value && questionById.get(id)?.kind === 'oral' && !item.grade)
+      );
     });
     if (unfinished !== -1) {
       completionNotice.value = '还有未完成的题目，已回到第一道待答题。';
@@ -288,8 +306,7 @@ function sourceLabel(question: StudyQuestion) {
       <p>{{ session.title }} · {{ questionCount }} 道题 · {{ summaryMinutes }} 分钟</p>
       <div class="summary-stats">
         <div>
-          <strong>{{ answeredCount }}</strong
-          ><span>已作答</span>
+          <strong>{{ answeredCount }}</strong><span>已作答</span>
         </div>
         <div v-if="summaryChoiceCount && !mock">
           <strong
@@ -297,11 +314,14 @@ function sourceLabel(question: StudyQuestion) {
           ><span>客观题答对</span>
         </div>
         <div>
-          <strong>{{ Object.values(session.answers).filter((a) => a.grade === 'again').length }}</strong
-          ><span>需要再练</span>
+          <strong>{{
+            Object.values(session.answers).filter((a) => a.grade === 'again').length
+          }}</strong><span>需要再练</span>
         </div>
       </div>
-      <p v-if="mock" class="summary-note">对照参考答案自评。这里记录的是你的练习结果，不是 AI 自动评分。</p>
+      <p v-if="mock" class="summary-note">
+        对照参考答案自评。这里记录的是你的练习结果，不是 AI 自动评分。
+      </p>
       <div class="summary-actions">
         <RouterLink to="/review" class="button button-primary">安排复习</RouterLink
         ><RouterLink to="/library" class="button button-quiet">继续探索题库</RouterLink>
@@ -310,10 +330,15 @@ function sourceLabel(question: StudyQuestion) {
     <div class="section-heading">
       <h2>逐题回看</h2>
     </div>
-    <details v-for="(question, index) in summaryQuestions" :key="question.id" class="recap-item panel">
+    <details
+      v-for="(question, index) in summaryQuestions"
+      :key="question.id"
+      class="recap-item panel"
+    >
       <summary>
-        <span class="recap-number">{{ String(index + 1).padStart(2, '0') }}</span
-        ><span>{{ question.prompt }}</span
+        <span class="recap-number">{{ String(index + 1).padStart(2, '0') }}</span><span>{{
+          question.prompt
+        }}</span
         ><span class="recap-status">{{
           session.answers[question.id]?.grade === 'again'
             ? '需复习'
@@ -334,19 +359,24 @@ function sourceLabel(question: StudyQuestion) {
         <AnswerContent :question="question" />
         <div class="self-grade">
           <span>{{
-            session.answers[question.id]?.grade ? '自评已记录，重新练习可更新掌握情况' : '这题讲清楚了吗？'
-          }}</span
-          ><button
+            session.answers[question.id]?.grade
+              ? '自评已记录，重新练习可更新掌握情况'
+              : '这题讲清楚了吗？'
+          }}</span><button
             class="button button-quiet"
             :disabled="!!session.answers[question.id]?.grade"
-            :class="{selected: session.answers[question.id]?.grade === 'again'}"
+            :class="{
+              selected: session.answers[question.id]?.grade === 'again',
+            }"
             @click="summaryGrade(question.id, 'again')"
           >
             还需练习</button
           ><button
             class="button button-primary"
             :disabled="!!session.answers[question.id]?.grade"
-            :class="{selected: session.answers[question.id]?.grade === 'easy'}"
+            :class="{
+              selected: session.answers[question.id]?.grade === 'easy',
+            }"
             @click="summaryGrade(question.id, 'easy')"
           >
             能独立讲清
@@ -367,12 +397,13 @@ function sourceLabel(question: StudyQuestion) {
         <AppIcon name="close" :size="14" />
       </button>
     </div>
-    <p v-if="completionNotice" class="resume-banner" role="status">{{ completionNotice }}</p>
+    <p v-if="completionNotice" class="resume-banner" role="status">
+      {{ completionNotice }}
+    </p>
     <div class="practice-grid">
       <main class="question-panel panel">
         <div class="question-meta">
-          <span class="tag">{{ sourceLabel(current) }}</span
-          ><span>{{ session.title }}</span
+          <span class="tag">{{ sourceLabel(current) }}</span><span>{{ session.title }}</span
           ><span class="question-counter">{{ session.index + 1 }} / {{ questionCount }}</span>
         </div>
         <div
@@ -385,7 +416,9 @@ function sourceLabel(question: StudyQuestion) {
         >
           <span :style="{width: progress + '%'}" />
         </div>
-        <h1 ref="heading" tabindex="-1" class="question-prompt">{{ current.prompt }}</h1>
+        <h1 ref="heading" tabindex="-1" class="question-prompt">
+          {{ current.prompt }}
+        </h1>
         <details v-if="context.length" class="question-context">
           <summary>查看前置问题</summary>
           <p v-for="(text, index) in context" :key="index">{{ text }}</p>
@@ -413,8 +446,7 @@ function sourceLabel(question: StudyQuestion) {
           >
             <span class="choice-letter">{{
               current.kind === 'boolean' ? (value ? '✓' : '×') : String.fromCharCode(65 + index)
-            }}</span
-            ><span>{{ answerLabel(current, value) }}</span
+            }}</span><span>{{ answerLabel(current, value) }}</span
             ><AppIcon
               v-if="answer.revealed && value === current.correctAnswer"
               name="check-circle"
@@ -440,9 +472,12 @@ function sourceLabel(question: StudyQuestion) {
             @click="mock ? next() : reveal()"
           >
             {{
-              mock ? (session.index === questionCount - 1 ? '结束并复盘' : '记录并继续') : '提交并查看解析'
-            }}</button
-          ><span v-if="!hasResponse || mock" class="muted">{{
+              mock
+                ? session.index === questionCount - 1
+                  ? '结束并复盘'
+                  : '记录并继续'
+                : '提交并查看解析'
+            }}</button><span v-if="!hasResponse || mock" class="muted">{{
             !hasResponse ? '完成作答后查看参考答案' : '本轮答案将在结束后显示'
           }}</span>
         </div>
@@ -462,8 +497,7 @@ function sourceLabel(question: StudyQuestion) {
           </div>
           <AnswerContent ref="answerPanel" :question="current" />
           <div v-if="current.kind === 'oral'" class="self-grade">
-            <span>{{ answer.grade ? '自评已记录' : '对照参考答案自评' }}</span
-            ><button
+            <span>{{ answer.grade ? '自评已记录' : '对照参考答案自评' }}</span><button
               class="button button-quiet"
               :disabled="!!answer.grade"
               :class="{selected: answer.grade === 'again'}"
@@ -488,7 +522,10 @@ function sourceLabel(question: StudyQuestion) {
           </div>
           <div v-if="current.chainId && current.id.startsWith('quiz:')" class="followup-link">
             <AppIcon name="bulb" :size="18" /><RouterLink
-              :to="{path: '/practice', query: {mode: 'oral', chain: current.chainId}}"
+              :to="{
+                path: '/practice',
+                query: {mode: 'oral', chain: current.chainId},
+              }"
               >继续练：{{ chainById.get(current.chainId)?.title }}</RouterLink
             >
           </div>
@@ -499,7 +536,9 @@ function sourceLabel(question: StudyQuestion) {
             :class="{active: record?.bookmarked}"
             @click="store.toggleBookmark(current.id)"
           >
-            <AppIcon name="bookmark" :size="17" />{{ record?.bookmarked ? '已收藏' : '收藏这题' }}</button
+            <AppIcon name="bookmark" :size="17" />{{
+              record?.bookmarked ? '已收藏' : '收藏这题'
+            }}</button
           ><button class="tool-action" :class="{active: noteOpen}" @click="noteOpen = !noteOpen">
             <AppIcon name="document" :size="17" />我的笔记{{ record?.note ? ' · 已记录' : '' }}
           </button>
@@ -531,8 +570,7 @@ function sourceLabel(question: StudyQuestion) {
           <h2>本轮练习</h2>
           <p class="outline-description">{{ session.title }}</p>
           <div class="outline-count">
-            <strong>{{ answeredCount }}</strong
-            ><span>/ {{ questionCount }} 已作答</span>
+            <strong>{{ answeredCount }}</strong><span>/ {{ questionCount }} 已作答</span>
           </div>
           <div v-if="!mock" class="question-dots">
             <button

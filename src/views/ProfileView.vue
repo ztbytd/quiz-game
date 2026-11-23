@@ -422,6 +422,7 @@ async function importBackup() {
 }
 .backup-actions > .button {
   justify-content: center;
+  padding-inline: 18px;
 }
 .file-input {
   position: absolute;
