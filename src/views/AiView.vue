@@ -226,11 +226,15 @@ watch(
 );
 watch(text, (value) => {
   localStorage.setItem(draftKey.value, value);
-  if (input.value) {
-    input.value.style.height = "auto";
-    input.value.style.height = Math.min(input.value.scrollHeight, 180) + "px";
-  }
 });
+function resizeInput() {
+  const element = input.value;
+  if (!element) return;
+  element.style.height = "auto";
+  if (element.value)
+    element.style.height = Math.min(element.scrollHeight, 180) + "px";
+}
+watch([text, input], resizeInput, { flush: "post" });
 async function openConversation(id: string) {
   historyOpen.value = false;
   await router.push("/ai/" + id);
