@@ -64,7 +64,7 @@ docs/                最新架构、设计、功能方案与运行说明
 
 前端入口为 `/quiz/`，API 为 `/quiz/api/v1/`。当前阿里云采用 Node.js 24、PostgreSQL 16 和 systemd，API 与 Worker 同进程运行。Caddy 优先代理 API，Nginx 提供静态前端；配置见 [原生部署说明](docs/native-deployment.md)。`Dockerfile.ai` 和 `compose.ai.yml` 保留为其他环境的容器部署方式，未在当前主机运行。
 
-本次改造位于 `app-rebuild-20261123` 分支，当前生产前端为 `2948692`，后端为 `729fe54`。已迁移原账号和公共发布，保留全部 1011 道题；生产数据库备份已恢复到隔离库，并核对全部业务记录和题目 ID。[移动端认证修复](docs/mobile-auth-fix.md) 及 [AI 输入法兼容修复](docs/mobile-ime-check.md) 已上线；输入法文档单独记录实体 iPhone 系统语言键尚未验证的边界。
+本次改造位于 `app-rebuild-20261123` 分支，当前生产前端为 `4cc8af1`，后端为 `729fe54`。已迁移原账号和公共发布，保留全部 1011 道题；生产数据库备份已恢复到隔离库，并核对全部业务记录和题目 ID。[移动端认证修复](docs/mobile-auth-fix.md)、[AI 输入法兼容修复](docs/mobile-ime-check.md) 及 [首屏布局修复](docs/layout-fix.md) 已上线；输入法文档单独记录实体 iPhone 系统语言键尚未验证的边界。
 
 - [架构说明](docs/architecture.md)
 - [设计说明](docs/design.md)
