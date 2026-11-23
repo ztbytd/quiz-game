@@ -548,15 +548,18 @@ function sourceLabel(question: StudyQuestion) {
           <summary>查看前置问题</summary>
           <p v-for="(text, index) in context" :key="index">{{ text }}</p>
         </details>
-        <RouterLink
-          v-if="mock"
-          class="button button-small"
-          :to="{ path: '/ai', query: { mode: 'interview' } }"
-          >开始 AI 动态模拟</RouterLink
-        >
-        <p v-if="mock" class="mock-notice">
-          <AppIcon name="clock" :size="17" />先独立作答，结束后统一复盘答案。
-        </p>
+        <div v-if="mock" class="mock-intro">
+          <RouterLink
+            class="button button-small"
+            :to="{ path: '/ai', query: { mode: 'interview' } }"
+            >开始 AI 动态模拟</RouterLink
+          >
+          <p class="mock-notice">
+            <AppIcon name="clock" :size="17" /><span
+              >先独立作答，结束后统一复盘答案。</span
+            >
+          </p>
+        </div>
         <div
           v-if="current.kind !== 'oral' && !mock"
           class="choices"
@@ -1233,16 +1236,29 @@ function sourceLabel(question: StudyQuestion) {
 .followup-link a {
   color: inherit;
 }
+.mock-intro {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.mock-intro > .button {
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+}
 .mock-notice {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-start;
   background: #f5f7ed;
   padding: 13px 15px;
   border-radius: 9px;
   color: #69794d;
   font-size: 0.8125rem;
-  margin: 0 0 20px;
+  margin: 0;
+}
+.mock-notice > span {
+  min-width: 0;
 }
 .resume-banner {
   display: flex;

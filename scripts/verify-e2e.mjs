@@ -46,6 +46,7 @@ try {
     "scripts/verify-ui-regressions.cjs",
     "scripts/verify-auth.cjs",
     "scripts/verify-ime.cjs",
+    "scripts/verify-layout.cjs",
     "scripts/verify-update.cjs",
   ]) {
     await new Promise((resolve, reject) => {

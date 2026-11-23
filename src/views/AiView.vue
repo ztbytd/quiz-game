@@ -1068,7 +1068,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
           </div>
-          <p class="ai-composer-note">
+          <p v-if="!ai.enabled || contextQuestion" class="ai-composer-note">
             {{ ai.enabled ? "" : "模型配置完成后即可交流。"
             }}<template v-if="contextQuestion"
               >对话已关联题目与当前回答。</template
@@ -1164,13 +1164,34 @@ onBeforeUnmount(() => {
   </div>
 </template>
 <style>
+.app-shell.is-ai {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.app-shell.is-ai .workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
 .app-shell.is-ai .topbar,
 .app-shell.is-ai .page-footer {
   display: none;
 }
 .app-shell.is-ai .main-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
   padding: 0;
   max-width: none;
+  overflow: hidden;
 }
 .app-shell.is-ai .sidebar-bottom {
   margin-top: auto;
@@ -1192,10 +1213,12 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 .ai-page {
-  height: 100dvh;
+  height: 100%;
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
   background: #fafbf8;
 }
 .ai-password label {
@@ -1271,11 +1294,6 @@ onBeforeUnmount(() => {
 }
 .ai-embedded .ai-auth {
   padding: 24px;
-}
-.ai-page.is-empty .ai-transcript {
-  flex: 0 0 auto;
-  max-height: 55dvh;
-  overflow: auto;
 }
 .ai-page.is-empty .ai-composer-area {
   padding-top: 12px;
@@ -1627,6 +1645,7 @@ onBeforeUnmount(() => {
 }
 .ai-auth {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 5vh 24px;
 }
@@ -1838,8 +1857,11 @@ onBeforeUnmount(() => {
   }
 }
 @media (max-width: 700px) {
-  .ai-page {
-    height: calc(100dvh - 65px - env(safe-area-inset-bottom));
+  .app-shell.is-ai {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .app-shell.is-ai .bottom-nav {
+    position: static;
   }
   .app-shell.is-ai .workspace {
     padding: 0 !important;
@@ -1849,9 +1871,6 @@ onBeforeUnmount(() => {
   }
   .ai-keyboard .app-shell.is-ai .bottom-nav {
     display: none;
-  }
-  .ai-keyboard .ai-page {
-    height: 100dvh;
   }
   .ai-header {
     height: 56px;
@@ -1879,6 +1898,24 @@ onBeforeUnmount(() => {
   }
   .ai-composer-area {
     padding: 6px 0 max(4px, env(safe-area-inset-bottom));
+  }
+  .app-shell.is-ai .ai-composer-area {
+    padding-bottom: 12px;
+  }
+  .ai-keyboard .app-shell.is-ai .ai-composer-area {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .ai-interview-setup {
+    gap: 10px;
+  }
+  .ai-interview-setup label {
+    min-width: 0;
+  }
+  .ai-interview-setup select {
+    min-width: 0;
+    max-width: 100%;
+    padding: 9px 6px;
+    font-size: 1rem;
   }
   .ai-composer {
     border-radius: 17px;

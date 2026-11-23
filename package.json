@@ -24,6 +24,8 @@
     "test:auth:webkit": "node scripts/verify-auth.cjs --webkit",
     "test:ime": "node scripts/verify-ime.cjs",
     "test:ime:webkit": "node scripts/verify-ime.cjs --webkit",
+    "test:layout": "node scripts/verify-layout.cjs",
+    "test:layout:webkit": "node scripts/verify-layout.cjs --webkit",
     "start:api": "node server/index.ts"
   },
   "dependencies": {
