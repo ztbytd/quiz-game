@@ -1,0 +1,30 @@
+[Unit]
+Description=Zhixu interview app API and worker
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=zhixu
+Group=zhixu
+WorkingDirectory=/opt/zhixu/current
+EnvironmentFile=/etc/zhixu/quiz.env
+Environment=NODE_OPTIONS=--max-old-space-size=256
+ExecStart=/opt/zhixu/runtime/node-v24.22.3-linux-x64/bin/node server/index.ts
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=90
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/zhixu
+MemoryHigh=384M
+MemoryMax=512M
+CPUQuota=150%
+SyslogIdentifier=zhixu-api
+
+[Install]
+WantedBy=multi-user.target

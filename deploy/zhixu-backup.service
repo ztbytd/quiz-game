@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up Zhixu PostgreSQL database
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /opt/zhixu/current/deploy/backup-postgres.sh
+UMask=0077
+PrivateTmp=true
+ProtectHome=true

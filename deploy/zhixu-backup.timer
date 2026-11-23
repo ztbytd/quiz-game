@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Zhixu database backup
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=5m
+Persistent=true
+Unit=zhixu-backup.service
+
+[Install]
+WantedBy=timers.target
