@@ -6,9 +6,16 @@
 
 私有配置位于 `/etc/zhixu/quiz.env`，由 root 持有、权限 0600；`EnvironmentFile` 在切换服务账号前读取。配置包含 `NODE_ENV=production`、`APP_ORIGIN=https://112.74.52.169`、本机 PostgreSQL 连接和现有 DeepSeek 参数。代码包和静态目录均不包含环境文件、数据库或模型凭据。
 
-首次迁移将本机 PGlite 逻辑导出到私有文件，导入空 PostgreSQL 库，保留账号、个人题版本、会话、消息、笔记、公共发布、审计及用量。会话登录令牌不迁移，用户在生产地址重新登录。迁移前必须停止本地 API 并完成数据库备份。命令及校验以 `scripts/export-local-db.ts` 与 `scripts/import-postgres.ts` 的帮助和参数为准。
+首次迁移将本机 PGlite 逻辑导出到私有文件，导入空 PostgreSQL 库，保留账号、个人题版本、会话、消息、笔记、公共发布、审计及用量。会话登录令牌不迁移，用户在生产地址重新登录。迁移前必须停止本地 API 并完成数据库备份。导出时传入显式绝对路径：
 
-后端启动成功、模型连通及数据库内容核对后，新增 Caddy 的 API 路由并执行配置校验与 reload。最后使用 `scripts/deploy-release.py` 根据已审核的旧文件清单原子切换前端；脚本保留原静态目录。Caddy 配置及原站点额外备份在 `/var/backups/zhixu/`。
+```sh
+node scripts/export-local-db.ts --source /绝对路径/server/data --output /绝对路径/snapshot.private.local --offline
+node --env-file=/etc/zhixu/quiz.env scripts/import-postgres.ts --input /绝对路径/snapshot.private.local
+```
+
+业务记录按完整行的多重集合校验，消除数据库排序规则差异；字段值、重复次数及题目 ID 均严格保留。JSON 以数据库文本传输，保留 SQL NULL、JSON null 与精确数值；日期保留时区和微秒。目标库非空时拒绝导入。
+
+后端启动成功、模型连通及数据库内容核对后，新增 Caddy 的 API 路由并执行配置校验与 reload。最后使用 `scripts/deploy-release.py` 根据已审核的旧文件清单原子切换前端；脚本保留原静态目录。Caddy 配置及原站点额外备份在 `/var/backups/zhixu/`。`deploy/nginx-quiz.conf` 为清单设置 `application/manifest+json`，并让入口与 Service Worker 每次验证缓存。
 
 ## 运行
 
@@ -31,4 +38,16 @@ systemctl list-timers zhixu-backup.timer
 pg_restore --list /var/backups/zhixu/对应文件.dump
 ```
 
-备份当前保留在同一服务器。跨主机或对象存储备份尚未配置。
+每日备份保留在服务器；首次验收备份另有本机私有副本。自动跨主机或对象存储备份尚未配置。
+
+## 2026 年 11 月 23 日上线记录
+
+- 应用提交：`729fe548367094d40cb65ef5b01a4cec808c09bd`，前端 39 个文件逐一核对 SHA-256；在线版本可读 `/quiz/release.json`。
+- 旧静态版本：`2fd31f0`，保留在 `/var/www/.quiz-before-729fe5483670`。旧代理和静态包在 `/var/backups/zhixu/bootstrap-20261123-95c935f/`。
+- 导入 12 张业务表，共 7 行：1 个账号、2 个公共发布、2 个升级标记、1 条审计及 1 条用量；当前本机个人生成题、会话和全局笔记均为 0。最新公共发布包含全部 1011 道题、31 个专题。
+- 初次逐行比对发现数据库排序规则不同，事务回滚；修复为完整行多重集合比较后，所有行和题目 ID 校验通过，未舍弃字段。
+- 首次 PostgreSQL 备份：`/var/backups/zhixu/zhixu-20261123T143527Z-252845.dump`，恢复到独立库后逐表完整行及题目 ID 一致；验收库已删除。
+- 原 Caddy 配置除 quiz API 路由外逐字保持，现有应用监听与服务状态保留。API 和 PostgreSQL 均只监听本机地址。API 初次检查无自动重启，内存约 73 MiB，整机仍有约 1 GiB 可用内存。
+- 严格 HTTPS 的线上 Chrome 验收通过：390/1440 宽度导航、搜索、作答、笔记收藏与刷新恢复；Service Worker 激活后整页离线刷新、搜索及打开题目；清单及安装说明可用。隔离浏览器不执行操作系统级安装。
+- 线上真实 AI 验收仅调用一次，约 2.4 秒完成，观察到 `text/event-stream` 的运行中片段及完成状态；刷新历史一致。验收会话已删除。另以实际 UI 补验登录、退出、刷新，退出后 `/me` 为 401。
+- 未登录的 `/quiz/api/v1/me` 返回 401，表示当前没有有效登录会话；公共题库保持可用。AI 功能需登录。首次迁移不保留旧登录令牌。

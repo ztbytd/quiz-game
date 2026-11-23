@@ -26,7 +26,7 @@ npm ci
 npm run dev:all
 ```
 
-打开 `http://127.0.0.1:5185/quiz/#/ai`。当前使用 DeepSeek 官方接口和 `deepseek-flash`。真实模型已通过答疑、回答点评、两道场景题生成及复核、面试提问和逐题复盘验证；阿里云生产环境仍待验收。
+打开 `http://127.0.0.1:5185/quiz/#/ai`。当前使用 DeepSeek 官方接口和 `deepseek-flash`。阿里云入口为 [知序](https://112.74.52.169/quiz/)，AI 后端已上线。真实模型链路已跑通，普通点评仍出现过错误判定遗漏的样例，详见检查报告。
 
 私有环境配置与数据库目录被 Git 和 Docker 构建上下文排除。不要将密钥放进 `VITE_` 变量。
 
@@ -46,7 +46,7 @@ npm run test:e2e
 
 AI 界面测试使用独立内存数据库和测试 provider，不调用真实模型。生产浏览器回归覆盖 PWA、离线练习、备份、刷新恢复、选择题顺序与代码隔离。截图位于 `test-results/`。
 
-`test:journey:live` 会调用私有配置中的真实模型；测试账号及内容位于临时数据库，不修改用户现有记录。本轮已完成 15 组真实用户流程、5 组专项界面回归和 153 道题的语义抽查，具体修订和检查范围见 [检查报告](docs/qa-report-2026-11-23.md)。
+`test:journey:live` 会调用私有配置中的真实模型；测试账号及内容位于临时数据库，不修改用户现有记录。本轮完成 15 组固定交互流程、7 组专项界面回归和 153 道题的语义抽查；真实模型重复调用仍有点评误判，具体修订和检查范围见 [检查报告](docs/qa-report-2026-11-23.md)。
 
 ## 项目目录
 
@@ -62,9 +62,9 @@ docs/                最新架构、设计、功能方案与运行说明
 
 ## 运行与部署
 
-前端入口为 `/quiz/`，API 为 `/quiz/api/v1/`。生产使用 `Dockerfile.ai` 和 `compose.ai.yml` 分别运行 API、Worker 和 PostgreSQL。Caddy 优先代理 API，Nginx 提供静态前端。完整步骤见 [运行说明](docs/ai-operation.md)。
+前端入口为 `/quiz/`，API 为 `/quiz/api/v1/`。当前阿里云采用 Node.js 24、PostgreSQL 16 和 systemd，API 与 Worker 同进程运行。Caddy 优先代理 API，Nginx 提供静态前端；配置见 [原生部署说明](docs/native-deployment.md)。`Dockerfile.ai` 和 `compose.ai.yml` 保留为其他环境的容器部署方式，未在当前主机运行。
 
-上线前需通过真实模型、生产数据库、代理与备份恢复验证。本次改造位于 `app-rebuild-20261123` 分支，生产站点仍为 `2fd31f0`，尚未部署 AI 后端。
+本次改造位于 `app-rebuild-20261123` 分支，生产应用提交为 `729fe54`。已迁移原账号和公共发布，保留全部 1011 道题；生产数据库备份已恢复到隔离库，并核对全部业务记录和题目 ID。
 
 - [架构说明](docs/architecture.md)
 - [设计说明](docs/design.md)
