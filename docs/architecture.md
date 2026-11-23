@@ -12,7 +12,7 @@ flowchart TB
   UI --> API[Fastify 同源 API]
   API --> PG[(PostgreSQL)]
   Worker[持久任务 Worker] --> PG
-  Worker --> Provider[GPT 6.1 模型适配器]
+  Worker --> Provider[DeepSeek 与 OpenAI 兼容模型适配器]
   Worker --> Check[结构检查与内容复核]
   Check --> PG
 ```

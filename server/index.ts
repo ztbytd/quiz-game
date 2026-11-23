@@ -20,8 +20,8 @@ const { app } = await createApp({
   worker: process.env.SERVICE_ROLE !== "api",
   complete: process.env.AI_API_KEY
     ? provider({
-        baseUrl: process.env.AI_BASE_URL || "https://us.xigong.cloud/v1",
-        model: process.env.AI_MODEL || "gpt-6.1-sol",
+        baseUrl: process.env.AI_BASE_URL || "https://api.deepseek.com/v1",
+        model: process.env.AI_MODEL || "deepseek-flash",
         apiKey: process.env.AI_API_KEY,
       })
     : undefined,

@@ -20,6 +20,7 @@ export function provider(config: ProviderConfig): Complete {
   const url = new URL(config.baseUrl.replace(/\/$/, "") + "/chat/completions");
   if (url.protocol !== "https:" && url.hostname !== "127.0.0.1")
     throw new Error("模型接口必须使用 HTTPS");
+  const deepseek = url.hostname === "api.deepseek.com";
   return async (messages, options) => {
     const response = await fetch(url, {
       method: "POST",
@@ -32,7 +33,9 @@ export function provider(config: ProviderConfig): Complete {
         model: config.model,
         messages,
         stream: true,
-        max_completion_tokens: options.maxTokens,
+        ...(deepseek
+          ? { max_tokens: options.maxTokens, thinking: { type: "disabled" } }
+          : { max_completion_tokens: options.maxTokens }),
         stream_options: { include_usage: true },
         ...(options.structured
           ? { response_format: { type: "json_object" } }
