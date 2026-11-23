@@ -174,6 +174,10 @@ export function canonical(value: unknown): string {
 export const checksum = (value: unknown) =>
   createHash("sha256").update(canonical(value)).digest("hex");
 
+// Database collation may change row order; preserve duplicates and every field.
+export const rowsChecksum = (rows: Array<Record<string, unknown>>) =>
+  checksum(rows.map((row) => canonical(row)).sort());
+
 export function validateEnvelope(value: unknown): TransferPayload {
   const envelope = value as TransferEnvelope;
   if (
@@ -270,25 +274,34 @@ export async function readTables(db: Sql): Promise<Rows> {
 
 export function questionInventory(tables: Rows) {
   return {
-    releases: tables.releases.map((row) => {
-      const questions = (
-        typeof row.bank === "string" ? JSON.parse(row.bank) : undefined
-      )?.questions;
-      if (
-        !Array.isArray(questions) ||
-        questions.some((question) => typeof question?.id !== "string")
-      )
-        throw new TransferError("INVALID_QUESTION_INVENTORY");
-      return {
-        release: row.id,
-        ids: questions.map((question) => question.id).sort(),
-      };
-    }),
+    releases: tables.releases
+      .map((row) => {
+        const questions = (
+          typeof row.bank === "string" ? JSON.parse(row.bank) : undefined
+        )?.questions;
+        if (
+          !Array.isArray(questions) ||
+          questions.some((question) => typeof question?.id !== "string")
+        )
+          throw new TransferError("INVALID_QUESTION_INVENTORY");
+        return {
+          release: row.id,
+          ids: questions.map((question) => question.id).sort(),
+        };
+      })
+      .sort((left, right) => {
+        const a = BigInt(String(left.release)),
+          b = BigInt(String(right.release));
+        return a < b ? -1 : a > b ? 1 : 0;
+      }),
     candidates: tables.candidates.map((row) => row.id).sort(),
-    versions: tables.candidate_versions.map((row) => [
-      row.question_id,
-      row.version,
-    ]),
+    versions: tables.candidate_versions
+      .map((row) => [row.question_id, row.version])
+      .sort((left, right) => {
+        const a = canonical(left),
+          b = canonical(right);
+        return a < b ? -1 : a > b ? 1 : 0;
+      }),
   };
 }
 
@@ -345,9 +358,12 @@ export async function restoreIntoEmpty(db: Database, payload: TransferPayload) {
     for (const table of transferTables)
       if (
         restored[table.name].length !== payload.tables[table.name].length ||
-        checksum(restored[table.name]) !== checksum(payload.tables[table.name])
+        rowsChecksum(restored[table.name]) !==
+          rowsChecksum(payload.tables[table.name])
       )
-        throw new TransferError("ROW_VERIFICATION_FAILED");
+        throw new TransferError(
+          `ROW_VERIFICATION_FAILED_${table.name.toUpperCase()}`,
+        );
     if (
       checksum(questionInventory(restored)) !==
       checksum(questionInventory(payload.tables))
