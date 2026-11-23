@@ -48,21 +48,13 @@ const weekdays = computed(() =>
     };
   }),
 );
-const names: Record<string, string> = {
-  "0": "JavaScript\n语言的底层逻辑",
-  "3": "Vue 3\n从响应到渲染",
-  "18": "AI 应用工程\n让智能真正落地",
-  "16": "支付与风控\n复杂业务的取舍",
-};
 const tones = ["sage", "blue", "peach", "lavender"];
 </script>
 <template>
   <div class="dashboard">
     <div class="page-heading">
       <div>
-        <div class="eyebrow">每一步，都算数</div>
-        <h1>今天，也学得更扎实一点。</h1>
-        <p>从一个问题开始，把理解变成自己的表达。</p>
+        <h1>学习工作台</h1>
       </div>
       <RouterLink class="button button-quiet desktop-only" to="/profile"
         ><AppIcon name="calendar" :size="17" />我的学习记录</RouterLink
@@ -72,9 +64,7 @@ const tones = ["sage", "blue", "peach", "lavender"];
       <div class="dashboard-primary">
         <section class="daily-hero">
           <div class="hero-copy">
-            <span class="hero-kicker"><span></span>今日练习计划</span>
-            <h2>从理解，<br />到从容表达。</h2>
-            <p>先独立作答，再对照解析。<br />给知识一个真正记住的机会。</p>
+            <h2>今日练习</h2>
             <RouterLink class="button hero-button" to="/practice?mode=daily"
               ><AppIcon name="play" :size="19" />{{
                 store.stats.todayCount ? "继续今日练习" : "开始今日练习"
@@ -179,7 +169,7 @@ const tones = ["sage", "blue", "peach", "lavender"];
         <div v-if="session" class="resume-strip">
           <div class="strip-icon"><AppIcon name="history" /></div>
           <div>
-            <strong>接着上次的思路</strong>
+            <strong>未完成的练习</strong>
             <p>
               {{ session.title }} · 第 {{ session.index + 1 }} /
               {{ session.questionIds.length }} 题
@@ -196,28 +186,23 @@ const tones = ["sage", "blue", "peach", "lavender"];
               >{{ store.stats.answered
               }}<small> / {{ bank.questions.length }}</small></strong
             >
-            <div class="stat-note">
-              <AppIcon name="check-circle" :size="14" />每次练习都有记录
-            </div>
           </div>
           <div>
             <span>已标记掌握</span
             ><strong>{{ store.stats.mastered }}<small> 题</small></strong>
-            <div class="stat-note">能独立讲清，才算掌握</div>
           </div>
           <div>
             <span>待巩固问题</span
             ><strong>{{ store.stats.weak }}<small> 题</small></strong
             ><RouterLink class="stat-note" to="/review"
-              >回到薄弱的地方 <AppIcon name="chevron-right" :size="12"
+              >查看待复习题目 <AppIcon name="chevron-right" :size="12"
             /></RouterLink>
           </div>
         </section>
         <section class="featured-section">
           <div class="section-heading">
             <div>
-              <h2>你的专题书架</h2>
-              <p>从原理到项目，每个方向都能深入。</p>
+              <h2>专题练习</h2>
             </div>
             <RouterLink to="/library" class="text-link"
               >全部 {{ bank.topics.length }} 个专题</RouterLink
@@ -232,15 +217,11 @@ const tones = ["sage", "blue", "peach", "lavender"];
               ><div class="subject-cover" :class="tones[i]">
                 <span class="cover-category">{{ topic.category }}</span>
                 <div class="cover-title">
-                  {{ names[topic.id]?.split("\n")[0] || topic.title }}
+                  {{ topic.title }}
                 </div>
-                <span class="cover-subtitle">{{
-                  names[topic.id]?.split("\n")[1] || topic.description
-                }}</span>
                 <div class="cover-geometry" :class="`geometry-${i}`">
                   <span></span><span></span><span></span>
                 </div>
-                <span class="cover-brand">知序 / 专题练习</span>
               </div>
               <h3>{{ topic.title }}</h3>
               <div class="subject-meta">
@@ -256,14 +237,13 @@ const tones = ["sage", "blue", "peach", "lavender"];
         </section>
         <section class="recent-section">
           <div class="section-heading">
-            <h2>最近的学习足迹</h2>
+            <h2>最近练习</h2>
             <RouterLink to="/profile" class="text-link">查看记录</RouterLink>
           </div>
           <div v-if="!recent.length" class="empty-recent">
             <AppIcon name="history" :size="25" />
             <div>
-              <strong>你的第一条学习记录，正在等你。</strong>
-              <p>完成一次练习后，在这里接着巩固。</p>
+              <strong>暂无练习记录</strong>
             </div>
           </div>
           <RouterLink
@@ -294,7 +274,7 @@ const tones = ["sage", "blue", "peach", "lavender"];
       <aside class="dashboard-rail">
         <section class="goal-card panel">
           <div class="section-heading">
-            <h2>今日小目标</h2>
+            <h2>今日目标</h2>
             <RouterLink
               to="/profile"
               aria-label="设置每日目标"
@@ -313,8 +293,8 @@ const tones = ["sage", "blue", "peach", "lavender"];
           <p class="goal-caption">
             {{
               percent >= 100
-                ? "今天的目标完成了，做得扎实。"
-                : "给自己一点专注的时间。"
+                ? "今日目标已完成"
+                : `还需练习 ${Math.max(0, store.progress.dailyGoal - store.stats.todayCount)} 题`
             }}
           </p>
           <div class="week-grid">
@@ -324,8 +304,7 @@ const tones = ["sage", "blue", "peach", "lavender"];
               :class="{ today: day.today, done: day.count > 0 }"
               :title="`${day.count} 次练习`"
             >
-              <span>{{ day.label }}</span
-              ><i
+              <span>{{ day.label }}</span><i
                 ><AppIcon v-if="day.count" name="check" :size="13" /><span
                   v-else
                 ></span
@@ -334,37 +313,35 @@ const tones = ["sage", "blue", "peach", "lavender"];
           </div>
         </section>
         <section class="mock-card">
-          <span class="small overline">INTERVIEW ROOM</span>
           <div class="mock-heading">
-            <h2>给自己一场<br />真实的模拟。</h2>
+            <h2>模拟面试</h2>
             <AppIcon name="experiment" :size="35" />
           </div>
-          <p>跨方向 12 问，独立表达。<br />结束后再看答案和复盘。</p>
+          <p>跨专题 12 题，结束后查看答案。</p>
           <RouterLink to="/practice?mode=mock" class="button mock-button"
             >进入模拟面试</RouterLink
           >
         </section>
         <section class="rail-links">
-          <h2>准备得更完整</h2>
+          <h2>专项练习</h2>
           <RouterLink to="/resume"
             ><span class="rail-icon peach"><AppIcon name="document" /></span>
             <div>
-              <strong>让简历经得起追问</strong>
+              <strong>简历对照</strong>
               <p>逐项核对项目与技能</p>
             </div>
             <AppIcon name="chevron-right" :size="14" /></RouterLink
           ><RouterLink to="/library?tab=oral"
             ><span class="rail-icon blue"><AppIcon name="bulb" /></span>
             <div>
-              <strong>把答案讲深一层</strong>
+              <strong>专项追问</strong>
               <p>{{ bank.chains.length }} 组专项追问</p>
             </div>
             <AppIcon name="chevron-right" :size="14" /></RouterLink
           ><RouterLink to="/review?tab=bookmarks"
             ><span class="rail-icon sage"><AppIcon name="bookmark" /></span>
             <div>
-              <strong>我的重点收藏</strong>
-              <p>值得再看一遍的问题</p>
+              <strong>收藏题目</strong>
             </div>
             <AppIcon name="chevron-right" :size="14"
           /></RouterLink>
@@ -373,7 +350,7 @@ const tones = ["sage", "blue", "peach", "lavender"];
           <AppIcon name="book" :size="18" />
           <p>
             {{ quizQuestions.length }} 道基础题 ·
-            {{ oralQuestions.length }} 个口述问题<br />按你的节奏，一点点消化。
+            {{ oralQuestions.length }} 个口述问题
           </p>
         </div>
       </aside>

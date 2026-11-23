@@ -89,12 +89,9 @@ async function importBackup() {
 <template>
   <div class="profile-page">
     <header class="page-heading">
-      <p class="eyebrow">MY STUDY SPACE</p>
-      <h1>看见每一点积累。</h1>
-      <p class="muted">学习的进度，由你自己的理解来定义。</p>
+      <h1>学习记录</h1>
     </header>
     <section class="profile-summary panel" aria-label="学习概览">
-      <div class="profile-monogram" aria-hidden="true">学</div>
       <div class="profile-intro">
         <h2>我的学习档案</h2>
         <p>学习数据保存在本机，可导出备份。</p>
@@ -127,7 +124,7 @@ async function importBackup() {
         <section class="panel setting-section">
           <header>
             <AppIcon name="target" :size="20" />
-            <h2>给今天一个小目标</h2>
+            <h2>每日目标</h2>
           </header>
           <p>每完成一道题并作出评价，计入一次练习。</p>
           <div class="goal-options">
@@ -180,7 +177,7 @@ async function importBackup() {
         <section class="panel backup-section">
           <header>
             <AppIcon name="download" :size="20" />
-            <h2>你的记录，由你保管</h2>
+            <h2>数据备份</h2>
           </header>
           <p>换设备或清理浏览器前，先导出一份备份。导入后可以继续原来的学习。</p>
           <div class="backup-actions">
@@ -213,7 +210,6 @@ async function importBackup() {
           ><div class="resume-link-icon"><AppIcon name="file" :size="22" /></div>
           <div>
             <h2>简历与项目对照</h2>
-            <p>把技术回答，落到真实经历。</p>
           </div>
           <AppIcon name="chevron-right" :size="18"
         /></RouterLink>
@@ -236,19 +232,6 @@ async function importBackup() {
   gap: 20px;
   padding: 28px;
   margin: 30px 0 20px;
-}
-.profile-monogram {
-  width: 65px;
-  height: 65px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 18px;
-  background: #e5eee3;
-  color: #4d7653;
-  font:
-    500 30px/1.2 ui-serif,
-    serif;
 }
 .profile-intro {
   flex: 1;
@@ -528,12 +511,6 @@ async function importBackup() {
     padding: 20px;
     gap: 14px;
     flex-wrap: wrap;
-  }
-  .profile-monogram {
-    width: 50px;
-    height: 50px;
-    font-size: 24px;
-    border-radius: 14px;
   }
   .profile-intro h2 {
     font-size: 18px;

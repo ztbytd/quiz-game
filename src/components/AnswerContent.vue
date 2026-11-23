@@ -30,7 +30,6 @@ async function copy(code: string) {
 <template>
   <section class="answer-content" aria-label="参考答案">
     <div class="answer-title">
-      <span class="answer-kicker">REFERENCE</span>
       <h2 ref="heading" tabindex="-1">参考答案</h2>
     </div>
     <p class="answer-text">{{ explanation[0] }}</p>
@@ -89,12 +88,6 @@ async function copy(code: string) {
   margin: 0;
   scroll-margin-top: 120px;
   outline: none;
-}
-.answer-kicker {
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
-  color: var(--brand, #1c654c);
-  font-weight: 700;
 }
 .answer-text,
 .answer-section p {

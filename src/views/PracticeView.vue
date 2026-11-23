@@ -284,8 +284,7 @@ function sourceLabel(question: StudyQuestion) {
     </div>
     <section class="summary-hero panel">
       <div class="summary-mark"><AppIcon name="check" :size="30" /></div>
-      <p class="eyebrow">ONE STEP FORWARD</p>
-      <h1 ref="heading" tabindex="-1">把这一轮，变成真正的掌握。</h1>
+      <h1 ref="heading" tabindex="-1">练习完成</h1>
       <p>{{ session.title }} · {{ questionCount }} 道题 · {{ summaryMinutes }} 分钟</p>
       <div class="summary-stats">
         <div>
@@ -310,7 +309,6 @@ function sourceLabel(question: StudyQuestion) {
     </section>
     <div class="section-heading">
       <h2>逐题回看</h2>
-      <span class="muted">保留思路，再补上遗漏</span>
     </div>
     <details v-for="(question, index) in summaryQuestions" :key="question.id" class="recap-item panel">
       <summary>
@@ -432,7 +430,7 @@ function sourceLabel(question: StudyQuestion) {
             :readonly="answer.revealed"
             placeholder="按结论、原理、例子和边界展开。简短记录也可以。"
             @input="draft"
-          /><span>先回忆，再对照，印象会更深。</span>
+          />
         </div>
         <CodeLab v-if="labId && !mock" :key="labId" :lab-id="labId" />
         <div v-if="!answer.revealed" class="answer-actions">
@@ -444,8 +442,8 @@ function sourceLabel(question: StudyQuestion) {
             {{
               mock ? (session.index === questionCount - 1 ? '结束并复盘' : '记录并继续') : '提交并查看解析'
             }}</button
-          ><span class="muted">{{
-            !hasResponse ? '完成作答后查看参考答案' : mock ? '本轮答案将在结束后显示' : '你的思路比猜对更重要'
+          ><span v-if="!hasResponse || mock" class="muted">{{
+            !hasResponse ? '完成作答后查看参考答案' : '本轮答案将在结束后显示'
           }}</span>
         </div>
         <template v-if="answer.revealed && !mock">
@@ -460,12 +458,11 @@ function sourceLabel(question: StudyQuestion) {
               <p v-if="!isCorrect(current, answer.pick)">
                 正确答案：{{ answerLabel(current, current.correctAnswer) }}
               </p>
-              <p v-else>再看一遍推演，确认每一步都能讲清。</p>
             </div>
           </div>
           <AnswerContent ref="answerPanel" :question="current" />
           <div v-if="current.kind === 'oral'" class="self-grade">
-            <span>{{ answer.grade ? '自评已记录' : '对照答案，给自己一个判断' }}</span
+            <span>{{ answer.grade ? '自评已记录' : '对照参考答案自评' }}</span
             ><button
               class="button button-quiet"
               :disabled="!!answer.grade"
@@ -531,7 +528,6 @@ function sourceLabel(question: StudyQuestion) {
       </main>
       <aside class="practice-aside">
         <section class="session-outline panel">
-          <p class="eyebrow">IN THIS SESSION</p>
           <h2>本轮练习</h2>
           <p class="outline-description">{{ session.title }}</p>
           <div class="outline-count">
@@ -556,11 +552,6 @@ function sourceLabel(question: StudyQuestion) {
           </div>
           <p v-else class="outline-description">模拟面试按顺序作答，避免提前查看后续问题与答案。</p>
         </section>
-        <div class="practice-tip">
-          <AppIcon name="bulb" :size="22" />
-          <h3>把答案说出来</h3>
-          <p>不只记住结论。试着用自己的话解释原理，再补一个真实场景。</p>
-        </div>
       </aside>
     </div>
   </div>
@@ -904,20 +895,6 @@ function sourceLabel(question: StudyQuestion) {
   color: white;
   border-color: #26684d;
 }
-.practice-tip {
-  padding: 28px 16px;
-  color: #6b8171;
-}
-.practice-tip h3 {
-  font-size: 0.9375rem;
-  color: #526e5b;
-  margin: 14px 0 8px;
-}
-.practice-tip p {
-  font-size: 0.8125rem;
-  line-height: 1.85;
-  margin: 0;
-}
 .self-grade {
   padding: 24px 0 0;
   border-top: 1px solid #e5ebe5;
@@ -1101,13 +1078,6 @@ function sourceLabel(question: StudyQuestion) {
   line-height: 1.85;
   color: #637364;
   border-radius: 8px;
-}
-.eyebrow {
-  font-size: 0.6875rem;
-  letter-spacing: 0.13em;
-  color: #8d9c8e;
-  font-weight: 600;
-  margin: 0;
 }
 @media (max-width: 1050px) {
   .practice-grid {

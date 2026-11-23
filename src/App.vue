@@ -123,8 +123,7 @@ onUnmounted(() => {
       <RouterLink class="brand" to="/" aria-label="知序，返回学习工作台"
         ><img :src="`${appBase}app-icon.svg`" alt="" width="38" height="38" />
         <div>
-          <strong>知序<span>面试练习</span></strong
-          ><small>INTERVIEW STUDIO</small>
+          <strong>知序<span>面试练习</span></strong>
         </div></RouterLink
       >
       <div class="nav-caption">学习空间</div>
@@ -153,8 +152,7 @@ onUnmounted(() => {
       <div class="sidebar-bottom">
         <div class="install-card">
           <div class="install-icon"><AppIcon name="download" :size="22" /></div>
-          <strong>{{ installed ? "已添加到主屏幕" : "把练习装进口袋" }}</strong>
-          <p>手机、电脑，随时接着练。</p>
+          <strong>{{ installed ? "已添加到主屏幕" : "安装应用" }}</strong>
           <button
             v-if="!installed"
             class="button button-small"
@@ -238,17 +236,14 @@ onUnmounted(() => {
         /></RouterView>
       </main>
       <footer v-if="!focused" class="page-footer">
-        <span>知序 · 每一次练习，都有迹可循</span
-        ><a
+        <a
           :href="`${appBase}third-party-notices.txt`"
           target="_blank"
           rel="noopener"
           >开源许可</a
         ><button v-if="!installed" class="footer-action" @click="install">
           添加到主屏幕</button
-        ><span>{{
-          offlineReady ? "已准备好离线练习" : "前端面试学习工作台"
-        }}</span>
+        ><span v-if="offlineReady">已准备好离线练习</span>
       </footer>
     </div>
     <nav class="bottom-nav" aria-label="手机导航">

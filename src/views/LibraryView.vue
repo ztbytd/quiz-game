@@ -83,9 +83,7 @@ function changePage(next: number) {
   <div class="library-page">
     <header class="page-heading library-heading">
       <div>
-        <p class="eyebrow">KNOWLEDGE LIBRARY</p>
-        <h1>把知识，练成自己的表达。</h1>
-        <p class="muted">从基础原理到项目现场，找到你今天想讲清的问题。</p>
+        <h1>专题题库</h1>
       </div>
       <div class="library-count">
         <strong>{{ quizQuestions.length }}</strong

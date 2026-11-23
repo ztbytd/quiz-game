@@ -21,7 +21,7 @@ export default defineConfig({
         id: "/quiz/",
         name: "知序 · 面试练习",
         short_name: "知序",
-        description: "从理解到表达，你的前端面试学习工作台。",
+        description: "前端题库、口述追问、模拟面试与复习记录。",
         lang: "zh-CN",
         start_url: "/quiz/#/",
         scope: "/quiz/",

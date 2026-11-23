@@ -60,10 +60,10 @@ function date(value?: string) {
   return value ? new Date(value).toLocaleDateString('zh-CN', {month: 'long', day: 'numeric'}) : '尚未练习';
 }
 const emptyCopy: Record<string, [string, string]> = {
-  weak: ['把卡住的问题留在这里', '答题后选择「还需练习」，下次就能集中回顾。'],
+  weak: ['暂无待巩固题目', '答题后选择「还需练习」，下次就能集中回顾。'],
   due: ['今天没有到期的复习', '完成练习并自评后，系统会安排下一次回顾。'],
-  bookmarks: ['收好值得反复琢磨的问题', '在练习页收藏题目，为自己建立一份重点清单。'],
-  notes: ['让每一次练习留下思考', '在题目旁写下自己的表达、例子和待确认的细节。'],
+  bookmarks: ['暂无收藏题目', '在练习页收藏题目，为自己建立一份重点清单。'],
+  notes: ['暂无笔记', '在题目旁写下自己的表达、例子和待确认的细节。'],
 };
 </script>
 
@@ -71,9 +71,7 @@ const emptyCopy: Record<string, [string, string]> = {
   <div class="review-page">
     <header class="page-heading review-heading">
       <div>
-        <p class="eyebrow">YOUR LEARNING NOTES</p>
-        <h1>温故，然后知新。</h1>
-        <p class="muted">把还没讲清的问题，变成下一次的底气。</p>
+        <h1>复习清单</h1>
       </div>
       <RouterLink
         v-if="counts.weak"
@@ -94,7 +92,7 @@ const emptyCopy: Record<string, [string, string]> = {
     </div>
     <div class="review-tools">
       <p class="muted">
-        {{ items.length }} 个问题{{ tab === 'notes' ? '，记录你的思考' : '，按最近练习排序' }}
+        {{ items.length }} 个问题，按最近练习排序
       </p>
       <label class="review-search"
         ><AppIcon name="search" :size="17" /><input

@@ -353,12 +353,6 @@ small {
   font-size: 0.9375rem;
   margin-top: 8px;
 }
-.eyebrow {
-  font-size: 0.75rem;
-  color: #7a907b;
-  letter-spacing: 0.14em;
-  margin-bottom: 9px;
-}
 .section-heading {
   display: flex;
   align-items: center;
@@ -718,9 +712,6 @@ select {
   }
   .page-heading p {
     font-size: 0.875rem;
-  }
-  .eyebrow {
-    font-size: 0.6875rem;
   }
   .bottom-nav {
     display: flex;

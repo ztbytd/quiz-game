@@ -43,8 +43,7 @@ function done(item: CoverageItem) {
 <template>
   <div class="resume-page">
     <header class="page-heading">
-      <p class="eyebrow">EXPERIENCE & EVIDENCE</p>
-      <h1>让每个技术点，都有真实故事。</h1>
+      <h1>简历对照</h1>
       <p class="muted">对照简历准备项目细节，分清自己的职责、方案依据与结果证据。</p>
     </header>
     <section class="evidence-intro panel">

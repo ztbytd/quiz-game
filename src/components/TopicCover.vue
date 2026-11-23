@@ -54,17 +54,15 @@ const displaySymbol = computed(() => {
   <div class="topic-cover" :class="{compact}" :style="{'--cover-tone': tone}" aria-hidden="true">
     <div class="cover-spine"></div>
     <div class="cover-print">
-      <span class="cover-kicker">INTERVIEW STUDIES</span>
       <span class="cover-symbol">{{ displaySymbol }}</span>
       <span class="cover-title">{{ title }}</span>
-      <span class="cover-subtitle">{{ subtitle || '理解 · 推演 · 表达' }}</span>
+      <span v-if="subtitle" class="cover-subtitle">{{ subtitle }}</span>
     </div>
     <svg class="cover-pattern" viewBox="0 0 200 200" fill="none">
       <circle cx="128" cy="99" r="67" />
       <circle cx="128" cy="99" r="48" />
       <path d="M-10 170 190-30M12 192 212-8M35 215 235 15" />
     </svg>
-    <span class="cover-edition">FRONTEND / FIELD NOTES</span>
   </div>
 </template>
 
@@ -99,13 +97,6 @@ const displaySymbol = computed(() => {
   align-items: flex-start;
   gap: 6px;
 }
-.cover-kicker {
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  line-height: 1.4;
-  opacity: 0.7;
-  font-weight: 650;
-}
 .cover-symbol {
   font:
     600 34px/1.2 ui-monospace,
@@ -139,16 +130,6 @@ const displaySymbol = computed(() => {
   stroke-width: 0.8;
   opacity: 0.16;
 }
-.cover-edition {
-  position: absolute;
-  bottom: 10px;
-  left: 25px;
-  font:
-    8px/1.3 ui-monospace,
-    monospace;
-  letter-spacing: 0.1em;
-  opacity: 0.5;
-}
 .compact {
   aspect-ratio: 0.76;
   min-width: 82px;
@@ -157,9 +138,7 @@ const displaySymbol = computed(() => {
   padding: 16px 17px 20px;
   gap: 6px;
 }
-.compact .cover-kicker,
-.compact .cover-subtitle,
-.compact .cover-edition {
+.compact .cover-subtitle {
   display: none;
 }
 .compact .cover-symbol {
@@ -188,11 +167,7 @@ const displaySymbol = computed(() => {
     font-size: 15px;
     max-width: 100%;
   }
-  .cover-kicker {
-    font-size: 9px;
-  }
-  .cover-subtitle,
-  .cover-edition {
+  .cover-subtitle {
     display: none;
   }
   .cover-pattern {
