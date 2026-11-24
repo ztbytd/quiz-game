@@ -30,7 +30,7 @@ node --import tsx scripts/verify-provider.ts
 
 ## 生产配置
 
-阿里云当前前端为 `b5895e6`、后端为 `729fe54`，入口为 [知序](https://112.74.52.169/quiz/)。主机为 Ubuntu 24.04、2 核、约 1.58 GiB 内存；采用 Node.js 24.22.3、PostgreSQL 16.15 和 systemd，API 与 Worker 同进程运行。Caddy、Nginx 与其他应用保留原服务，仅为 quiz 增加 API 路由及 PWA 的 MIME/缓存配置。
+阿里云当前前后端均为 `eeedaca`，入口为 [知序](https://112.74.52.169/quiz/)。主机为 Ubuntu 24.04、2 核、约 1.58 GiB 内存；采用 Node.js 24.22.3、PostgreSQL 16.15 和 systemd，API 与 Worker 同进程运行。Caddy、Nginx 与其他应用保留原服务，仅为 quiz 增加 API 路由及 PWA 的 MIME/缓存配置。
 
 当前服务为 `zhixu-api`，私有配置在 `/etc/zhixu/quiz.env`，数据库角色使用 UTC。每天自动备份到 `/var/backups/zhixu/`，首次备份已实际恢复核对，并在本机保存私有副本。完整路径、服务配置和恢复边界见 [原生部署说明](native-deployment.md)。
 
