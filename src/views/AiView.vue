@@ -16,6 +16,7 @@ import AiMarkdown from "../components/AiMarkdown.vue";
 import AiInterviewReport from "../components/AiInterviewReport.vue";
 import AppIcon from "../components/AppIcon.vue";
 import AppDialog from "../components/AppDialog.vue";
+import { useStreamText } from "../composables/useStreamText";
 import { api } from "../infrastructure/ai-client";
 import type { StudyQuestion } from "../domain/types";
 const props = defineProps<{
@@ -168,6 +169,19 @@ const streaming = computed(() =>
     ? ai.run?.output?.text || ""
     : "",
 );
+const animateStream = computed(
+  () =>
+    ai.active &&
+    !isInterview.value &&
+    ["chat", "followup", "recap"].includes(ai.run?.kind || ""),
+);
+const displayedStreaming = useStreamText(
+  streaming,
+  animateStream,
+  computed(() => `${ai.run?.id || ""}:${ai.streamRevision}`),
+);
+let disposed = false;
+let transcriptFrame: number | undefined;
 const examples = [
   {
     icon: "bulb",
@@ -257,6 +271,7 @@ async function send(
   const value = override || text.value;
   if (!value.trim()) return;
   const key = draftKey.value;
+  const startedRoute = route.fullPath;
   const id = await ai.send(
     value,
     {
@@ -272,6 +287,7 @@ async function send(
       ? text.value.trim() || undefined
       : undefined,
   );
+  if (disposed || (!props.embedded && route.fullPath !== startedRoute)) return;
   if (id) {
     nextAction.value = "chat";
     localStorage.removeItem(key);
@@ -311,10 +327,14 @@ function keydown(e: KeyboardEvent) {
   void send();
 }
 async function scrollEnd() {
-  await nextTick();
-  if (transcript.value)
-    transcript.value.scrollTop = transcript.value.scrollHeight;
   newContent.value = false;
+  await nextTick();
+  if (disposed || transcriptFrame !== undefined) return;
+  transcriptFrame = requestAnimationFrame(() => {
+    transcriptFrame = undefined;
+    if (transcript.value && !newContent.value)
+      transcript.value.scrollTop = transcript.value.scrollHeight;
+  });
 }
 function onScroll() {
   const el = transcript.value;
@@ -327,7 +347,7 @@ watch(
     if (!newContent.value) void scrollEnd();
   },
 );
-watch(streaming, () => {
+watch(displayedStreaming, () => {
   if (!newContent.value) void scrollEnd();
 });
 watch(
@@ -429,7 +449,8 @@ async function remove(id: string) {
     }
   }
 }
-function focusInput() {
+function focusInput(event: FocusEvent) {
+  if (event.target !== input.value) return;
   if (composerBlurFrame !== undefined) cancelAnimationFrame(composerBlurFrame);
   composerBlurFrame = undefined;
   document.body.classList.add("ai-keyboard");
@@ -458,7 +479,9 @@ onMounted(async () => {
   historyTarget.value =
     !props.embedded && !!document.getElementById("ai-history-slot");
   await ai.init();
+  if (disposed) return;
   if (ai.user && route.params.id) await ai.open(String(route.params.id));
+  if (disposed) return;
   if (!route.params.id) ai.newChat();
   if (props.embedded && ai.user && !props.quote && !props.initialAction) {
     const previous = ai.conversations.find(
@@ -473,6 +496,8 @@ onMounted(async () => {
   ready.value = true;
 });
 onBeforeUnmount(() => {
+  disposed = true;
+  if (transcriptFrame !== undefined) cancelAnimationFrame(transcriptFrame);
   ai.stopSubscription();
   blurInput();
 });
@@ -941,13 +966,20 @@ onBeforeUnmount(() => {
               </div></template
             >
           </article>
-          <article v-if="streaming" class="ai-message ai-message-assistant">
-            <AiMarkdown :text="streaming" /><span
+          <article
+            v-if="displayedStreaming"
+            class="ai-message ai-message-assistant"
+          >
+            <AiMarkdown :text="displayedStreaming" /><span
               v-if="ai.active"
               class="ai-stream-dot"
             ></span>
           </article>
-          <div v-if="ai.active && !streaming" class="ai-thinking" role="status">
+          <div
+            v-if="ai.active && !displayedStreaming"
+            class="ai-thinking"
+            role="status"
+          >
             <span></span
             >{{ ai.run?.status === "queued" ? "正在等待回复" : "正在整理回答" }}
           </div>

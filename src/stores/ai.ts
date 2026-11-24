@@ -9,6 +9,10 @@ import {
 } from "../infrastructure/ai-client";
 import { syncPersonal, clearPersonal } from "../data/content";
 import { useLearningStore } from "./learning";
+import {
+  RunStreamCursor,
+  type RunSnapshot,
+} from "../infrastructure/run-stream";
 import type {
   AiUser,
   AiMessage,
@@ -25,7 +29,8 @@ export const useAiStore = defineStore("ai", () => {
     conversations = ref<Conversation[]>([]),
     current = ref<Conversation>(),
     messages = ref<AiMessage[]>([]),
-    run = ref<AiRun>(),
+    run = ref<RunSnapshot>(),
+    streamRevision = ref(0),
     tasks = ref<AiRun[]>([]),
     candidates = ref<Candidate[]>([]),
     usage = ref({ consumed: 0, reserved: 0, limit: 0 }),
@@ -36,11 +41,23 @@ export const useAiStore = defineStore("ai", () => {
   );
   let unsubscribe: (() => void) | undefined,
     poll: ReturnType<typeof setInterval> | undefined;
-  function stopSubscription() {
-    unsubscribe?.();
-    unsubscribe = undefined;
+  let subscriptionVersion = 0,
+    pollVersion = 0,
+    viewVersion = 0;
+  function stopPolling() {
+    pollVersion++;
     if (poll) clearInterval(poll);
     poll = undefined;
+  }
+  function closeSubscription() {
+    subscriptionVersion++;
+    unsubscribe?.();
+    unsubscribe = undefined;
+    stopPolling();
+  }
+  function stopSubscription() {
+    viewVersion++;
+    closeSubscription();
   }
   function report(e: unknown) {
     error.value = e instanceof Error ? e.message : "请求失败，请重试";
@@ -128,11 +145,13 @@ export const useAiStore = defineStore("ai", () => {
     clearIdentity();
   }
   async function open(conversationId: string) {
-    stopSubscription();
+    const view = ++viewVersion;
+    closeSubscription();
     error.value = "";
     busy.value = true;
     try {
       const data = await api(`/conversations/${conversationId}`);
+      if (view !== viewVersion) return;
       current.value = data.conversation;
       messages.value = data.messages;
       run.value = undefined;
@@ -146,13 +165,14 @@ export const useAiStore = defineStore("ai", () => {
       )
         watchRun(latest);
     } catch (e) {
-      report(e);
+      if (view === viewVersion) report(e);
     } finally {
-      busy.value = false;
+      if (view === viewVersion) busy.value = false;
     }
   }
   function newChat() {
-    stopSubscription();
+    viewVersion++;
+    closeSubscription();
     current.value = undefined;
     messages.value = [];
     run.value = undefined;
@@ -169,48 +189,117 @@ export const useAiStore = defineStore("ai", () => {
       interview?: InterviewOptions;
     } = {},
   ) {
+    const view = viewVersion;
     const data = await api<Conversation>("/conversations", {
       method: "POST",
       body: { ...context },
     });
-    current.value = data;
-    conversations.value.unshift(data);
+    if (view === viewVersion) {
+      current.value = data;
+      conversations.value.unshift(data);
+    }
     return data;
   }
-  async function watchUpdate(value: AiRun) {
+  async function watchUpdate(value: RunSnapshot) {
     run.value = value;
     if (!["queued", "running"].includes(value.status)) {
-      stopSubscription();
+      closeSubscription();
+      const version = subscriptionVersion;
       if (
         value.conversation_id &&
         current.value?.id === value.conversation_id
       ) {
         const data = await api(`/conversations/${value.conversation_id}`);
-        if (current.value?.id !== value.conversation_id) return;
+        if (
+          version !== subscriptionVersion ||
+          run.value?.id !== value.id ||
+          current.value?.id !== value.conversation_id
+        )
+          return;
         messages.value = data.messages;
         current.value = data.conversation;
       }
+      if (version !== subscriptionVersion || run.value?.id !== value.id) return;
       await refresh();
       if (["generate", "check"].includes(value.kind)) await loadQuestions();
     }
   }
-  function watchRun(value: AiRun) {
-    stopSubscription();
+  function watchRun(value: RunSnapshot) {
+    closeSubscription();
     run.value = value;
     if (!["queued", "running"].includes(value.status)) return;
+    const version = subscriptionVersion;
+    const cursor = new RunStreamCursor(value.id);
+    cursor.snapshot(undefined, value);
+    let connection = 0;
+    const valid = () =>
+      version === subscriptionVersion && run.value?.id === value.id;
     const recover = () => {
+      if (!valid()) return;
       if (!poll)
         poll = setInterval(() => {
-          void api<AiRun>(`/runs/${value.id}`).then(watchUpdate).catch(report);
+          const recovery = pollVersion;
+          void api<RunSnapshot>(`/runs/${value.id}`)
+            .then((snapshot) => {
+              if (
+                !valid() ||
+                recovery !== pollVersion ||
+                !cursor.snapshot(run.value, snapshot)
+              )
+                return;
+              const updated = watchUpdate(snapshot);
+              streamRevision.value++;
+              void updated.catch((error) => {
+                if (valid()) report(error);
+              });
+            })
+            .catch((error) => {
+              if (valid() && recovery === pollVersion) report(error);
+            });
         }, 1800);
     };
-    unsubscribe = subscribeRun(
-      value.id,
-      (r) => {
-        void watchUpdate(r).catch(report);
-      },
-      recover,
-    );
+    const connect = () => {
+      unsubscribe?.();
+      const expected = ++connection;
+      let initial = true;
+      const live = () => valid() && expected === connection;
+      unsubscribe = subscribeRun(
+        value.id,
+        (snapshot) => {
+          if (!live() || !cursor.snapshot(run.value, snapshot)) return;
+          stopPolling();
+          const updated = watchUpdate(snapshot);
+          if (initial) {
+            initial = false;
+            streamRevision.value++;
+          }
+          void updated.catch((error) => {
+            if (live()) report(error);
+          });
+        },
+        () => {
+          if (live()) recover();
+        },
+        {
+          connected: () => {
+            if (live()) initial = true;
+          },
+          delta: (delta) => {
+            if (!live()) return;
+            const result = cursor.delta(run.value, delta);
+            if (result.kind === "resync") {
+              connect();
+              return;
+            }
+            if (result.kind === "apply") {
+              stopPolling();
+              run.value = result.run;
+            }
+          },
+        },
+      );
+    };
+    connect();
   }
   async function send(
     text: string,
@@ -227,10 +316,12 @@ export const useAiStore = defineStore("ai", () => {
     finalAnswer?: string,
   ) {
     if (!text.trim() || active.value || sending.value) return;
+    const view = viewVersion;
     error.value = "";
     sending.value = true;
     try {
       const c = current.value || (await create(context));
+      if (view !== viewVersion) return;
       const answer =
         finalAnswer ?? (action === "assess" ? context.answer : undefined);
       const signature = JSON.stringify({ text, action, answer });
@@ -254,29 +345,40 @@ export const useAiStore = defineStore("ai", () => {
           answer,
         },
       });
+      if (view !== viewVersion) return;
       localStorage.removeItem(storageKey);
+      watchRun(value);
+      const acceptedVersion = subscriptionVersion;
       try {
         const data = await api(`/conversations/${c.id}`);
-        messages.value = data.messages;
-        current.value = data.conversation;
+        if (view !== viewVersion) return;
+        if (
+          acceptedVersion === subscriptionVersion &&
+          run.value?.id === value.id
+        ) {
+          messages.value = data.messages;
+          current.value = data.conversation;
+        }
       } catch (error) {
-        report(error);
+        if (view === viewVersion) report(error);
       }
-      watchRun(value);
       await refresh().catch(report);
       return c.id;
     } catch (e) {
-      report(e);
+      if (view === viewVersion) report(e);
     } finally {
       sending.value = false;
     }
   }
   async function cancel() {
     if (!run.value) return;
+    const runId = run.value.id,
+      version = subscriptionVersion;
     try {
-      const result = await api<AiRun>(`/runs/${run.value.id}/cancel`, {
+      const result = await api<AiRun>(`/runs/${runId}/cancel`, {
         method: "POST",
       });
+      if (version !== subscriptionVersion || run.value?.id !== runId) return;
       await watchUpdate(result);
     } catch (e) {
       report(e);
@@ -288,6 +390,7 @@ export const useAiStore = defineStore("ai", () => {
     kind: string;
     difficulty: string;
   }) {
+    const view = viewVersion;
     error.value = "";
     sending.value = true;
     const storageKey = `zhixu-ai-generate:${user.value?.id}`;
@@ -305,7 +408,7 @@ export const useAiStore = defineStore("ai", () => {
         body: { ...input, key: pending!.key },
       });
       localStorage.removeItem(storageKey);
-      watchRun(value);
+      if (view === viewVersion) watchRun(value);
       return value;
     } catch (e) {
       report(e);
@@ -330,13 +433,14 @@ export const useAiStore = defineStore("ai", () => {
     }
   }
   async function check(candidate: Candidate) {
+    const view = viewVersion;
     error.value = "";
     try {
       const value = await api<AiRun>(`/candidates/${candidate.id}/check`, {
         method: "POST",
         body: { version: candidate.version, key: crypto.randomUUID() },
       });
-      watchRun(value);
+      if (view === viewVersion) watchRun(value);
     } catch (e) {
       report(e);
     }
@@ -364,6 +468,7 @@ export const useAiStore = defineStore("ai", () => {
     current,
     messages,
     run,
+    streamRevision,
     tasks,
     candidates,
     usage,

@@ -26,6 +26,8 @@
     "test:ime:webkit": "node scripts/verify-ime.cjs --webkit",
     "test:composer": "node scripts/verify-composer.cjs",
     "test:composer:webkit": "node scripts/verify-composer.cjs --webkit",
+    "test:streaming": "node scripts/verify-streaming.cjs",
+    "test:streaming:webkit": "node scripts/verify-streaming.cjs --webkit",
     "test:layout": "node scripts/verify-layout.cjs",
     "test:layout:webkit": "node scripts/verify-layout.cjs --webkit",
     "start:api": "node server/index.ts"

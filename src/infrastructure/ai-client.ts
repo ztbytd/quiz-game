@@ -1,4 +1,5 @@
 import type { AiUser } from "../../packages/contracts/ai";
+import type { RunDelta, RunSnapshot } from "./run-stream";
 const base = import.meta.env.BASE_URL + "api/v1";
 let csrf = "";
 export class ApiError extends Error {
@@ -51,16 +52,24 @@ export const clearIdentity = () => {
 };
 export function subscribeRun(
   runId: string,
-  update: (value: any) => void,
+  update: (value: RunSnapshot) => void,
   fail: () => void,
+  live: { delta: (value: RunDelta) => void; connected: () => void },
 ) {
   const source = new EventSource(
-    `${base}/runs/${encodeURIComponent(runId)}/events`,
+    `${base}/runs/${encodeURIComponent(runId)}/events?live=1`,
     { withCredentials: true },
   );
-  source.addEventListener("snapshot", (event) =>
-    update(JSON.parse((event as MessageEvent).data)),
-  );
+  const receive = (event: Event, apply: (value: any) => void) => {
+    try {
+      apply(JSON.parse((event as MessageEvent).data));
+    } catch {
+      fail();
+    }
+  };
+  source.addEventListener("snapshot", (event) => receive(event, update));
+  source.addEventListener("delta", (event) => receive(event, live.delta));
+  source.onopen = live.connected;
   source.onerror = fail;
   return () => source.close();
 }

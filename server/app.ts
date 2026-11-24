@@ -38,6 +38,9 @@ import { migrate } from "./db.ts";
 import { initializeContent, lockPublicContent } from "./content-upgrades.ts";
 import { createStructuredReader, jsonRepairPrompt } from "./structured.ts";
 import type { Complete } from "./provider.ts";
+import { LiveSseWriter, RunStreamHub, TextCheckpoint } from "./run-stream.ts";
+import type { Publication } from "./run-stream.ts";
+import type { ServerResponse } from "node:http";
 import {
   basePrompt,
   assessmentPrompt,
@@ -90,6 +93,8 @@ export async function createApp(options: AppOptions) {
   await initializeContent(db, seed);
   const app = Fastify({ bodyLimit: 100_000, logger: false });
   const controllers = new Map<string, AbortController>();
+  const live = new RunStreamHub();
+  const eventConnections = new Set<ServerResponse>();
   const rate = new Map<string, { count: number; time: number }>();
   let timer: ReturnType<typeof setInterval> | undefined,
     closed = false,
@@ -619,7 +624,7 @@ export async function createApp(options: AppOptions) {
     ).rows,
   }));
   app.post(prefix + "/runs/:id/cancel", async (req: any) => {
-    return db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const r = await tx.query(
         "SELECT * FROM runs WHERE id=$1 AND owner=$2 FOR UPDATE",
         [req.params.id, req.user.id],
@@ -627,18 +632,28 @@ export async function createApp(options: AppOptions) {
       const run = r.rows[0];
       if (!run) fail(404, "任务不存在");
       if (!["queued", "running"].includes(run.status)) return run;
+      const text = live.currentText(run.id, run.fence);
+      live.pause(run.id, run.fence);
       controllers.get(run.id)?.abort();
       const charge = run.status === "queued" ? 0 : run.reserved;
       await tx.query(
         `UPDATE usage SET reserved=GREATEST(0,reserved-$1),consumed=consumed+$2 WHERE owner=$3 AND day=$4`,
         [run.reserved, charge, run.owner, run.usage_day],
       );
-      await tx.query(
-        `UPDATE runs SET status='canceled',fence=fence+1,output=output||$1::jsonb,updated_at=now() WHERE id=$2`,
-        [JSON.stringify({ estimatedTokens: charge }), run.id],
+      const changed = await tx.query(
+        `UPDATE runs SET status='canceled',fence=fence+1,output=output||$1::jsonb,updated_at=now() WHERE id=$2 RETURNING *`,
+        [
+          JSON.stringify({
+            estimatedTokens: charge,
+            ...(text !== undefined ? { text } : {}),
+          }),
+          run.id,
+        ],
       );
-      return { ...run, status: "canceled" };
+      return changed.rows[0];
     });
+    live.finish(result);
+    return result;
   });
   app.get(prefix + "/runs/:id/events", async (req: any, reply) => {
     const r = await db.query("SELECT * FROM runs WHERE id=$1 AND owner=$2", [
@@ -652,6 +667,113 @@ export async function createApp(options: AppOptions) {
       "Cache-Control": "no-store",
       "X-Accel-Buffering": "no",
     });
+    eventConnections.add(reply.raw);
+    reply.raw.on("close", () => eventConnections.delete(reply.raw));
+    if (req.query?.live === "1") {
+      const writer = new LiveSseWriter(reply.raw);
+      let ready = false,
+        polling = false,
+        last = "";
+      const pending: Publication[] = [];
+      const unsubscribe = live.subscribe(req.params.id, (publication) => {
+        if (!ready) {
+          pending[0] = publication;
+          return;
+        }
+        writer.send(publication);
+      });
+      reply.raw.on("close", unsubscribe);
+      // Re-read after subscribing: the authorization read may predate completion.
+      let current;
+      try {
+        current = (
+          await db.query("SELECT * FROM runs WHERE id=$1 AND owner=$2", [
+            req.params.id,
+            req.user.id,
+          ])
+        ).rows[0];
+      } catch {
+        unsubscribe();
+        reply.raw.end();
+        return;
+      }
+      if (!current) {
+        unsubscribe();
+        reply.raw.end();
+        return;
+      }
+      const buffered = pending[0]?.snapshot;
+      if (buffered && buffered.fence >= current.fence) current = buffered;
+      const initial = live.snapshot(current);
+      writer.send({
+        event: "snapshot",
+        data: initial,
+        snapshot: initial,
+        terminal: !["queued", "running"].includes(initial.status),
+      });
+      last = JSON.stringify(initial);
+      ready = true;
+      if (
+        pending[0] &&
+        pending[0].snapshot.stream?.seq > (initial.stream?.seq ?? -1)
+      )
+        writer.send(pending[0]);
+      const poll = async () => {
+        if (
+          polling ||
+          reply.raw.destroyed ||
+          reply.raw.writableEnded ||
+          live.has(req.params.id)
+        )
+          return;
+        polling = true;
+        try {
+          // Another process, structured tasks, and older workers keep snapshot recovery.
+          const current = (
+            await db.query("SELECT * FROM runs WHERE id=$1 AND owner=$2", [
+              req.params.id,
+              req.user.id,
+            ])
+          ).rows[0];
+          if (
+            live.has(req.params.id) ||
+            reply.raw.writableEnded ||
+            reply.raw.destroyed
+          )
+            return;
+          if (!current) {
+            reply.raw.end();
+            return;
+          }
+          const snapshot = live.snapshot(current);
+          const encoded = JSON.stringify(snapshot);
+          if (encoded !== last) {
+            last = encoded;
+            writer.send({
+              event: "snapshot",
+              data: snapshot,
+              snapshot,
+              terminal: !["queued", "running"].includes(snapshot.status),
+            });
+          }
+        } catch {
+          reply.raw.end();
+        } finally {
+          polling = false;
+        }
+      };
+      const tick = setInterval(() => void poll(), 600);
+      const heartbeat = setInterval(() => writer.heartbeat(), 15000);
+      const cleanup = () => {
+        unsubscribe();
+        clearInterval(tick);
+        clearInterval(heartbeat);
+      };
+      reply.raw.on("close", cleanup);
+      // A terminal initial snapshot may have ended before the close listener existed.
+      if (reply.raw.writableEnded || reply.raw.destroyed) cleanup();
+      return;
+    }
     let last = "",
       polling = false;
     const send = async () => {
@@ -954,6 +1076,7 @@ export async function createApp(options: AppOptions) {
       started = false;
     let spent = 0,
       uncertainUsage = false;
+    let checkpoint: TextCheckpoint | undefined;
     const abort = new AbortController();
     try {
       // Expired calls may already have been billed upstream; keep their reservation and do not resubmit.
@@ -971,7 +1094,7 @@ export async function createApp(options: AppOptions) {
           `UPDATE runs SET status='running',fence=fence+1,lease_until=now()+interval '6 minutes',updated_at=now() WHERE id=$1`,
           [row.id],
         );
-        return { ...row, fence: row.fence + 1 };
+        return { ...row, status: "running", fence: row.fence + 1 };
       });
       if (!run) return;
       controllers.set(run.id, abort);
@@ -1401,19 +1524,26 @@ export async function createApp(options: AppOptions) {
             if (run.kind === "recap")
               messages[0].content +=
                 "\n现在根据实际对话做复盘，说明已讲清的点、仍需独立验证的点和下一次两题练习建议，不能推断用户未展示的能力。";
-            let lastWrite = 0;
+            live.begin(run);
+            checkpoint = new TextCheckpoint(
+              async (text) => {
+                const changed = await db.query(
+                  `UPDATE runs SET output=$1,updated_at=now() WHERE id=$2 AND fence=$3 AND status='running' RETURNING id`,
+                  [JSON.stringify({ text }), run.id, run.fence],
+                );
+                if (!changed.rows.length) throw new Error("任务已经停止");
+              },
+              () => abort.abort(),
+            );
             const result = await call(messages, false, 1600, async (text) => {
-              if (Date.now() - lastWrite < 200) return;
-              lastWrite = Date.now();
-              await db.query(
-                `UPDATE runs SET output=$1,updated_at=now() WHERE id=$2 AND fence=$3 AND status='running'`,
-                [JSON.stringify({ text }), run.id, run.fence],
-              );
+              live.text(run.id, run.fence, text);
+              checkpoint!.set(text);
             });
+            await checkpoint.flush();
             output = { text: result.text };
           }
         }
-        await db.transaction(async (tx) => {
+        const finished = await db.transaction(async (tx) => {
           const current = await tx.query(
             `SELECT id FROM runs WHERE id=$1 AND fence=$2 AND status='running' FOR UPDATE`,
             [run.id, run.fence],
@@ -1488,14 +1618,20 @@ export async function createApp(options: AppOptions) {
                 run.id,
               ],
             );
+          return (await tx.query("SELECT * FROM runs WHERE id=$1", [run.id]))
+            .rows[0];
         });
+        if (finished) live.finish(finished);
       } finally {
         clearTimeout(deadline);
         clearInterval(heartbeat);
       }
     } catch (e: any) {
-      if (run)
-        await db.transaction(async (tx) => {
+      if (checkpoint) await checkpoint.stop();
+      if (run) {
+        const text = live.currentText(run.id, run.fence);
+        live.pause(run.id, run.fence);
+        const finished = await db.transaction(async (tx) => {
           const current = await tx.query(
             `SELECT id FROM runs WHERE id=$1 AND fence=$2 AND status='running' FOR UPDATE`,
             [run.id, run.fence],
@@ -1503,32 +1639,43 @@ export async function createApp(options: AppOptions) {
           if (!current.rows.length) return;
           const unknown = started && uncertainUsage;
           const charged = unknown ? Math.max(run.reserved, spent) : spent;
-          await tx.query(
-            `UPDATE runs SET status=$1,error=$2,updated_at=now() WHERE id=$3`,
+          const changed = await tx.query(
+            `UPDATE runs SET status=$1,error=$2,updated_at=now(),output=output||$4::jsonb WHERE id=$3 RETURNING *`,
             [
               unknown ? "outcome_unknown" : "failed",
               e instanceof ZodError
                 ? "模型内容未通过格式校验"
                 : String(e.message || "任务未完成").slice(0, 200),
               run.id,
+              JSON.stringify(text !== undefined ? { text } : {}),
             ],
           );
           await tx.query(
             "UPDATE usage SET reserved=GREATEST(0,reserved-$1),consumed=consumed+$2 WHERE owner=$3 AND day=$4",
             [run.reserved, charged, run.owner, run.usage_day],
           );
+          return changed.rows[0];
         });
+        if (finished) live.finish(finished);
+      }
     } finally {
-      if (run) controllers.delete(run.id);
+      if (checkpoint) await checkpoint.stop();
+      if (run) {
+        controllers.delete(run.id);
+        live.forget(run.id, run.fence);
+      }
       working = false;
     }
   }
   if (options.worker !== false)
     timer = setInterval(() => void processOne().catch(() => {}), 350);
-  app.addHook("onClose", async () => {
+  app.addHook("preClose", async () => {
     closed = true;
     if (timer) clearInterval(timer);
     for (const c of controllers.values()) c.abort();
+    live.close();
+    for (const response of eventConnections) response.end();
+    eventConnections.clear();
   });
   return { app, processOne };
 }

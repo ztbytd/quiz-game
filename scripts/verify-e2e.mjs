@@ -47,6 +47,7 @@ try {
     "scripts/verify-auth.cjs",
     "scripts/verify-ime.cjs",
     "scripts/verify-composer.cjs",
+    "scripts/verify-streaming.cjs",
     "scripts/verify-layout.cjs",
     "scripts/verify-update.cjs",
   ]) {
